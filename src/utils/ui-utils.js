@@ -60,3 +60,28 @@ export function openSpellBook(actor) {
     ui.notifications.error('Error opening spell book');
   }
 }
+
+/**
+ * Open the GM spell manager interface
+ * @param {string} [listType='class'] - Type of spell list to manage ('class', 'subclass', or 'other')
+ */
+export function openGMSpellManager(listType = 'class') {
+  // Check if the user is a GM
+  if (!game.user.isGM) {
+    ui.notifications.warn(game.i18n.localize('spell-book.notifications.gmOnly'));
+    return;
+  }
+
+  Logger.debug(`Opening GM spell manager for ${listType} lists`);
+
+  import('../apps/gm-spell-manager.js')
+    .then((module) => {
+      const GMSpellManager = module.GMSpellManager;
+      const manager = new GMSpellManager({ listType });
+      manager.render(true);
+    })
+    .catch((err) => {
+      Logger.error(`Error loading GM spell manager: ${err}`);
+      ui.notifications.error('Error opening Spell List Manager');
+    });
+}

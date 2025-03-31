@@ -4,6 +4,7 @@
       "label": "Spell Book"
     },
     "notifications": {
+      "gmOnly": "Only Game Masters can access the Spell List Manager.",
       "spellsUpdated": "Spells updated successfully.",
       "tooManySpells": "You've selected too many spells. Maximum preparation limit reached."
     },
@@ -20,21 +21,38 @@
       }
     },
     "ui": {
+      "addToList": "Add to List",
+      "allClasses": "All Classes",
+      "allLevels": "All Levels",
+      "allSchools": "All Schools",
       "availableSpells": "Available Spells",
       "cancel": "Cancel",
       "cantrips": "Cantrips",
+      "createNewList": "Create New List",
+      "deleteList": "Delete List",
       "filterByClass": "Filter by Class",
       "filterByLevel": "Filter by Level",
       "filterBySchool": "Filter by School",
+      "filterOptions": "Filter Options",
       "maxPrepared": "Maximum Prepared: {count}",
+      "noSpellLists": "No spell lists found. Create one to get started.",
       "noSpells": "No spells found.",
+      "noSpellsFound": "No matching spells found.",
+      "noSpellsSelected": "No spells selected. Add spells from the available list.",
       "preparableSpells": "Preparable Spells",
       "prepare": "Prepare",
       "prepared": "Prepared",
       "preparedSpells": "Prepared Spells",
+      "removeFromList": "Remove from List",
       "save": "Save Changes",
+      "saveList": "Save List",
       "search": "Search Spells...",
+      "selectOrCreateList": "Select an existing spell list or create a new one to begin.",
+      "selectedSpells": "Selected Spells",
       "spellLevel": "Level {level}",
+      "spellLists": "Spell Lists",
+      "spells": "Spells",
+      "title": "{name}'s Spell Book",
       "unprepare": "Unprepare"
     }
   }

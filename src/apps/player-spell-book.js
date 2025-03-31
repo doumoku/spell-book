@@ -20,11 +20,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: 'player-spell-book',
     tag: 'div',
-    classes: ['dnd5e', 'sheet', 'spell-book'],
-    width: 550,
-    height: 680,
-    resizable: true,
-    title: 'Spell Book',
+    classes: ['spell-book'],
+    position: { width: 'auto', height: 'auto', top: '100' },
+    window: {
+      icon: 'fa-solid fa-book',
+      resizable: false,
+      minimizable: true
+    },
     actions: {
       prepareSpell: PlayerSpellBook.prepareSpell,
       unprepareSpell: PlayerSpellBook.unprepareSpell,
@@ -66,7 +68,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @type {string}
    */
   get title() {
-    return `${this.actor.name}'s Spell Book`;
+    return game.i18n.format('spell-book.ui.title', { name: this?.actor?.name });
   }
 
   /* -------------------------------------------- */

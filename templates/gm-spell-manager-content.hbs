@@ -1,0 +1,83 @@
+<div class="spell-manager-content">
+	{{#if activeList}}
+		<div class="active-list-header">
+			<h2>{{activeList.name}}</h2>
+			<div class="list-stats">
+				<span>{{selectedSpells.length}} {{localize "spell-book.ui.spells"}}</span>
+			</div>
+		</div>
+
+		<div class="spell-container">
+			<div class="available-spells">
+				<h3>{{localize "spell-book.ui.availableSpells"}} ({{filteredSpells.length}})</h3>
+
+				{{#if filteredSpells.length}}
+					{{#each spellsByLevel as |levelData lvl|}}
+						<div class="spell-level-group">
+							<h4 class="spell-level-header">{{levelData.label}}</h4>
+							<ul class="spell-list level-{{lvl}}">
+								{{#each levelData.spells as |spell|}}
+									{{#unless (eq (contains ../../../selectedSpells spell) true)}}
+										<li class="spell-item" data-spell-id="{{spell.id}}">
+											<div class="spell-info">
+												<span class="spell-name">{{spell.name}}</span>
+												<span class="spell-school">{{lookup ../../../config.spellSchools spell.system.school}}</span>
+											</div>
+											<div class="spell-actions">
+												<button class="add-spell" data-action="addSpell" title="{{localize 'spell-book.ui.addToList'}}">
+													<i class="fas fa-plus-circle"></i>
+												</button>
+											</div>
+										</li>
+									{{/unless}}
+								{{/each}}
+							</ul>
+						</div>
+					{{/each}}
+				{{else}}
+					<p class="no-spells">{{localize "spell-book.ui.noSpellsFound"}}</p>
+				{{/if}}
+			</div>
+
+			<div class="selected-spells">
+				<h3>{{localize "spell-book.ui.selectedSpells"}} ({{selectedSpells.length}})</h3>
+
+				{{#if selectedSpells.length}}
+					{{#each (groupBy selectedSpells "system.level") as |spells level|}}
+						<div class="spell-level-group">
+							<h4 class="spell-level-header">
+								{{#if (eq level "0")}}
+									{{localize "spell-book.ui.cantrips"}}
+								{{else}}
+									{{localize "spell-book.ui.spellLevel" level=level}}
+								{{/if}}
+							</h4>
+							<ul class="spell-list level-{{level}}">
+								{{#each spells as |spell|}}
+									<li class="spell-item" data-spell-id="{{spell.id}}">
+										<div class="spell-info">
+											<span class="spell-name">{{spell.name}}</span>
+											<span class="spell-school">{{lookup ../../config.spellSchools spell.system.school}}</span>
+										</div>
+										<div class="spell-actions">
+											<button class="remove-spell" data-action="removeSpell"
+												title="{{localize 'spell-book.ui.removeFromList'}}">
+												<i class="fas fa-minus-circle"></i>
+											</button>
+										</div>
+									</li>
+								{{/each}}
+							</ul>
+						</div>
+					{{/each}}
+				{{else}}
+					<p class="no-spells">{{localize "spell-book.ui.noSpellsSelected"}}</p>
+				{{/if}}
+			</div>
+		</div>
+	{{else}}
+		<div class="no-active-list">
+			<p>{{localize "spell-book.ui.selectOrCreateList"}}</p>
+		</div>
+	{{/if}}
+</div>
