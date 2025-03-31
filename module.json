@@ -1,0 +1,100 @@
+{
+  "id": "spell-book",
+  "title": "Spell Book",
+  "description": "Allows users to change their spells at the click of a button.",
+  "version": "0.0.0",
+  "bugs": "https://github.com/Sayshal/spell-book/issues",
+  "changelog": "https://github.com/Sayshal/spell-book/releases",
+  "license": "https://github.com/Sayshal/spell-book?tab=MIT-1-ov-file",
+  "readme": "https://github.com/Sayshal/spell-book?tab=readme-ov-file",
+  "authors": [
+    {
+      "name": "Tyler",
+      "url": "https://github.com/Sayshal",
+      "discord": "Tyler#0001",
+      "flags": {}
+    }
+  ],
+  "compatibility": {
+    "minimum": "12.331",
+    "verified": "12.331",
+    "maximum": "12.331"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {}
+      }
+    ]
+  },
+  "url": "https://github.com/Sayshal/spell-book",
+  "manifest": "https://github.com/Sayshal/spell-book/releases/latest/download/module.json",
+  "download": "",
+  "persistantStorage": "true",
+  "esmodules": ["src/spell-book.js"],
+  "styles": ["styles/spell-book.css"],
+  "flags": {
+    "hotReload": {
+      "extensions": ["css", "html", "hbs", "json"],
+      "paths": ["styles", "lang", "templates"]
+    }
+  },
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "packs": [
+    {
+      "name": "sb-class-spell-books",
+      "label": "Class Spell Books",
+      "path": "storage/sb-class-spell-books",
+      "type": "JournalEntry",
+      "banner": "modules/spell-book/assets/banners/class-spell-books.webp",
+      "module": "spell-book",
+      "ownership": {
+        "PLAYER": "LIMITED",
+        "ASSISTANT": "OWNER"
+      },
+      "system": "dnd5e"
+    },
+    {
+      "name": "sb-subclass-spell-books",
+      "label": "Sub-Class Spell Books",
+      "path": "storage/sb-subclass-spell-books",
+      "type": "JournalEntry",
+      "banner": "modules/spell-book/assets/banners/subclass-spell-books.webp",
+      "module": "spell-book",
+      "ownership": {
+        "PLAYER": "LIMITED",
+        "ASSISTANT": "OWNER"
+      },
+      "system": "dnd5e"
+    },
+    {
+      "name": "sb-other-spell-books",
+      "label": "Other Spell Books",
+      "path": "storage/sb-other-spell-books",
+      "type": "JournalEntry",
+      "banner": "modules/spell-book/assets/banners/other-spell-books.webp",
+      "module": "spell-book",
+      "ownership": {
+        "PLAYER": "LIMITED",
+        "ASSISTANT": "OWNER"
+      },
+      "system": "dnd5e"
+    }
+  ],
+  "packFolders": [
+    {
+      "name": "Spell Books",
+      "sorting": "m",
+      "color": "#ff144f",
+      "packs": ["sb-class-spell-books", "sb-subclass-spell-books", "sb-other-spell-books"]
+    }
+  ]
+}

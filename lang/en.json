@@ -1,0 +1,41 @@
+{
+  "spell-book": {
+    "button": {
+      "label": "Spell Book"
+    },
+    "notifications": {
+      "spellsUpdated": "Spells updated successfully.",
+      "tooManySpells": "You've selected too many spells. Maximum preparation limit reached."
+    },
+    "settings": {
+      "logLevel": {
+        "choices": {
+          "0": "None",
+          "1": "Errors Only",
+          "2": "Warnings and Errors",
+          "3": "Debug (Verbose)"
+        },
+        "hint": "Controls how detailed the module's logs will be in the console.",
+        "name": "Log Level"
+      }
+    },
+    "ui": {
+      "availableSpells": "Available Spells",
+      "cancel": "Cancel",
+      "cantrips": "Cantrips",
+      "filterByClass": "Filter by Class",
+      "filterByLevel": "Filter by Level",
+      "filterBySchool": "Filter by School",
+      "maxPrepared": "Maximum Prepared: {count}",
+      "noSpells": "No spells found.",
+      "preparableSpells": "Preparable Spells",
+      "prepare": "Prepare",
+      "prepared": "Prepared",
+      "preparedSpells": "Prepared Spells",
+      "save": "Save Changes",
+      "search": "Search Spells...",
+      "spellLevel": "Level {level}",
+      "unprepare": "Unprepare"
+    }
+  }
+}
