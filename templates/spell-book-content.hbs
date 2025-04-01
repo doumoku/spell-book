@@ -7,7 +7,7 @@
 				<ul class="spell-list level-{{lvl}}">
 					{{#each levelData.spells as |spell|}}
 						<li class="spell-item" data-spell-id="{{spell.id}}">
-							<div class="spell-name">{{spell.name}}</div>
+							<div class="spell-name">{{{spell.nameDisplay}}}</div>
 							<div class="spell-school">{{lookup ../../config.spellSchools spell.system.school}}</div>
 							<div class="spell-actions">
 								<button class="unprepare-spell" data-action="unprepareSpell">
@@ -28,8 +28,9 @@
 				<h4 class="spell-level-header">{{levelData.label}}</h4>
 				<ul class="spell-list level-{{lvl}}">
 					{{#each levelData.spells as |spell|}}
-						<li class="spell-item" data-spell-id="{{spell.id}}">
-							<div class="spell-name">{{spell.name}}</div>
+						<li class="spell-item" data-spell-id="{{spell.id}}"
+							data-from-list="{{#if spell.fromSpellList}}true{{else}}false{{/if}}">
+							<div class="spell-name">{{{spell.nameDisplay}}}</div>
 							<div class="spell-school">{{spellInfo spell}}</div>
 							<div class="spell-actions">
 								<button class="prepare-spell" data-action="prepareSpell"

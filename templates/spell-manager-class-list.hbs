@@ -5,7 +5,13 @@
 				{{#each classes as |class|}}
 					<li class="class-item {{#if class.isSelected}}selected{{/if}} {{#if class.hasSpellList}}has-list{{/if}}"
 						data-class-id="{{class.id}}" data-action="selectClass">
-						<div class="class-name">{{class.label}}</div>
+						<div class="class-name">
+							{{#if class.nameDisplay}}
+								{{{class.nameDisplay}}}
+							{{else}}
+								{{class.label}}
+							{{/if}}
+						</div>
 						{{#if class.hasSpellList}}
 							<div class="class-indicator"><i class="fas fa-check-circle"></i></div>
 						{{/if}}
@@ -13,9 +19,9 @@
 				{{/each}}
 			</ul>
 		{{else}}
-			<p class="no-classes">Classes array is empty</p>
+			<p class="no-classes">{{localize "spell-book.ui.noClasses"}}</p>
 		{{/if}}
 	{{else}}
-		<p class="no-classes">Classes undefined or null</p>
+		<p class="no-classes">{{localize "spell-book.ui.noClasses"}}</p>
 	{{/if}}
 </div>

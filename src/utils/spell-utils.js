@@ -1,5 +1,5 @@
+import { PACKS } from '../constants.js';
 import { Logger } from './logger.js';
-
 /**
  * Utility functions for manipulating spell data
  * @module SpellBook.Utils.SpellUtils
@@ -230,17 +230,47 @@ export async function getAllClasses() {
       const index = await pack.getIndex();
       const classEntries = index.filter((e) => e.type === 'class');
       for (const entry of classEntries) {
-        // Only add if not already in our list
-        const className = entry.name;
-        if (!classes.some((c) => c.id === className.toLowerCase())) {
-          classes.push({
-            id: className.toLowerCase(),
-            label: className
-          });
+        try {
+          // Load the actual document to get its UUID
+          const document = await pack.getDocument(entry._id);
+
+          // Only add if not already in our list
+          const className = entry.name;
+          if (!classes.some((c) => c.id === className.toLowerCase())) {
+            classes.push({
+              id: className.toLowerCase(),
+              label: className,
+              uuid: document.uuid,
+              document: document
+            });
+          }
+        } catch (err) {
+          Logger.warn(`Error loading class document: ${err}`);
+          // Fall back to just using the index data
+          const className = entry.name;
+          if (!classes.some((c) => c.id === className.toLowerCase())) {
+            classes.push({
+              id: className.toLowerCase(),
+              label: className
+            });
+          }
         }
       }
     } catch (error) {
       Logger.error(`Error loading classes from compendium ${pack.metadata.label}:`, error);
+    }
+  }
+
+  // Also add classes from the world
+  const worldClasses = game.items.filter((i) => i.type === 'class');
+  for (const cls of worldClasses) {
+    if (!classes.some((c) => c.id === cls.name.toLowerCase())) {
+      classes.push({
+        id: cls.name.toLowerCase(),
+        label: cls.name,
+        uuid: cls.uuid,
+        document: cls
+      });
     }
   }
 
@@ -261,4 +291,210 @@ export function getSpellSchools() {
     const label = typeof data === 'object' ? data.label : String(data);
     return { id, label };
   });
+}
+
+/**
+ * Save a spell list to the appropriate compendium
+ * @param {string} type - The type of spell list ('class', 'subclass', or 'other')
+ * @param {string} identifier - The class/subclass identifier
+ * @param {string} name - Display name for the spell list
+ * @param {Array} spells - Array of spell items to include
+ * @returns {Promise<JournalEntry>} The created or updated journal entry
+ */
+export async function saveSpellListToCompendium(type, identifier, name, spells) {
+  Logger.debug(`Saving spell list: ${name} (${type}) with ${spells.length} spells`);
+
+  // Determine which compendium to use
+  let packId;
+  switch (type) {
+    case 'class':
+      packId = PACKS.CLASS;
+      break;
+    case 'subclass':
+      packId = PACKS.SUBCLASS;
+      break;
+    default:
+      packId = PACKS.OTHER;
+  }
+
+  const packName = `spell-book.${packId}`;
+  const pack = game.packs.get(packName);
+
+  if (!pack) {
+    throw new Error(`Compendium ${packName} not found`);
+  }
+
+  Logger.debug(`Using compendium: ${packName}`);
+
+  // Get the spell UUIDs
+  const spellUuids = spells.map((spell) => spell.uuid);
+
+  // Check if this spell list already exists
+  let existingEntry = null;
+  const index = await pack.getIndex();
+
+  for (const entry of index) {
+    // Load each entry to check its contents
+    const document = await pack.getDocument(entry._id);
+
+    // Check each page in the journal
+    for (const page of document.pages.contents) {
+      if (page.system && page.system.type === type && page.system.identifier === identifier) {
+        existingEntry = document;
+        break;
+      }
+    }
+
+    if (existingEntry) break;
+  }
+
+  // Create or update the journal entry
+  if (existingEntry) {
+    Logger.debug(`Updating existing spell list: ${existingEntry.name}`);
+
+    // Find the page to update
+    let pageToUpdate = null;
+    for (const page of existingEntry.pages.contents) {
+      if (page.system && page.system.type === type && page.system.identifier === identifier) {
+        pageToUpdate = page;
+        break;
+      }
+    }
+
+    if (pageToUpdate) {
+      // Update the existing page
+      await pageToUpdate.update({
+        system: {
+          spells: spellUuids
+        }
+      });
+    } else {
+      // Create a new page in the existing journal
+      await JournalEntryPage.create(
+        {
+          name: `${name} Spells`,
+          type: 'spells',
+          system: {
+            type: type,
+            grouping: 'level',
+            identifier: identifier,
+            spells: spellUuids
+          }
+        },
+        { parent: existingEntry }
+      );
+    }
+
+    return existingEntry;
+  } else {
+    // Create a new journal entry
+    Logger.debug(`Creating new spell list: ${name}`);
+
+    const journalData = {
+      name: `${name} Spell List`,
+      pages: [
+        {
+          name: `${name} Spells`,
+          type: 'spells',
+          system: {
+            type: type,
+            grouping: 'level',
+            identifier: identifier,
+            spells: spellUuids
+          }
+        }
+      ]
+    };
+
+    return await JournalEntry.create(journalData, { pack: packName });
+  }
+}
+
+/**
+ * Find a spell list in our compendiums
+ * @param {string} type - The type of spell list ('class', 'subclass', or 'other')
+ * @param {string} identifier - The class/subclass identifier
+ * @returns {Promise<Object|null>} The spell list data or null if not found
+ */
+export async function findSpellListInCompendium(type, identifier) {
+  Logger.debug(`Finding spell list: ${identifier} (${type})`);
+
+  // Check each of our compendiums
+  const packIds = [PACKS.CLASS, PACKS.SUBCLASS, PACKS.OTHER];
+
+  for (const packId of packIds) {
+    const packName = `spell-book.${packId}`;
+    const pack = game.packs.get(packName);
+
+    if (!pack) {
+      Logger.warn(`Compendium ${packName} not found`);
+      continue;
+    }
+
+    Logger.debug(`Checking compendium: ${packName}`);
+
+    try {
+      // Get the pack index
+      const index = await pack.getIndex();
+
+      // Check each journal entry
+      for (const entry of index) {
+        try {
+          // Load the full document
+          const document = await pack.getDocument(entry._id);
+
+          // Check each page in the journal
+          for (const page of document.pages.contents) {
+            if (page.system && page.system.type === type && page.system.identifier === identifier) {
+              Logger.debug(`Found spell list in ${packName}: ${document.name}`);
+
+              // Return the data including spells
+              return {
+                document: document,
+                page: page,
+                spellUuids: page.system.spells || []
+              };
+            }
+          }
+        } catch (err) {
+          Logger.warn(`Error loading document from compendium: ${err}`);
+        }
+      }
+    } catch (error) {
+      Logger.error(`Error accessing compendium ${packName}: ${error}`);
+    }
+  }
+
+  Logger.debug(`No spell list found for ${identifier} (${type})`);
+  return null;
+}
+
+/**
+ * Load spells from UUIDs
+ * @param {Array} uuids - Array of spell UUIDs
+ * @returns {Promise<Array>} Array of loaded spell items
+ */
+export async function loadSpellsFromUuids(uuids) {
+  const spells = [];
+
+  if (!uuids || !uuids.length) {
+    return spells;
+  }
+
+  Logger.debug(`Loading ${uuids.length} spells from UUIDs`);
+
+  for (const uuid of uuids) {
+    try {
+      const spell = await fromUuid(uuid);
+      if (spell) {
+        spells.push(spell);
+      } else {
+        Logger.warn(`Spell with UUID ${uuid} not found`);
+      }
+    } catch (error) {
+      Logger.error(`Error loading spell with UUID ${uuid}:`, error);
+    }
+  }
+
+  return spells;
 }

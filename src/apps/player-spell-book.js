@@ -2,7 +2,8 @@
 
 import { TEMPLATES } from '../constants.js';
 import { Logger } from '../utils/logger.js';
-import { getActorSpells, getPreparableSpellCount, getPreparedSpells } from '../utils/spell-utils.js';
+import { findSpellListInCompendium, getActorSpells, getPreparableSpellCount, getPreparedSpells, loadSpellsFromUuids } from '../utils/spell-utils.js';
+import { createUuidLink, enrichContent } from '../utils/ui-utils.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -55,8 +56,12 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     super(options);
     this.actor = actor;
     this.maxPrepared = getPreparableSpellCount(actor);
+    this.classSpellLists = [];
 
     Logger.debug(`Created spell book for ${actor.name} with max prepared: ${this.maxPrepared}`);
+
+    // Load class spell lists asynchronously
+    this._loadClassSpellLists();
   }
 
   /* -------------------------------------------- */
@@ -82,14 +87,94 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @protected
    * @override
    */
-  _prepareContext(_options) {
+  async _prepareContext(_options) {
     // Get spells
     const preparedSpells = getPreparedSpells(this.actor);
-    const availableSpells = getActorSpells(this.actor).filter((s) => !s.system.preparation?.prepared);
+    let availableSpells = getActorSpells(this.actor).filter((s) => !s.system.preparation?.prepared);
 
-    // Group spells by level
-    const preparedByLevel = this._groupSpellsByLevel(preparedSpells);
-    const availableByLevel = this._groupSpellsByLevel(availableSpells);
+    // Add spells from class spell lists that the actor doesn't already have
+    const actorSpellIds = new Set(this.actor.items.filter((i) => i.type === 'spell').map((i) => i.name.toLowerCase()));
+
+    // Collect spells from class spell lists
+    const classSpells = [];
+    for (const list of this.classSpellLists) {
+      for (const spell of list.spells) {
+        // Only add if the actor doesn't already have this spell
+        if (!actorSpellIds.has(spell.name.toLowerCase())) {
+          // Create a copy with a flag indicating it's from a spell list
+          const spellCopy = duplicate(spell);
+          spellCopy.fromSpellList = true;
+          spellCopy.fromClass = list.class;
+          classSpells.push(spellCopy);
+        }
+      }
+    }
+
+    // Add class spells to available spells
+    availableSpells = [...availableSpells, ...classSpells];
+
+    // Group spells by level and add UUID links
+    const preparedByLevel = {};
+    const availableByLevel = {};
+
+    // Process prepared spells
+    for (let lvl = 0; lvl <= 9; lvl++) {
+      const preparedOfLevel = preparedSpells.filter((s) => s.system.level === lvl);
+
+      if (preparedOfLevel.length > 0) {
+        // Enrich spell names with UUID links
+        const enrichedSpells = [];
+        for (const spell of preparedOfLevel.sort((a, b) => a.name.localeCompare(b.name))) {
+          enrichedSpells.push({
+            ...spell,
+            nameDisplay: await enrichContent(createUuidLink(spell))
+          });
+        }
+
+        preparedByLevel[lvl] = {
+          level: lvl,
+          label: lvl === 0 ? game.i18n.localize('spell-book.ui.cantrips') : game.i18n.format('spell-book.ui.spellLevel', { level: lvl }),
+          spells: enrichedSpells,
+          hasSpells: enrichedSpells.length > 0
+        };
+      }
+
+      // Process available spells
+      const availableOfLevel = availableSpells.filter((s) => s.system.level === lvl);
+
+      if (availableOfLevel.length > 0) {
+        // Enrich spell names with UUID links
+        const enrichedSpells = [];
+        for (const spell of availableOfLevel.sort((a, b) => a.name.localeCompare(b.name))) {
+          let uuidLink;
+
+          if (spell.fromSpellList) {
+            // For spells from spell lists that don't exist on the actor yet
+            uuidLink = createUuidLink(spell);
+
+            // Add class information
+            if (spell.fromClass) {
+              const classInfo = ` (${spell.fromClass})`;
+              uuidLink = uuidLink.replace(/{([^}]+)}/, `{$1${classInfo}}`);
+            }
+          } else {
+            uuidLink = createUuidLink(spell);
+          }
+
+          enrichedSpells.push({
+            ...spell,
+            nameDisplay: await enrichContent(uuidLink)
+          });
+        }
+
+        availableByLevel[lvl] = {
+          level: lvl,
+          label: lvl === 0 ? game.i18n.localize('spell-book.ui.cantrips') : game.i18n.format('spell-book.ui.spellLevel', { level: lvl }),
+          spells: enrichedSpells,
+          hasSpells: enrichedSpells.length > 0
+        };
+      }
+    }
 
     // Prepare the context data
     const context = {
@@ -103,7 +188,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       remainingPrepared: Math.max(0, this.maxPrepared - preparedSpells.length),
       canPrepareMore: preparedSpells.length < this.maxPrepared,
       isGM: game.user.isGM,
-      config: CONFIG.DND5E
+      config: CONFIG.DND5E,
+      hasClassSpellLists: this.classSpellLists.length > 0
     };
 
     Logger.debug('Spell book context prepared');
@@ -160,22 +246,58 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {HTMLElement} target - The clicked element
    * @static
    */
-  static prepareSpell(event, target) {
+  static async prepareSpell(event, target) {
     event.preventDefault();
     const app = this; // 'this' in static action handlers refers to the application instance
     const spellId = target.closest('.spell-item').dataset.spellId;
-    const spell = app.actor.items.get(spellId);
+    const isFromList = target.closest('.spell-item').dataset.fromList === 'true';
 
-    if (!spell) return;
+    // Handle differently based on whether it's from a spell list or already on the actor
+    if (isFromList) {
+      // Get the spell from our prepared context
+      const spellItem = app.availableSpells.find((s) => s._id === spellId || s.id === spellId);
 
-    // Check if we can prepare more spells
-    if (getPreparedSpells(app.actor).length >= app.maxPrepared) {
-      ui.notifications.warn(game.i18n.localize('spell-book.notifications.tooManySpells'));
-      return;
+      if (!spellItem) return;
+
+      // Check if we can prepare more spells
+      if (getPreparedSpells(app.actor).length >= app.maxPrepared) {
+        ui.notifications.warn(game.i18n.localize('spell-book.notifications.tooManySpells'));
+        return;
+      }
+
+      try {
+        // Create the spell on the actor first
+        const newSpell = await app.actor.createEmbeddedDocuments('Item', [
+          {
+            name: spellItem.name,
+            type: 'spell',
+            system: spellItem.system
+          }
+        ]);
+
+        // Then mark it as prepared
+        if (newSpell && newSpell.length > 0) {
+          await newSpell[0].update({ 'system.preparation.prepared': true });
+          app.render();
+        }
+      } catch (error) {
+        Logger.error('Error creating spell from list:', error);
+        ui.notifications.error('Could not add spell from spell list');
+      }
+    } else {
+      // Normal spell already on the actor
+      const spell = app.actor.items.get(spellId);
+      if (!spell) return;
+
+      // Check if we can prepare more spells
+      if (getPreparedSpells(app.actor).length >= app.maxPrepared) {
+        ui.notifications.warn(game.i18n.localize('spell-book.notifications.tooManySpells'));
+        return;
+      }
+
+      // Update spell preparation state
+      spell.update({ 'system.preparation.prepared': true }).then(() => app.render());
     }
-
-    // Update spell preparation state
-    spell.update({ 'system.preparation.prepared': true }).then(() => app.render());
   }
 
   /**
@@ -264,5 +386,44 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     return levels;
+  }
+
+  /**
+   * Load available spell lists for the actor's classes
+   * @private
+   * @async
+   */
+  async _loadClassSpellLists() {
+    // Get all classes on the actor
+    const actorClasses = this.actor.items.filter((item) => item.type === 'class');
+
+    for (const actorClass of actorClasses) {
+      const className = actorClass.name.toLowerCase();
+
+      try {
+        // Try to find a spell list for this class in our compendiums
+        const spellList = await findSpellListInCompendium('class', className);
+
+        if (spellList) {
+          Logger.debug(`Found spell list for ${actorClass.name}`);
+
+          // Load the spells
+          const spells = await loadSpellsFromUuids(spellList.spellUuids);
+
+          this.classSpellLists.push({
+            class: actorClass.name,
+            spells: spells
+          });
+        }
+      } catch (error) {
+        Logger.error(`Error loading spell list for ${actorClass.name}:`, error);
+      }
+    }
+
+    // Re-render if we loaded spell lists
+    if (this.classSpellLists.length > 0) {
+      Logger.debug(`Loaded ${this.classSpellLists.length} class spell lists`);
+      this.render();
+    }
   }
 }

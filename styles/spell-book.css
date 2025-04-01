@@ -111,6 +111,16 @@
   align-items: center;
 }
 
+.spell-item .from-list {
+  font-size: 0.85em;
+  font-style: italic;
+  color: #666;
+}
+
+.spell-item[data-from-list='true'] {
+  background-color: rgb(59 91 152 / 10%);
+}
+
 .spell-item:last-child {
   border-bottom: none;
 }
@@ -118,6 +128,23 @@
 .spell-name {
   flex: 1;
   font-weight: bold;
+}
+
+.spell-name a.content-link,
+.class-name a.content-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted #666;
+}
+
+.spell-name a.content-link:hover,
+.class-name a.content-link:hover {
+  color: #3b5b98;
+  border-bottom: 1px solid #3b5b98;
+}
+
+.spell-item[data-from-list='true'] .spell-name a.content-link {
+  font-style: italic;
 }
 
 .spell-level {

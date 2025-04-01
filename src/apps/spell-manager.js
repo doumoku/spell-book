@@ -1,6 +1,7 @@
-import { TEMPLATES } from '../constants.js';
+import { PACKS, TEMPLATES } from '../constants.js';
 import { Logger } from '../utils/logger.js';
-import { getAllClasses, getAllSpells, getSpellSchools } from '../utils/spell-utils.js';
+import { findSpellListInCompendium, getAllClasses, getAllSpells, getSpellSchools, loadSpellsFromUuids, saveSpellListToCompendium } from '../utils/spell-utils.js';
+import { createUuidLink, enrichContent } from '../utils/ui-utils.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -116,14 +117,13 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
     this.selectedClass = cls;
     Logger.debug(`Selected class: ${cls.label} (${cls.id})`);
 
+    // Clear existing selected spells
+    this.selectedSpells = [];
+
     // Check if a spell list exists for this class
     this.activeList = await this._findSpellListForClass(classId);
 
-    if (this.activeList) {
-      Logger.debug(`Found existing spell list: ${this.activeList.name} (${this.activeList.uuid})`);
-      this.selectedSpells = await this._getSpellsFromJournal(this.activeList);
-      Logger.debug(`Loaded ${this.selectedSpells.length} spells from journal`);
-    } else {
+    if (!this.activeList) {
       Logger.debug(`No existing spell list found for ${cls.label}`);
       this.selectedSpells = [];
     }
@@ -139,47 +139,66 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
   /* -------------------------------------------- */
 
   /**
-   * Initialize the spell manager by loading classes and spells
-   * @private
-   */
-  async _initialize() {
-    try {
-      // Load all classes
-      const loadedClasses = await getAllClasses();
-      this.classes = loadedClasses;
-      Logger.debug(`Initialized classes: ${this.classes.length}`);
-
-      // Load all spells from the system
-      this.allSpells = await getAllSpells();
-      this.filteredSpells = [...this.allSpells];
-
-      // Find existing spell lists
-      await this._findExistingSpellLists();
-
-      Logger.debug(`Initialization complete with ${this.classes.length} classes and ${this.allSpells.length} spells`);
-      return true;
-    } catch (error) {
-      Logger.error('Error initializing Spell Manager:', error);
-      ui.notifications.error('Failed to initialize Spell List Manager');
-      return false;
-    }
-  }
-
-  /**
    * Find all existing spell list journals
    * @private
    * @returns {Promise<void>}
    */
   async _findExistingSpellLists() {
-    // Search for journal entries that have pages with type "spells"
+    this.existingLists = new Map();
+
+    // First check our module compendiums
+    const packIds = [PACKS.CLASS, PACKS.SUBCLASS, PACKS.OTHER];
+
+    for (const packId of packIds) {
+      const packName = `spell-book.${packId}`;
+      const pack = game.packs.get(packName);
+
+      if (!pack) {
+        Logger.warn(`Compendium ${packName} not found`);
+        continue;
+      }
+
+      try {
+        Logger.debug(`Checking compendium: ${packName}`);
+
+        // Get the index
+        const index = await pack.getIndex();
+
+        // Check each journal
+        for (const entry of index) {
+          // Load the document to check its pages
+          const document = await pack.getDocument(entry._id);
+
+          // Check each page
+          for (const page of document.pages.contents) {
+            if (page.system && page.system.identifier) {
+              this.existingLists.set(page.system.identifier, {
+                uuid: page.uuid,
+                source: 'compendium',
+                pack: packName
+              });
+              Logger.debug(`Found spell list for ${page.system.identifier} in compendium`);
+            }
+          }
+        }
+      } catch (error) {
+        Logger.error(`Error checking compendium ${packName}:`, error);
+      }
+    }
+
+    // Also check world journals as a fallback
     const journals = game.journal.contents;
 
     for (const journal of journals) {
       for (const page of journal.pages.contents) {
         if (page.type === 'spells' && page.system?.type === 'class') {
           const classId = page.system.identifier;
-          if (classId) {
-            this.existingLists.set(classId, page.uuid);
+          if (classId && !this.existingLists.has(classId)) {
+            this.existingLists.set(classId, {
+              uuid: page.uuid,
+              source: 'world'
+            });
+            Logger.debug(`Found spell list for ${classId} in world journal`);
           }
         }
       }
@@ -192,113 +211,48 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
    * Find a spell list journal page for a specific class
    * @private
    * @param {string} classId - The class identifier
-   * @returns {Promise<JournalEntryPage|null>} - The journal entry page or null if not found
+   * @returns {Promise<boolean>} - Whether a spell list exists
    */
   async _findSpellListForClass(classId) {
-    const uuid = this.existingLists.get(classId);
-    if (!uuid) {
-      Logger.debug(`No spell list UUID found for class ID: ${classId}`);
-      return null;
-    }
-
-    Logger.debug(`Found spell list UUID for class ${classId}: ${uuid}`);
-
     try {
-      const page = await fromUuid(uuid);
-      if (!page) {
-        Logger.warn(`Could not resolve UUID ${uuid} to a journal page`);
-        return null;
+      // First check our compendiums
+      const spellList = await findSpellListInCompendium('class', classId);
+
+      if (spellList) {
+        // Load the spells from the UUIDs
+        this.selectedSpells = await loadSpellsFromUuids(spellList.spellUuids);
+        Logger.debug(`Loaded ${this.selectedSpells.length} spells from compendium`);
+        return true;
       }
-      return page;
-    } catch (error) {
-      Logger.error(`Error loading spell list for class ${classId}:`, error);
-      return null;
-    }
-  }
 
-  /**
-   * Get spells from a journal entry page
-   * @private
-   * @param {JournalEntryPage} page - The journal entry page
-   * @returns {Promise<Array>} - Array of spell items
-   */
-  async _getSpellsFromJournal(page) {
-    const spells = [];
+      // If not found in our compendiums, check world journals
+      Logger.debug(`No spell list found in compendiums, checking world journals for ${classId}`);
 
-    // Log the page details to debug
-    Logger.debug(`Getting spells from journal page: ${page.name}`, page.system);
+      // Search for journal entries that have pages with type "spells"
+      const journals = game.journal.contents;
 
-    // Check if the page has spells - handle both arrays and Sets
-    if (page.system?.spells) {
-      const spellEntries = page.system.spells;
+      for (const journal of journals) {
+        for (const page of journal.pages.contents) {
+          if (page.type === 'spells' && page.system?.type === 'class' && page.system.identifier === classId) {
+            Logger.debug(`Found spell list in world journal: ${journal.name} / ${page.name}`);
 
-      // Get count of spells - handle both array and Set
-      const spellCount = Array.isArray(spellEntries) ? spellEntries.length : spellEntries.size;
-      Logger.debug(`Journal has ${spellCount} spell UUIDs`);
+            // Get the spells from the journal
+            if (page.system?.spells) {
+              const spellUuids = Array.isArray(page.system.spells) ? page.system.spells : Array.from(page.system.spells);
 
-      // Convert to array in case it's a Set
-      const spellUuids = Array.isArray(spellEntries) ? spellEntries : Array.from(spellEntries);
-
-      // Load each spell by UUID
-      for (const spellUuid of spellUuids) {
-        try {
-          Logger.debug(`Loading spell with UUID: ${spellUuid}`);
-          const spell = await fromUuid(spellUuid);
-          if (spell) {
-            spells.push(spell);
-            Logger.debug(`Loaded spell: ${spell.name}`);
-          } else {
-            Logger.warn(`Spell with UUID ${spellUuid} not found`);
+              this.selectedSpells = await loadSpellsFromUuids(spellUuids);
+              Logger.debug(`Loaded ${this.selectedSpells.length} spells from world journal`);
+              return true;
+            }
           }
-        } catch (error) {
-          Logger.warn(`Could not load spell with UUID ${spellUuid}:`, error);
         }
       }
-    } else {
-      Logger.debug('Journal page has no spells or spells property is missing');
+
+      return false;
+    } catch (error) {
+      Logger.error(`Error finding spell list for class ${classId}:`, error);
+      return false;
     }
-
-    return spells;
-  }
-
-  /**
-   * Create a new spell list journal page for a class
-   * @private
-   * @param {string} classId - The class identifier
-   * @param {string} className - The class name
-   * @returns {Promise<JournalEntryPage>} - The created journal entry page
-   */
-  async _createSpellListJournal(classId, className) {
-    // Create a new journal entry if needed
-    let journal = game.journal.find((j) => j.name === 'Spell Lists');
-
-    if (!journal) {
-      journal = await JournalEntry.create({
-        name: 'Spell Lists',
-        ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER }
-      });
-    }
-
-    // Create a new page with the spell list type
-    const page = await JournalEntryPage.create(
-      {
-        name: `${className} Spells`,
-        type: 'spells',
-        system: {
-          type: 'class',
-          grouping: 'level',
-          identifier: classId,
-          spells: [],
-          unlinkedSpells: []
-        }
-      },
-      { parent: journal }
-    );
-
-    // Add to our map of existing lists
-    this.existingLists.set(classId, page.uuid);
-
-    return page;
   }
 
   /**
@@ -340,25 +294,6 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
     this.render(false, { parts: ['spellFinder'] });
   }
 
-  /**
-   * Update the spell list journal with the selected spells
-   * @private
-   * @param {JournalEntryPage} page - The journal entry page to update
-   * @param {Array} spells - Array of spell items
-   * @returns {Promise<JournalEntryPage>} - The updated journal entry page
-   */
-  async _updateSpellListJournal(page, spells) {
-    // Get the UUIDs of the spells
-    const spellUuids = spells.map((spell) => spell.uuid);
-
-    // Update the page
-    return page.update({
-      system: {
-        spells: spellUuids
-      }
-    });
-  }
-
   /* -------------------------------------------- */
   /*  ApplicationV2 Methods                       */
   /* -------------------------------------------- */
@@ -370,7 +305,12 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
    * @protected
    * @override
    */
-  _prepareContext(options) {
+  async _prepareContext(options) {
+    Logger.debug(`Preparing context with ${this.classes.length} classes`);
+    this.classes.forEach((cls, index) => {
+      Logger.debug(`Class ${index}: ${cls.label} (${cls.id}), hasUUID: ${Boolean(cls.uuid)}`);
+    });
+
     // Prepare spell schools for filter dropdown
     const spellSchools = getSpellSchools();
 
@@ -382,47 +322,89 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
       };
     });
 
-    // Mark classes that have spell lists
-    const classesWithLists = this.classes.map((cls) => {
-      return {
+    // Mark classes that have spell lists and add UUID links
+    const classesWithLists = [];
+    for (const cls of this.classes) {
+      const hasSpellList = this.existingLists.has(cls.id);
+      const isSelected = this.selectedClass?.id === cls.id;
+
+      let nameDisplay = cls.label;
+
+      // Only try to create a UUID link if we have a UUID
+      if (cls.uuid) {
+        try {
+          nameDisplay = await enrichContent(createUuidLink(cls));
+        } catch (err) {
+          Logger.warn(`Error creating UUID link for class ${cls.label}: ${err}`);
+          nameDisplay = cls.label;
+        }
+      }
+
+      classesWithLists.push({
         ...cls,
-        hasSpellList: this.existingLists.has(cls.id),
-        isSelected: this.selectedClass?.id === cls.id
-      };
-    });
+        hasSpellList,
+        isSelected,
+        nameDisplay
+      });
+    }
 
-    Logger.debug(`Preparing context with ${classesWithLists.length} classes`, classesWithLists);
-
-    // Organize filtered spells by level for display
+    // Organize filtered spells by level for display and add UUID links
     const spellsByLevel = {};
     for (let lvl = 0; lvl <= 9; lvl++) {
       const spellsOfLevel = this.filteredSpells.filter((s) => s.system.level === lvl);
       if (spellsOfLevel.length > 0) {
+        // Create enriched spell entries
+        const enrichedSpells = [];
+        for (const spell of spellsOfLevel.sort((a, b) => a.name.localeCompare(b.name))) {
+          enrichedSpells.push({
+            ...spell,
+            nameDisplay: await enrichContent(createUuidLink(spell))
+          });
+        }
+
         spellsByLevel[lvl] = {
           level: lvl,
           label: lvl === 0 ? game.i18n.localize('spell-book.ui.cantrips') : game.i18n.format('spell-book.ui.spellLevel', { level: lvl }),
-          spells: spellsOfLevel.sort((a, b) => a.name.localeCompare(b.name))
+          spells: enrichedSpells
         };
       }
     }
 
-    // Also organize selected spells by level
+    // Also organize selected spells by level and add UUID links
     const selectedByLevel = {};
     for (let lvl = 0; lvl <= 9; lvl++) {
       const spellsOfLevel = this.selectedSpells.filter((s) => s.system.level === lvl);
       if (spellsOfLevel.length > 0) {
+        // Create enriched spell entries
+        const enrichedSpells = [];
+        for (const spell of spellsOfLevel.sort((a, b) => a.name.localeCompare(b.name))) {
+          enrichedSpells.push({
+            ...spell,
+            nameDisplay: await enrichContent(createUuidLink(spell))
+          });
+        }
+
         selectedByLevel[lvl] = {
           level: lvl,
           label: lvl === 0 ? game.i18n.localize('spell-book.ui.cantrips') : game.i18n.format('spell-book.ui.spellLevel', { level: lvl }),
-          spells: spellsOfLevel.sort((a, b) => a.name.localeCompare(b.name))
+          spells: enrichedSpells
         };
       }
+    }
+
+    // Selected class with UUID link
+    let enrichedSelectedClass = null;
+    if (this.selectedClass) {
+      enrichedSelectedClass = {
+        ...this.selectedClass,
+        nameDisplay: await enrichContent(createUuidLink(this.selectedClass))
+      };
     }
 
     // Prepare the context data
     const context = {
       classes: classesWithLists,
-      selectedClass: this.selectedClass,
+      selectedClass: enrichedSelectedClass,
       activeList: this.activeList,
       allSpells: this.allSpells,
       filteredSpells: this.filteredSpells,
@@ -432,7 +414,8 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
       filterOptions: this.filterOptions,
       spellSchools,
       spellLevels,
-      config: CONFIG.DND5E
+      config: CONFIG.DND5E,
+      hasSelectedSpells: this.selectedSpells.length > 0
     };
 
     Logger.debug('Spell manager context prepared');
@@ -575,16 +558,22 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     try {
-      const page = await app._createSpellListJournal(app.selectedClass.id, app.selectedClass.label);
+      // Create an empty spell list in our compendium
+      await saveSpellListToCompendium(
+        'class', // type
+        app.selectedClass.id, // identifier
+        app.selectedClass.label, // name
+        [] // empty spells array
+      );
 
-      app.activeList = page;
+      app.activeList = true;
       app.selectedSpells = [];
 
-      ui.notifications.info(`Created new spell list for ${app.selectedClass.label}`);
+      ui.notifications.info(`Created new spell list for ${app.selectedClass.label} in compendium`);
       app.render();
     } catch (error) {
       Logger.error('Error creating spell list:', error);
-      ui.notifications.error('Failed to create spell list.');
+      ui.notifications.error('Failed to create spell list in compendium.');
     }
   }
 
@@ -648,18 +637,28 @@ export class SpellManager extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     try {
-      // If no active list exists, create one
-      if (!app.activeList) {
-        app.activeList = await app._createSpellListJournal(app.selectedClass.id, app.selectedClass.label);
+      // Check if we have any spells to save
+      if (app.selectedSpells.length === 0) {
+        ui.notifications.warn('No spells selected to save.');
+        return;
       }
 
-      // Update the journal with the selected spells
-      await app._updateSpellListJournal(app.activeList, app.selectedSpells);
+      // Save to our module compendium
+      await saveSpellListToCompendium(
+        'class', // type
+        app.selectedClass.id, // identifier
+        app.selectedClass.label, // name
+        app.selectedSpells // spells
+      );
 
-      ui.notifications.info(`Spell list for ${app.selectedClass.label} saved successfully.`);
+      ui.notifications.info(`Spell list for ${app.selectedClass.label} saved successfully to compendium.`);
+
+      // Update the UI to show the list is saved
+      app.activeList = true;
+      app.render(false, { parts: ['spellList'] });
     } catch (error) {
       Logger.error('Error saving spell list:', error);
-      ui.notifications.error('Failed to save spell list.');
+      ui.notifications.error('Failed to save spell list to compendium.');
     }
   }
 

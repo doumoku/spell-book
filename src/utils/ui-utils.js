@@ -84,3 +84,48 @@ export function openSpellManager() {
       ui.notifications.error('Error opening Spell List Manager');
     });
 }
+
+/**
+ * Create a UUID link for an entity
+ * @param {Object} entity - The entity to link to
+ * @param {string} [displayText] - Optional custom display text, defaults to entity name
+ * @returns {string} The UUID link string
+ */
+export function createUuidLink(entity, displayText = null) {
+  if (!entity) return '';
+
+  const text = displayText || entity.name || entity.label || '';
+
+  // If we have a UUID, create a proper link
+  if (entity.uuid) {
+    return `@UUID[${entity.uuid}]{${text}}`;
+  }
+
+  // If we have a document with a uuid property
+  if (entity.document && entity.document.uuid) {
+    return `@UUID[${entity.document.uuid}]{${text}}`;
+  }
+
+  // If we don't have a UUID, just return the text
+  return text;
+}
+
+/**
+ * Enrich HTML content with UUID links and other Foundry features
+ * @param {string} content - The HTML content to enrich
+ * @param {Object} [options] - Options for TextEditor.enrichHTML
+ * @returns {Promise<string>} The enriched HTML
+ */
+export async function enrichContent(content, options = {}) {
+  // Set some default options for enrichHTML
+  const enrichOptions = {
+    async: true,
+    secrets: game.user.isGM,
+    documents: true,
+    links: true,
+    rolls: true,
+    ...options
+  };
+
+  return await TextEditor.enrichHTML(content, enrichOptions);
+}
