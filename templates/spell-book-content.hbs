@@ -30,7 +30,7 @@
 					{{#each levelData.spells as |spell|}}
 						<li class="spell-item" data-spell-id="{{spell.id}}">
 							<div class="spell-name">{{spell.name}}</div>
-							<div class="spell-school">{{lookup ../../config.spellSchools spell.system.school}}</div>
+							<div class="spell-school">{{spellInfo spell}}</div>
 							<div class="spell-actions">
 								<button class="prepare-spell" data-action="prepareSpell"
 									{{#unless ../../canPrepareMore}}disabled{{/unless}}>

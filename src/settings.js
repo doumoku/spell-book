@@ -1,3 +1,4 @@
+import { SpellManager } from './apps/spell-manager.js';
 import { MODULE, SETTINGS } from './constants.js';
 import { Logger } from './utils/logger.js';
 
@@ -19,6 +20,14 @@ export function registerSettings() {
       Logger.LOG_LEVEL = value;
       Logger.debug(`Log level changed to ${value}`);
     }
+  });
+
+  game.settings.registerMenu(MODULE.ID, 'openSpellManager', {
+    name: 'spell-book.settings.spellManager.name',
+    label: 'spell-book.settings.spellManager.label',
+    icon: 'fas fa-book',
+    type: SpellManager,
+    restricted: true
   });
 
   // Initialize logger with settings value

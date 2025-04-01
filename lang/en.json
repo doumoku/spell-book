@@ -18,6 +18,10 @@
         },
         "hint": "Controls how detailed the module's logs will be in the console.",
         "name": "Log Level"
+      },
+      "spellManager": {
+        "label": "Open Spell List Manager",
+        "name": "Spell List Manager"
       }
     },
     "ui": {
@@ -28,6 +32,7 @@
       "availableSpells": "Available Spells",
       "cancel": "Cancel",
       "cantrips": "Cantrips",
+      "classes": "Classes",
       "createNewList": "Create New List",
       "deleteList": "Delete List",
       "filterByClass": "Filter by Class",
@@ -35,6 +40,7 @@
       "filterBySchool": "Filter by School",
       "filterOptions": "Filter Options",
       "maxPrepared": "Maximum Prepared: {count}",
+      "noClasses": "No classes found.",
       "noSpellLists": "No spell lists found. Create one to get started.",
       "noSpells": "No spells found.",
       "noSpellsFound": "No matching spells found.",
@@ -47,8 +53,10 @@
       "save": "Save Changes",
       "saveList": "Save List",
       "search": "Search Spells...",
+      "selectClass": "Select a Class",
       "selectOrCreateList": "Select an existing spell list or create a new one to begin.",
       "selectedSpells": "Selected Spells",
+      "spellFinder": "Spell Finder",
       "spellLevel": "Level {level}",
       "spellLists": "Spell Lists",
       "spells": "Spells",

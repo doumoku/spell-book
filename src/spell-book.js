@@ -1,6 +1,7 @@
 import { MODULE } from './constants.js';
 import { registerHooks } from './hooks.js';
 import { registerSettings } from './settings.js';
+import { registerHandlebarsHelpers } from './utils/handlebars-helpers.js';
 import { Logger } from './utils/logger.js';
 
 /**
@@ -22,6 +23,9 @@ Hooks.on('init', () => {
 
   // Register module hooks
   registerHooks();
+
+  // Register handlebars helpers
+  registerHandlebarsHelpers();
 
   Logger.debug(`${MODULE.NAME} initialized`);
 });

@@ -18,20 +18,15 @@ export const PACKS = {
 };
 
 export const TEMPLATES = {
-  GM_SPELL_MANAGER: `modules/${MODULE.ID}/templates/gm-spell-manager.hbs`,
-  PLAYER_SPELL_BOOK: `modules/${MODULE.ID}/templates/player-spell-book.hbs`,
-  SPELL_SELECTOR: `modules/${MODULE.ID}/templates/spell-selector.hbs`,
-  SETTINGS: `modules/${MODULE.ID}/templates/settings.hbs`,
+  SPELL_MANAGER: `modules/${MODULE.ID}/templates/spell-manager.hbs`,
+  SPELL_MANAGER_CLASS_LIST: `modules/${MODULE.ID}/templates/spell-manager-class-list.hbs`,
+  SPELL_MANAGER_SPELL_LIST: `modules/${MODULE.ID}/templates/spell-manager-spell-list.hbs`,
+  SPELL_MANAGER_SPELL_FINDER: `modules/${MODULE.ID}/templates/spell-manager-spell-finder.hbs`,
 
-  // Player Spell Book Templates
+  // Keep existing templates for player spell book
   SPELL_BOOK_HEADER: `modules/${MODULE.ID}/templates/spell-book-header.hbs`,
   SPELL_BOOK_CONTENT: `modules/${MODULE.ID}/templates/spell-book-content.hbs`,
-  SPELL_BOOK_FOOTER: `modules/${MODULE.ID}/templates/spell-book-footer.hbs`,
-
-  // GM Spell Manager Templates
-  GM_SPELL_MANAGER_SIDEBAR: `modules/${MODULE.ID}/templates/gm-spell-manager-sidebar.hbs`,
-  GM_SPELL_MANAGER_CONTENT: `modules/${MODULE.ID}/templates/gm-spell-manager-content.hbs`,
-  GM_SPELL_MANAGER_FOOTER: `modules/${MODULE.ID}/templates/gm-spell-manager-footer.hbs`
+  SPELL_BOOK_FOOTER: `modules/${MODULE.ID}/templates/spell-book-footer.hbs`
 };
 
 /**

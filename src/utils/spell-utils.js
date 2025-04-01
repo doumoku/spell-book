@@ -213,3 +213,52 @@ export function canPrepareSpell(actor, spell) {
 
   return false;
 }
+
+/**
+ * Get all available classes from compendiums and world
+ * @returns {Promise<Array>} Array of class objects with id and label
+ */
+export async function getAllClasses() {
+  Logger.debug('Getting all classes from the system');
+
+  const classes = [];
+
+  const packs = game.packs.filter((p) => ['Item'].includes(p.documentName));
+
+  for (const pack of packs) {
+    try {
+      const index = await pack.getIndex();
+      const classEntries = index.filter((e) => e.type === 'class');
+      for (const entry of classEntries) {
+        // Only add if not already in our list
+        const className = entry.name;
+        if (!classes.some((c) => c.id === className.toLowerCase())) {
+          classes.push({
+            id: className.toLowerCase(),
+            label: className
+          });
+        }
+      }
+    } catch (error) {
+      Logger.error(`Error loading classes from compendium ${pack.metadata.label}:`, error);
+    }
+  }
+
+  // Sort alphabetically
+  classes.sort((a, b) => a.label.localeCompare(b.label));
+
+  Logger.debug(`Found ${classes.length} classes`);
+  return classes;
+}
+
+/**
+ * Get all available spell schools
+ * @returns {Array} Array of school objects with id and label
+ */
+export function getSpellSchools() {
+  return Object.entries(CONFIG.DND5E.spellSchools).map(([id, data]) => {
+    // Extract the label from the object if it exists
+    const label = typeof data === 'object' ? data.label : String(data);
+    return { id, label };
+  });
+}

@@ -1,0 +1,21 @@
+<div class="class-list-content">
+	{{#if classes}}
+		{{#if (gt classes.length 0)}}
+			<ul class="class-list">
+				{{#each classes as |class|}}
+					<li class="class-item {{#if class.isSelected}}selected{{/if}} {{#if class.hasSpellList}}has-list{{/if}}"
+						data-class-id="{{class.id}}" data-action="selectClass">
+						<div class="class-name">{{class.label}}</div>
+						{{#if class.hasSpellList}}
+							<div class="class-indicator"><i class="fas fa-check-circle"></i></div>
+						{{/if}}
+					</li>
+				{{/each}}
+			</ul>
+		{{else}}
+			<p class="no-classes">Classes array is empty</p>
+		{{/if}}
+	{{else}}
+		<p class="no-classes">Classes undefined or null</p>
+	{{/if}}
+</div>

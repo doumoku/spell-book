@@ -1,0 +1,59 @@
+<div class="spell-finder-container">
+  <div class="spell-finder-header">
+    <h2>{{localize "spell-book.ui.spellFinder"}}</h2>
+    <div class="filter-controls">
+      <input type="text" class="spell-search" placeholder="{{localize 'spell-book.ui.search'}}" value="{{filterOptions.name}}">
+
+      <div class="filter-group">
+        <label>{{localize "spell-book.ui.filterByLevel"}}</label>
+        <select data-filter="level" data-action="filterSpells">
+          <option value="all">{{localize "spell-book.ui.allLevels"}}</option>
+          {{#each spellLevels as |level|}}
+            <option value="{{level.level}}" {{#if (eq ../filterOptions.level level.level)}}selected{{/if}}>
+              {{level.label}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>{{localize "spell-book.ui.filterBySchool"}}</label>
+        <select data-filter="school" data-action="filterSpells">
+          <option value="all">{{localize "spell-book.ui.allSchools"}}</option>
+          {{#each spellSchools as |school|}}
+            <option value="{{school.id}}" {{#if (eq ../filterOptions.school school.id)}}selected{{/if}}>
+              {{school.label}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="spell-finder-content">
+    {{#if filteredSpells.length}}
+      {{#each spellsByLevel as |levelData lvl|}}
+        <div class="spell-level-group">
+          <h3>{{levelData.label}} ({{levelData.spells.length}})</h3>
+          <ul class="spell-list level-{{lvl}}">
+            {{#each levelData.spells as |spell|}}
+              <li class="spell-item" data-spell-id="{{spell.id}}">
+                <div class="spell-info">
+                  <span class="spell-name">{{spell.name}}</span>
+                  <span class="spell-school">{{spellInfo spell}}</span>
+                </div>
+                <div class="spell-actions">
+                  <button class="add-spell" data-action="addSpell">
+                    <i class="fas fa-plus-circle"></i>
+                  </button>
+                </div>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+    {{else}}
+      <p class="no-spells">{{localize "spell-book.ui.noSpellsFound"}}</p>
+    {{/if}}
+  </div>
+</div>
