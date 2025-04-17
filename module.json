@@ -82,7 +82,7 @@
       "type": "JournalEntry"
     }
   ],
-  "persistantStorage": "true",
+  "hasStorage": "true",
   "readme": "https://github.com/Sayshal/spell-book?tab=readme-ov-file",
   "relationships": {
     "systems": [
