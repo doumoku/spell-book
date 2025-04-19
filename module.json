@@ -1,29 +1,33 @@
 {
-  "authors": [
-    {
-      "discord": "Tyler#0001",
-      "flags": {},
-      "name": "Tyler",
-      "url": "https://github.com/Sayshal"
-    }
-  ],
+  "id": "spell-book",
+  "title": "Spell Book",
+  "description": "Enhanced spell management for DnD5e. Easily view, prepare, and customize spell lists.",
+  "version": "1.0.0",
   "bugs": "https://github.com/Sayshal/spell-book/issues",
   "changelog": "https://github.com/Sayshal/spell-book/releases",
+  "license": "https://github.com/Sayshal/spell-book?tab=MIT-1-ov-file",
+  "readme": "https://github.com/Sayshal/spell-book?tab=readme-ov-file",
+  "authors": [
+    {
+      "name": "Tyler",
+      "discord": "Tyler",
+      "url": "https://github.com/Sayshal",
+      "flags": {}
+    }
+  ],
   "compatibility": {
-    "maximum": "12.331",
+    "maximum": "13.339",
     "minimum": "12.331",
     "verified": "12.331"
   },
-  "description": "Allows users to change their spells at the click of a button.",
   "download": "",
-  "esmodules": ["src/spell-book.js"],
+  "esmodules": ["scripts/spell-book.mjs", "scripts/constants.mjs", "scripts/hooks.mjs"],
   "flags": {
     "hotReload": {
       "extensions": ["css", "html", "hbs", "json"],
       "paths": ["styles", "lang", "templates"]
     }
   },
-  "id": "spell-book",
   "languages": [
     {
       "lang": "en",
@@ -31,70 +35,40 @@
       "path": "lang/en.json"
     }
   ],
-  "license": "https://github.com/Sayshal/spell-book?tab=MIT-1-ov-file",
   "manifest": "https://github.com/Sayshal/spell-book/releases/latest/download/module.json",
-  "packFolders": [
-    {
-      "color": "#ff144f",
-      "name": "Spell Books",
-      "packs": ["sb-class-spell-books", "sb-subclass-spell-books", "sb-other-spell-books"],
-      "sorting": "m"
-    }
-  ],
-  "packs": [
-    {
-      "banner": "modules/spell-book/assets/banners/class-spell-books.webp",
-      "label": "Class Spell Books",
-      "module": "spell-book",
-      "name": "sb-class-spell-books",
-      "ownership": {
-        "ASSISTANT": "OWNER",
-        "PLAYER": "LIMITED"
-      },
-      "path": "storage/sb-class-spell-books",
-      "system": "dnd5e",
-      "type": "JournalEntry"
-    },
-    {
-      "banner": "modules/spell-book/assets/banners/subclass-spell-books.webp",
-      "label": "Sub-Class Spell Books",
-      "module": "spell-book",
-      "name": "sb-subclass-spell-books",
-      "ownership": {
-        "ASSISTANT": "OWNER",
-        "PLAYER": "LIMITED"
-      },
-      "path": "storage/sb-subclass-spell-books",
-      "system": "dnd5e",
-      "type": "JournalEntry"
-    },
-    {
-      "banner": "modules/spell-book/assets/banners/other-spell-books.webp",
-      "label": "Other Spell Books",
-      "module": "spell-book",
-      "name": "sb-other-spell-books",
-      "ownership": {
-        "ASSISTANT": "OWNER",
-        "PLAYER": "LIMITED"
-      },
-      "path": "storage/sb-other-spell-books",
-      "system": "dnd5e",
-      "type": "JournalEntry"
-    }
-  ],
-  "hasStorage": "true",
-  "readme": "https://github.com/Sayshal/spell-book?tab=readme-ov-file",
   "relationships": {
     "systems": [
       {
-        "compatibility": {},
+        "compatibility": {
+          "maximum": "4.4.x",
+          "minimum": "3.3.1",
+          "verified": "3.3.1"
+        },
         "id": "dnd5e",
         "type": "system"
       }
     ]
   },
-  "styles": ["styles/spell-book.css", "styles/spell-manager.css"],
-  "title": "Spell Book",
+  "packs": [
+    {
+      "name": "custom-spell-lists",
+      "label": "Custom Spell Lists",
+      "path": "packs/custom-spell-lists",
+      "type": "JournalEntry",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    }
+  ],
+  "packFolders": [
+    {
+      "name": "Spell Book",
+      "sorting": "a",
+      "packs": ["custom-spell-lists"]
+    }
+  ],
+  "styles": ["styles/spell-book.css"],
   "url": "https://github.com/Sayshal/spell-book",
-  "version": "0.0.0"
+  "persistentStorage": true
 }
