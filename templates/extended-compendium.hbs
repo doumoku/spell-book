@@ -1,0 +1,47 @@
+<form class="compendium-browser spell-book" autocomplete="off">
+	<section class="content">
+		<div class="browser-header">
+			{{> "modules/spell-book/templates/compendium/browser-header"}}
+		</div>
+
+		<div class="browser-controls">
+			{{> "modules/spell-book/templates/compendium/browser-tabs"}}
+		</div>
+
+		<div class="tab-content">
+			{{!-- Always show spells tab --}}
+			<div class="tab" data-tab="spell" data-group="primary">
+				<section class="window-content">
+					<div class="browser-body">
+						<div class="browser-sidebar">
+							<div class="sidebar-content">
+								{{> "modules/spell-book/templates/compendium/browser-sidebar-search"}}
+								<hr>
+								<div class="filter-list">
+									{{> "modules/spell-book/templates/compendium/browser-sidebar-types"}}
+									<hr>
+									{{> "modules/spell-book/templates/compendium/browser-sidebar-filters"}}
+								</div>
+							</div>
+						</div>
+						<div class="browser-main">
+							<div class="browser-results-container">
+								{{> "modules/spell-book/templates/compendium/browser-results"}}
+							</div>
+							{{#if isPrepareMode}}
+								<div class="spell-book-footer">
+									<button type="button" class="spell-book-cancel" data-action="cancel">
+										{{localize "Cancel"}}
+									</button>
+									<button type="button" class="spell-book-save" data-action="savePrepared">
+										{{localize "SPELLBOOK.SavePrepared"}}
+									</button>
+								</div>
+							{{/if}}
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+	</section>
+</form>

@@ -99,5 +99,5 @@ spell-book/
 │   └── components/
 │       ├── spell-card.css             // Spell card styling
 │       └── filter-controls.css        // Filter controls styling
-└── languages/
+└── lang/
     └── en.json                        // Localization strings

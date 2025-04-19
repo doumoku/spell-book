@@ -70,5 +70,5 @@
   ],
   "styles": ["styles/spell-book.css"],
   "url": "https://github.com/Sayshal/spell-book",
-  "persistentStorage": true
+  "hasStorage": true
 }

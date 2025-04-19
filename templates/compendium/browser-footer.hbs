@@ -1,0 +1,19 @@
+<div class="flexrow">
+	{{~#if displaySelection}}
+		<div class="count {{ invalid }}">
+			{{{ localize "DND5E.CompendiumBrowser.Selection.Label" summary=summary }}}
+		</div>
+		<button type="submit">
+			{{ localize "DND5E.CompendiumBrowser.Selection.Select" }}
+		</button>
+	{{else if isPrepareMode}}
+		<div class="spell-book-footer">
+			<button type="button" class="spell-book-cancel" data-action="cancel">
+				{{localize "Cancel"}}
+			</button>
+			<button type="button" class="spell-book-save" data-action="save-prepared">
+				{{localize "SPELLBOOK.SavePrepared"}}
+			</button>
+		</div>
+		{{/if~}}
+</div>
