@@ -1,1 +1,27 @@
-{}
+{
+  "SPELLBOOK.Title": "Spell Book",
+  "SPELLBOOK.Prepare": "Prepare Spell",
+  "SPELLBOOK.Unprepare": "Unprepare Spell",
+  "SPELLBOOK.SavePrepared": "Save Prepared Spells",
+  "SPELLBOOK.SpellsPrepared": "Spells prepared for",
+  "SPELLBOOK.ComingSoon": "This feature is coming soon!",
+  "SPELLBOOK.SpellListManager": "Spell List Manager",
+  "SPELLBOOK.SelectJournal": "Select Journal",
+  "SPELLBOOK.SelectList": "Select Spell List",
+  "SPELLBOOK.NewList": "New Spell List",
+  "SPELLBOOK.ListName": "List Name",
+  "SPELLBOOK.EditList": "Edit Spell List",
+  "SPELLBOOK.ViewList": "View Spell List",
+  "SPELLBOOK.Edit": "Edit",
+  "SPELLBOOK.NoSpells": "No spells in this list",
+  "SPELLBOOK.ListSaved": "Spell list saved",
+
+  "SPELLBOOK.Settings.EnableAutoPrompt.Name": "Prompt on Long Rest",
+  "SPELLBOOK.Settings.EnableAutoPrompt.Hint": "Automatically prompt to change prepared spells after a long rest",
+
+  "SPELLBOOK.SelectEntry": "Select Journal Entry",
+  "SPELLBOOK.NoCompendium": "Compendium pack not found or not accessible",
+  "SPELLBOOK.ListCreated": "New spell list created",
+  "SPELLBOOK.ErrorCreatingList": "Error creating spell list",
+  "SPELLBOOK.ErrorSavingList": "Error saving spell list"
+}

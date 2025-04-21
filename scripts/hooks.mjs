@@ -1,5 +1,5 @@
-// scripts/hooks.mjs
 import { ExtendedCompendiumBrowser } from './apps/extended-compendium.mjs';
+import { SpellListManager } from './apps/spell-list-manager.mjs';
 import { MODULE } from './constants.mjs';
 import { SpellUtils } from './helpers.mjs';
 
@@ -98,7 +98,7 @@ export function registerHooks() {
         icon: 'fas fa-book-spells',
         button: true,
         onClick: () => {
-          // We'll implement the SpellListManager in a future step
+          new SpellListManager().render(true);
           ui.notifications.info(game.i18n.localize('SPELLBOOK.ComingSoon'));
         }
       });

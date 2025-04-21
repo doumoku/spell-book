@@ -53,7 +53,6 @@
     {
       "name": "custom-spell-lists",
       "label": "Custom Spell Lists",
-      "path": "packs/custom-spell-lists",
       "type": "JournalEntry",
       "ownership": {
         "PLAYER": "OBSERVER",
