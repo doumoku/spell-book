@@ -33,8 +33,8 @@ export class ExtendedCompendiumBrowser extends dnd5e.applications.CompendiumBrow
    * @override
    */
   async _renderHTML(context, options) {
-    // Use the standard CompendiumBrowser template
-    return renderTemplate('systems/dnd5e/templates/compendium/compendium-browser.hbs', context);
+    // Use our custom template instead of the system's
+    return renderTemplate(MODULE.TEMPLATES.EXTENDED_COMPENDIUM, context);
   }
 
   /**
@@ -49,8 +49,40 @@ export class ExtendedCompendiumBrowser extends dnd5e.applications.CompendiumBrow
     context.preparedSpells = this.preparedSpells;
 
     // Ensure we only show the spell tab
-    context.tabs = context.tabs.filter((t) => t.tab === 'spell');
-    context.tabs[0].active = true;
+    // First check if context.tabs exists
+    if (!context.tabs) {
+      // If tabs don't exist, create them
+      context.tabs = [
+        {
+          tab: 'spell',
+          label: 'ITEM.TypeSpellPl',
+          icon: 'fas fa-magic',
+          documentClass: 'Item',
+          types: ['spell'],
+          active: true
+        }
+      ];
+    } else {
+      // Filter to only show spell tab
+      context.tabs = context.tabs.filter((t) => t.tab === 'spell');
+
+      // Make sure we have at least one tab after filtering
+      if (context.tabs.length > 0) {
+        context.tabs[0].active = true;
+      } else {
+        // If no spell tab found, create one
+        context.tabs = [
+          {
+            tab: 'spell',
+            label: 'ITEM.TypeSpellPl',
+            icon: 'fas fa-magic',
+            documentClass: 'Item',
+            types: ['spell'],
+            active: true
+          }
+        ];
+      }
+    }
 
     return context;
   }
@@ -169,8 +201,49 @@ export class ExtendedCompendiumBrowser extends dnd5e.applications.CompendiumBrow
     // If we don't have an actor or this isn't the spell tab, return as-is
     if (!this.actor || tab !== 'spell') return results;
 
-    // Filter to only spells available to this actor
-    // This will be implemented in a future step
+    // Get the actor's classes
+    const actorClasses = this.actor.items.filter((i) => i.type === 'class').map((c) => c.name.toLowerCase());
+
+    if (!actorClasses.length) return results;
+
+    // Get spell lists for these classes from compendium
+    const spellLists = new Set();
+    const pack = game.packs.get(`${MODULE.ID}.custom-spell-lists`);
+
+    if (pack) {
+      // Look for class-specific spell lists
+      const index = await pack.getIndex();
+
+      for (const entry of index) {
+        const doc = await pack.getDocument(entry._id);
+        if (!doc) continue;
+
+        // Check each page for class spell lists
+        for (const page of doc.pages) {
+          const matchingClass = actorClasses.find((c) => page.name.toLowerCase().includes(`${c} spell list`));
+
+          if (matchingClass) {
+            try {
+              const content = page.text?.content || '';
+              const spellData = content.match(/{.*}/s);
+
+              if (spellData && spellData[0]) {
+                const spellList = JSON.parse(spellData[0]);
+                spellList.spells.forEach((uuid) => spellLists.add(uuid));
+              }
+            } catch (error) {
+              console.error(`${MODULE.ID} | Error parsing spell list:`, error);
+            }
+          }
+        }
+      }
+    }
+
+    // Filter to only include spells in the spell lists
+    if (spellLists.size > 0) {
+      return results.filter((result) => spellLists.has(result.uuid));
+    }
+
     return results;
   }
 }

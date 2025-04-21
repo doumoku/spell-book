@@ -65,23 +65,29 @@ export function registerHooks() {
    * Add spell book button to character sheet
    */
   Hooks.on('renderActorSheet5e', (app, html, data) => {
-    // Only add button for spellcasting characters
     if (!SpellUtils.canCastSpells(data.actor)) return;
 
-    const spellbookButton = $(`
-      <button type="button" class="spell-book-button">
-        <i class="fas fa-book-spells"></i> ${game.i18n.localize('SPELLBOOK.Title')}
-      </button>
-    `);
+    // Only target the spells tab
+    const spellsTab = html.find('.tab.spells');
+    if (!spellsTab.length) return;
 
-    // Insert in appropriate location based on sheet type
-    html.find('.sheet-header .attributes').append(spellbookButton);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'spell-book-button gold-button';
+    button.innerHTML = '<i class="fas fa-book-spells"></i>';
 
-    // Add click handler
-    spellbookButton.click((ev) => {
+    button.addEventListener('click', (ev) => {
       ev.preventDefault();
       new ExtendedCompendiumBrowser({ actor: data.actor }).render(true);
     });
+
+    // Create a container for the button
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'spell-book-container';
+    buttonContainer.appendChild(button);
+
+    // Add the button container after the top section
+    spellsTab.find('section.top').after(buttonContainer);
   });
 
   /**
@@ -99,7 +105,6 @@ export function registerHooks() {
         button: true,
         onClick: () => {
           new SpellListManager().render(true);
-          ui.notifications.info(game.i18n.localize('SPELLBOOK.ComingSoon'));
         }
       });
     }

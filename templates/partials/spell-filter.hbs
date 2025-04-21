@@ -1,0 +1,29 @@
+<div class="spell-filter">
+	<div class="filter-section">
+		<h3>{{localize "SPELLBOOK.Filters"}}</h3>
+		<div class="filter-group">
+			<h4>{{localize "SPELLBOOK.Level"}}</h4>
+			<div class="filter-options">
+				{{#each spellLevels}}
+					<label class="filter-option">
+						<input type="checkbox" name="level" value="{{this}}"
+							{{#if (includes ../selectedLevels this)}}checked{{/if}}>
+						{{this}}
+					</label>
+				{{/each}}
+			</div>
+		</div>
+		<div class="filter-group">
+			<h4>{{localize "SPELLBOOK.School"}}</h4>
+			<div class="filter-options">
+				{{#each spellSchools}}
+					<label class="filter-option">
+						<input type="checkbox" name="school" value="{{this}}"
+							{{#if (includes ../selectedSchools this)}}checked{{/if}}>
+						{{localize this}}
+					</label>
+				{{/each}}
+			</div>
+		</div>
+	</div>
+</div>

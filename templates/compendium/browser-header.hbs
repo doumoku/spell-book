@@ -1,0 +1,13 @@
+<div>
+	<div class="flexrow">
+		<h2 class="browser-title">
+			{{#if isPrepareMode}}{{localize "SPELLBOOK.PrepareSpells"}}{{else}}{{localize "SPELLBOOK.Title"}}{{/if}}</h2>
+		{{#if showModeToggle}}
+			<div class="mode-toggle">
+				<slide-toggle class="mode-slider header-control" data-action="toggleMode" {{ checked isAdvanced }}
+					id="{{ partId }}-mode-toggle"></slide-toggle>
+				<label for="{{ partId }}-mode-toggle">{{ localize "DND5E.Advanced" }}</label>
+			</div>
+		{{/if}}
+	</div>
+</div>

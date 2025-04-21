@@ -1,11 +1,11 @@
 <form class="compendium-browser spell-book" autocomplete="off">
 	<section class="content">
 		<div class="browser-header">
-			{{> "modules/spell-book/templates/compendium/browser-header"}}
+			{{> "modules/spell-book/templates/compendium/browser-header.hbs"}}
 		</div>
 
 		<div class="browser-controls">
-			{{> "modules/spell-book/templates/compendium/browser-tabs"}}
+			{{> "modules/spell-book/templates/compendium/browser-tabs.hbs"}}
 		</div>
 
 		<div class="tab-content">
@@ -15,18 +15,18 @@
 					<div class="browser-body">
 						<div class="browser-sidebar">
 							<div class="sidebar-content">
-								{{> "modules/spell-book/templates/compendium/browser-sidebar-search"}}
+								{{> "modules/spell-book/templates/compendium/browser-sidebar-search.hbs"}}
 								<hr>
 								<div class="filter-list">
-									{{> "modules/spell-book/templates/compendium/browser-sidebar-types"}}
+									{{> "modules/spell-book/templates/compendium/browser-sidebar-types.hbs"}}
 									<hr>
-									{{> "modules/spell-book/templates/compendium/browser-sidebar-filters"}}
+									{{> "modules/spell-book/templates/compendium/browser-sidebar-filters.hbs"}}
 								</div>
 							</div>
 						</div>
 						<div class="browser-main">
 							<div class="browser-results-container">
-								{{> "modules/spell-book/templates/compendium/browser-results"}}
+								{{> "modules/spell-book/templates/compendium/browser-results.hbs"}}
 							</div>
 							{{#if isPrepareMode}}
 								<div class="spell-book-footer">
