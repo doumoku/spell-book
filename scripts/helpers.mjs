@@ -78,37 +78,46 @@ export class SpellUtils {
   /**
    * Get a class's spell list from compendium journals
    * @param {string} className - The name of the class
+   * @param {string} [classUuid] - Optional UUID of the class item
    * @returns {Promise<Array|null>} - Array of spell UUIDs or null
    */
-  static async getClassSpellList(className) {
-    console.log(`${MODULE.ID} | getClassSpellList called for:`, className);
+  static async getClassSpellList(className, classUuid) {
+    console.log(`${MODULE.ID} | Getting spell list for ${className}`);
 
     // Normalize the class name for comparison
     const normalizedClassName = className.toLowerCase();
-    console.log(`${MODULE.ID} | Normalized class name:`, normalizedClassName);
 
-    // Filter for journal-type compendium packs
-    const journalPacks = Array.from(game.packs).filter((p) => p.metadata.type === 'JournalEntry');
-    console.log(`${MODULE.ID} | Found journal packs:`, journalPacks.length);
+    // If classUuid is provided, first extract its source
+    let sourceCompendium = null;
+    if (classUuid) {
+      try {
+        const classItem = await fromUuid(classUuid);
+        sourceCompendium = classItem?._source?._stats?.compendiumSource;
+        console.log(`${MODULE.ID} | Extracted source: ${sourceCompendium}`);
+      } catch (error) {
+        console.warn(`${MODULE.ID} | Error extracting source from classUuid`);
+      }
+    }
+
+    // Filter for journal-type compendium packs that match the source
+    const journalPacks = Array.from(game.packs)
+      .filter((p) => p.metadata.type === 'JournalEntry')
+      .filter((p) => !sourceCompendium || p.metadata.packageName === sourceCompendium.split('.')[1]);
+
+    console.log(`${MODULE.ID} | Searching ${journalPacks.length} journal packs`);
 
     for (const pack of journalPacks) {
-      console.log(`${MODULE.ID} | Checking pack:`, pack.metadata.label);
-
       try {
         // Just get the basic index first
         const index = await pack.getIndex();
-        console.log(`${MODULE.ID} | Got index with entries:`, index.size);
 
         // Convert to array for easier processing
         const entries = Array.from(index.values());
 
         // Process each journal in the pack
         for (const journalData of entries) {
-          console.log(`${MODULE.ID} | Checking journal:`, journalData.name);
-
           try {
             // Load the full document
-            console.log(`${MODULE.ID} | Loading full journal:`, journalData._id);
             const journal = await pack.getDocument(journalData._id);
 
             // Check each page in the journal
@@ -118,32 +127,31 @@ export class SpellUtils {
 
               const pageName = page.name?.toLowerCase() || '';
               const pageIdentifier = page.system?.identifier?.toLowerCase() || '';
+              const isNameMatch = pageIdentifier === normalizedClassName || pageName.includes(`${normalizedClassName} spell`) || pageName.includes(`${normalizedClassName}'s spell`);
 
-              // Check if this page matches our class
-              if (pageIdentifier === normalizedClassName || pageName.includes(`${normalizedClassName} spell`) || pageName.includes(`${normalizedClassName}'s spell`)) {
-                console.log(`${MODULE.ID} | Found matching page:`, page.name);
+              const isUuidMatch = !sourceCompendium || sourceCompendium.split('.').slice(0, 2).join('.') === journal.uuid.split('.').slice(0, 2).join('.');
 
-                // Log the full page structure for debugging
-                console.log(`${MODULE.ID} | Page system data:`, page.system);
+              if (isNameMatch && isUuidMatch) {
+                console.log(`${MODULE.ID} | Found matching spell list: ${page.name}`);
 
                 // Direct check for spells array
                 if (page.system.spells.size > 0) {
-                  console.log(`${MODULE.ID} | Found spells array with ${page.system.spells.size} entries`);
+                  console.log(`${MODULE.ID} | Spell list contains ${page.system.spells.size} spells`);
                   return page.system.spells;
                 }
               }
             }
           } catch (innerError) {
-            console.warn(`${MODULE.ID} | Error processing journal ${journalData.name}:`, innerError);
+            console.warn(`${MODULE.ID} | Error processing journal ${journalData.name}`);
             continue; // Skip to next journal
           }
         }
       } catch (error) {
-        console.warn(`${MODULE.ID} | Error processing pack ${pack.metadata.label}:`, error);
+        console.warn(`${MODULE.ID} | Error processing pack ${pack.metadata.label}`);
       }
     }
 
-    console.log(`${MODULE.ID} | No spell list found for class:`, className);
+    console.log(`${MODULE.ID} | No spell list found for ${className}`);
     return null;
   }
 

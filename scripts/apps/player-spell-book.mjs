@@ -75,10 +75,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Find the matching spellcasting class
       const className = classItem.name.toLowerCase();
+      const classUuid = classItem.uuid;
       context.className = classItem.name;
 
       // Get the spell list for this class
-      const spellUuids = await SpellUtils.getClassSpellList(className);
+      const spellUuids = await SpellUtils.getClassSpellList(className, classUuid);
 
       if (!spellUuids || !spellUuids.size) {
         console.log(`${MODULE.ID} | No spells found for class:`, className);
@@ -91,7 +92,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       for (const uuid of spellUuids) {
         try {
-          console.log(`${MODULE.ID} | Fetching spell from UUID:`, uuid);
           const spell = await fromUuid(uuid);
           if (spell && spell.type === 'spell') {
             spellItems.push(spell);
