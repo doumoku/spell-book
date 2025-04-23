@@ -1,5 +1,5 @@
 import { MODULE } from '../constants.mjs';
-import { SpellUtils } from '../helpers.mjs';
+import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, getClassSpellList, organizeSpellsByLevel } from '../helpers.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -69,8 +69,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
     try {
       // Find the class item for this actor
-      const classItem = this.actor.items.find((i) => i.type === 'class' && i.system?.spellcasting?.progression && i.system.spellcasting.progression !== 'none');
-
+      const classItem = findSpellcastingClass(this.actor);
       if (!classItem) return context;
 
       // Find the matching spellcasting class
@@ -79,8 +78,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       context.className = classItem.name;
 
       // Get the spell list for this class
-      const spellUuids = await SpellUtils.getClassSpellList(className, classUuid);
-
+      const spellUuids = await getClassSpellList(className, classUuid);
       if (!spellUuids || !spellUuids.size) {
         console.log(`${MODULE.ID} | No spells found for class:`, className);
         return context;
@@ -88,60 +86,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Determine max spell level based on actor's level and spell slot table
       const actorLevel = this.actor.system.details.level;
-      const spellcasting = classItem.system.spellcasting;
-      let maxSpellLevel = 0; // Default to cantrips
-
-      if (spellcasting && spellcasting.progression !== 'none') {
-        // Adjust index to be 0-based and clamped
-        const levelIndex = Math.min(Math.max(actorLevel - 1, 0), CONFIG.DND5E.SPELL_SLOT_TABLE.length - 1);
-        const spellSlots = CONFIG.DND5E.SPELL_SLOT_TABLE[levelIndex];
-
-        // Find the highest level with spell slots
-        maxSpellLevel = spellSlots.length;
-      }
-
+      const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
       console.log(`${MODULE.ID} | Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
 
-      // Get the actual spell items - handle errors more gracefully
-      console.log(`${MODULE.ID} | Starting to fetch ${spellUuids.length} spell items`);
-      const spellItems = [];
-
-      for (const uuid of spellUuids) {
-        try {
-          const spell = await fromUuid(uuid);
-          if (spell && spell.type === 'spell') {
-            console.log(`${MODULE.ID} | Checking spell: ${spell.name}, Level: ${spell.system.level}, Max Level: ${maxSpellLevel}, Included: ${spell.system.level <= maxSpellLevel}`);
-            if (spell.system.level <= maxSpellLevel) {
-              spellItems.push(spell);
-            }
-          }
-        } catch (error) {
-          console.warn(`${MODULE.ID} | Error fetching spell with uuid ${uuid}:`, error);
-        }
-      }
-
+      // Get the actual spell items
+      console.log(`${MODULE.ID} | Starting to fetch ${spellUuids.size} spell items`);
+      const spellItems = await fetchSpellDocuments(spellUuids, maxSpellLevel);
       console.log(`${MODULE.ID} | Successfully fetched ${spellItems.length} spell items`);
 
       // Organize spells by level
-      const spellsByLevel = {};
-      for (const spell of spellItems) {
-        if (!spell?.system?.level && spell.system.level !== 0) continue;
-        const level = spell.system.level;
-        console.log(`${MODULE.ID} | Organizing spell: ${spell.name}, Level: ${level}`);
-        if (!spellsByLevel[level]) {
-          spellsByLevel[level] = [];
-        }
-        spellsByLevel[level].push(spell);
-      }
-
-      // Convert to sorted array for handlebars
-      context.spellLevels = Object.entries(spellsByLevel)
-        .sort((a, b) => Number(a[0]) - Number(b[0]))
-        .map(([level, spells]) => ({
-          level: level,
-          levelName: level === '0' ? 'Cantrips' : `Level ${level} Spells`,
-          spells: spells
-        }));
+      context.spellLevels = organizeSpellsByLevel(spellItems);
 
       console.log(`${MODULE.ID} | Final context:`, {
         className: context.className,

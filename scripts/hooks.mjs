@@ -1,5 +1,5 @@
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
-import { SpellUtils } from './helpers.mjs';
+import { canCastSpells } from './helpers.mjs';
 
 export function registerHooks() {
   /**
@@ -8,7 +8,7 @@ export function registerHooks() {
   // Hooks.on('dnd5e.preRestCompleted', (actor, result) => {
   //   if (!game.settings.get(MODULE.ID, 'enableAutoPrompt')) return true;
 
-  //   if (result.longRest && SpellUtils.canPrepareDifferentSpells(actor)) {
+  //   if (result.longRest && canPrepareDifferentSpells(actor)) {
   //     // Prompt to change prepared spells
   //     new PlayerSpellBook(actor).render(true);
   //     return false; // Pause rest completion until spell selection is done
@@ -20,7 +20,7 @@ export function registerHooks() {
    * Add spell book button to character sheet
    */
   Hooks.on('renderActorSheet5e', (app, html, data) => {
-    if (!SpellUtils.canCastSpells(data.actor)) return;
+    if (!canCastSpells(data.actor)) return;
 
     // Only target the spells tab
     const spellsTab = html.find('.tab.spells');

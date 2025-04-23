@@ -1,6 +1,6 @@
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { MODULE } from './constants.mjs';
-import { SpellUtils } from './helpers.mjs';
+import { discoverSpellcastingClasses } from './helpers.mjs';
 import { registerHooks } from './hooks.mjs';
 
 Hooks.once('init', async function () {
@@ -18,7 +18,7 @@ Hooks.once('init', async function () {
 
 Hooks.once('ready', async function () {
   // Initialize spell data
-  await SpellUtils.discoverSpellcastingClasses();
+  await discoverSpellcastingClasses();
 
   // Register the module's compendium pack for use
   console.log(`${MODULE.ID} | Module ready with compendium pack: custom-spell-lists`);
