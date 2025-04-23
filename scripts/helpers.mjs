@@ -1,4 +1,3 @@
-// scripts/helpers.mjs
 import { MODULE } from './constants.mjs';
 
 export class SpellUtils {
@@ -10,22 +9,21 @@ export class SpellUtils {
     console.log(`${MODULE.ID} | Discovering spellcasting classes...`);
 
     // Reset the arrays
-    MODULE.SPELLCASTING_CLASSES.PREPARED = [];
     MODULE.SPELLCASTING_CLASSES.KNOWN = [];
     MODULE.SPELLCASTING_CLASSES.PACT = [];
 
     // Get all item compendiums
-    const itemPacks = game.packs.filter((p) => p.documentName === 'Item');
+    const itemPacks = Array.from(game.packs).filter((p) => p.metadata.type === 'Item');
 
     for (const pack of itemPacks) {
       try {
-        // Load the index if not already loaded
-        await pack.getIndex();
+        // Get the index
+        const index = await pack.getIndex();
 
-        // Filter for class entries in the index
-        const classEntries = pack.index.filter((entry) => entry.type === 'class');
+        // Filter for class entries
+        const classEntries = index.filter((entry) => entry.type === 'class');
 
-        // Examine each class
+        // Process each class
         for (const entry of classEntries) {
           try {
             // Get the actual document
@@ -37,21 +35,21 @@ export class SpellUtils {
             }
 
             const className = classItem.name.toLowerCase();
-            const preparationType = classItem.system.spellcasting.preparation?.mode;
+            const sourceId = classItem.system?.source?.value || pack.metadata.label;
+            const classIdentifier = {
+              name: className,
+              source: sourceId,
+              uuid: classItem.uuid
+            };
 
-            // Categorize by preparation type
-            if (preparationType === 'prepared') {
-              if (!MODULE.SPELLCASTING_CLASSES.PREPARED.includes(className)) {
-                MODULE.SPELLCASTING_CLASSES.PREPARED.push(className);
+            // Categorize by type first
+            const spellcastingType = classItem.system?.spellcasting?.type;
+            if (spellcastingType === 'pact') {
+              if (!MODULE.SPELLCASTING_CLASSES.PACT.some((c) => c.name === className && c.source === sourceId)) {
+                MODULE.SPELLCASTING_CLASSES.PACT.push(classIdentifier);
               }
-            } else if (preparationType === 'pact') {
-              if (!MODULE.SPELLCASTING_CLASSES.PACT.includes(className)) {
-                MODULE.SPELLCASTING_CLASSES.PACT.push(className);
-              }
-            } else if (preparationType === 'known') {
-              if (!MODULE.SPELLCASTING_CLASSES.KNOWN.includes(className)) {
-                MODULE.SPELLCASTING_CLASSES.KNOWN.push(className);
-              }
+            } else if (!MODULE.SPELLCASTING_CLASSES.KNOWN.some((c) => c.name === className && c.source === sourceId)) {
+              MODULE.SPELLCASTING_CLASSES.KNOWN.push(classIdentifier);
             }
           } catch (error) {
             console.warn(`${MODULE.ID} | Error processing class ${entry.name}:`, error);
@@ -63,7 +61,6 @@ export class SpellUtils {
     }
 
     console.log(`${MODULE.ID} | Discovered spellcasting classes:`, {
-      prepared: MODULE.SPELLCASTING_CLASSES.PREPARED,
       known: MODULE.SPELLCASTING_CLASSES.KNOWN,
       pact: MODULE.SPELLCASTING_CLASSES.PACT
     });
@@ -79,30 +76,54 @@ export class SpellUtils {
   }
 
   /**
-   * Check if an actor can prepare different spells
-   * @param {Actor5e} actor - The actor to check
-   * @returns {boolean} - Whether the actor can prepare different spells
-   */
-  static canPrepareDifferentSpells(actor) {
-    if (!this.canCastSpells(actor)) return false;
-
-    // Check if actor has a class that prepares spells
-    return actor.items.filter((i) => i.type === 'class').some((c) => MODULE.SPELLCASTING_CLASSES.PREPARED.includes(c.name.toLowerCase()));
-  }
-
-  /**
-   * Get a class's spell list from the journal
+   * Get a class's spell list from compendium journals
    * @param {string} className - The name of the class
    * @returns {Promise<Array|null>} - Array of spell UUIDs or null
    */
   static async getClassSpellList(className) {
-    // Find the appropriate JournalEntryPage with the spell list
-    const spellJournal = game.journal.getName('Spells');
-    if (!spellJournal) return null;
+    // Normalize the class name for comparison
+    const normalizedClassName = className.toLowerCase();
 
-    const spellListPage = spellJournal.pages.find((p) => p.name.toLowerCase().includes(`${className} spell list`));
+    // Filter for journal-type compendium packs
+    const journalPacks = Array.from(game.packs).filter((p) => p.metadata.type === 'JournalEntry');
 
-    return spellListPage?.system?.spells || null;
+    for (const pack of journalPacks) {
+      // Get the enriched index with the fields we added to CONFIG.JournalEntry.compendiumIndexFields
+      const index = await pack.getIndex({ fields: ['pages.type', 'pages.name', 'pages.system.type', 'pages.system.identifier'] });
+
+      // Find journals that might contain spell lists
+      const potentialJournals = index.filter((entry) => entry.pages?.some((page) => page.type === 'spells' && page.system?.type === 'class'));
+
+      // Skip this pack if no potential journals found
+      if (!potentialJournals.length) continue;
+
+      // Process each potential journal
+      for (const journalData of potentialJournals) {
+        // Check if any page in the index matches our class
+        const hasMatchingPage = journalData.pages?.some(
+          (page) =>
+            page.type === 'spells' && page.system?.type === 'class' && (page.system?.identifier === normalizedClassName || page.name?.toLowerCase().includes(`${normalizedClassName} spell list`))
+        );
+
+        // Skip to next journal if no matching page
+        if (!hasMatchingPage) continue;
+
+        // Only now load the full document
+        const journal = await pack.getDocument(journalData._id);
+
+        // Find the matching page
+        const classSpellPage = journal.pages.find(
+          (page) =>
+            page.type === 'spells' && page.system?.type === 'class' && (page.system?.identifier === normalizedClassName || page.name.toLowerCase().includes(`${normalizedClassName} spell list`))
+        );
+
+        if (classSpellPage?.system?.spells) {
+          return classSpellPage.system.spells;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**

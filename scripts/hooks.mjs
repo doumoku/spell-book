@@ -1,65 +1,19 @@
-import { ExtendedCompendiumBrowser } from './apps/extended-compendium.mjs';
-import { SpellListManager } from './apps/spell-list-manager.mjs';
-import { MODULE } from './constants.mjs';
 import { SpellUtils } from './helpers.mjs';
 
 export function registerHooks() {
   /**
-   * Register init hook - for setting up Handlebars helpers
-   */
-  Hooks.once('init', () => {
-    console.log(`${MODULE.ID} | Initializing ${MODULE.NAME}`);
-
-    // Register handlebars helpers
-    Handlebars.registerHelper('isPrepared', function (uuid, preparedSpells) {
-      return Array.isArray(preparedSpells) && preparedSpells.includes(uuid);
-    });
-
-    Handlebars.registerHelper('eq', function (a, b) {
-      return a === b;
-    });
-
-    Handlebars.registerHelper('includes', function (array, value) {
-      return Array.isArray(array) && array.includes(value);
-    });
-
-    Handlebars.registerHelper('capitalize', function (str) {
-      if (typeof str !== 'string') return '';
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    });
-
-    // Register module settings
-    game.settings.register(MODULE.ID, 'enableAutoPrompt', {
-      name: 'SPELLBOOK.Settings.EnableAutoPrompt.Name',
-      hint: 'SPELLBOOK.Settings.EnableAutoPrompt.Hint',
-      scope: 'world',
-      config: true,
-      type: Boolean,
-      default: true
-    });
-  });
-
-  /**
-   * Register ready hook - for discovering spellcasting classes
-   */
-  Hooks.once('ready', async () => {
-    // Discover all spellcasting classes
-    await SpellUtils.discoverSpellcastingClasses();
-  });
-
-  /**
    * Hook into long rest completion to prompt for spell changes
    */
-  Hooks.on('dnd5e.preRestCompleted', (actor, result) => {
-    if (!game.settings.get(MODULE.ID, 'enableAutoPrompt')) return true;
+  // Hooks.on('dnd5e.preRestCompleted', (actor, result) => {
+  //   if (!game.settings.get(MODULE.ID, 'enableAutoPrompt')) return true;
 
-    if (result.longRest && SpellUtils.canPrepareDifferentSpells(actor)) {
-      // Prompt to change prepared spells
-      new ExtendedCompendiumBrowser({ actor, mode: 'prepare' }).render(true);
-      return false; // Pause rest completion until spell selection is done
-    }
-    return true;
-  });
+  //   if (result.longRest && SpellUtils.canPrepareDifferentSpells(actor)) {
+  //     // Prompt to change prepared spells
+  //     new ExtendedCompendiumBrowser({ actor, mode: 'prepare' }).render(true);
+  //     return false; // Pause rest completion until spell selection is done
+  //   }
+  //   return true;
+  // });
 
   /**
    * Add spell book button to character sheet
@@ -71,42 +25,31 @@ export function registerHooks() {
     const spellsTab = html.find('.tab.spells');
     if (!spellsTab.length) return;
 
+    // Find the controls list
+    const controlsList = spellsTab.find('ul.controls');
+    if (!controlsList.length) return;
+
+    // Create new list item element
+    const listItem = document.createElement('li');
+
+    // Create the button
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'spell-book-button gold-button';
+    button.className = 'unbutton spell-book-button interface-only';
+    button.setAttribute('data-tooltip', 'Spell Book');
+    button.setAttribute('aria-label', 'Open Spell Book');
     button.innerHTML = '<i class="fas fa-book-spells"></i>';
 
+    // Add click event listener
     button.addEventListener('click', (ev) => {
       ev.preventDefault();
-      new ExtendedCompendiumBrowser({ actor: data.actor }).render(true);
+      console.log('My button was clicked!');
     });
 
-    // Create a container for the button
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'spell-book-container';
-    buttonContainer.appendChild(button);
+    // Add button to list item
+    listItem.appendChild(button);
 
-    // Add the button container after the top section
-    spellsTab.find('section.top').after(buttonContainer);
-  });
-
-  /**
-   * Add button to scene controls for GMs to access spell list manager
-   */
-  Hooks.on('getSceneControlButtons', (controls) => {
-    if (!game.user.isGM) return;
-
-    const tokenTools = controls.find((c) => c.name === 'token');
-    if (tokenTools) {
-      tokenTools.tools.push({
-        name: 'spell-list-manager',
-        title: game.i18n.localize('SPELLBOOK.SpellListManager'),
-        icon: 'fas fa-book-spells',
-        button: true,
-        onClick: () => {
-          new SpellListManager().render(true);
-        }
-      });
-    }
+    // Append the new list item to the controls list
+    controlsList.append(listItem);
   });
 }
