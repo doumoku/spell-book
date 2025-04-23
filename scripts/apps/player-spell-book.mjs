@@ -86,6 +86,22 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         return context;
       }
 
+      // Determine max spell level based on actor's level and spell slot table
+      const actorLevel = this.actor.system.details.level;
+      const spellcasting = classItem.system.spellcasting;
+      let maxSpellLevel = 0; // Default to cantrips
+
+      if (spellcasting && spellcasting.progression !== 'none') {
+        // Adjust index to be 0-based and clamped
+        const levelIndex = Math.min(Math.max(actorLevel - 1, 0), CONFIG.DND5E.SPELL_SLOT_TABLE.length - 1);
+        const spellSlots = CONFIG.DND5E.SPELL_SLOT_TABLE[levelIndex];
+
+        // Find the highest level with spell slots
+        maxSpellLevel = spellSlots.length;
+      }
+
+      console.log(`${MODULE.ID} | Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
+
       // Get the actual spell items - handle errors more gracefully
       console.log(`${MODULE.ID} | Starting to fetch ${spellUuids.length} spell items`);
       const spellItems = [];
@@ -94,7 +110,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
           const spell = await fromUuid(uuid);
           if (spell && spell.type === 'spell') {
-            spellItems.push(spell);
+            console.log(`${MODULE.ID} | Checking spell: ${spell.name}, Level: ${spell.system.level}, Max Level: ${maxSpellLevel}, Included: ${spell.system.level <= maxSpellLevel}`);
+            if (spell.system.level <= maxSpellLevel) {
+              spellItems.push(spell);
+            }
           }
         } catch (error) {
           console.warn(`${MODULE.ID} | Error fetching spell with uuid ${uuid}:`, error);
@@ -106,8 +125,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Organize spells by level
       const spellsByLevel = {};
       for (const spell of spellItems) {
-        if (!spell?.system?.level) continue;
+        if (!spell?.system?.level && spell.system.level !== 0) continue;
         const level = spell.system.level;
+        console.log(`${MODULE.ID} | Organizing spell: ${spell.name}, Level: ${level}`);
         if (!spellsByLevel[level]) {
           spellsByLevel[level] = [];
         }

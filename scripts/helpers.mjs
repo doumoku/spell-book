@@ -136,14 +136,14 @@ export class SpellUtils {
 
                 // Direct check for spells array
                 if (page.system.spells.size > 0) {
-                  console.log(`${MODULE.ID} | Spell list contains ${page.system.spells.size} spells`);
+                  console.log(`${MODULE.ID} | Found ${page.system.spells.size} spells`);
                   return page.system.spells;
                 }
               }
             }
           } catch (innerError) {
             console.warn(`${MODULE.ID} | Error processing journal ${journalData.name}`);
-            continue; // Skip to next journal
+            continue;
           }
         }
       } catch (error) {
