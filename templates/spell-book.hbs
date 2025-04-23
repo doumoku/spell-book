@@ -10,11 +10,28 @@
 					<h3 class="spell-level-heading">{{levelData.levelName}}</h3>
 					<ul class="spell-list">
 						{{#each levelData.spells as |spell|}}
-							<li class="spell-item" data-spell-uuid="{{spell.uuid}}">
-								<div class="spell-name">{{spell.name}}</div>
-								<div class="spell-school">{{spell.system.school}}</div>
+							{{log spell}}
+							<li
+								class="spell-item{{#if spell.preparation.isOwned}} owned-spell{{/if}}{{#if spell.preparation.prepared}} prepared-spell{{/if}}"
+								data-spell-uuid="{{spell.compendiumUuid}}">
+								<div class="spell-name">
+									{{{spell.enrichedName}}}
+									{{#if spell.preparation.alwaysPrepared}}
+										<span class="always-prepared-tag"
+											data-tooltip="Always prepared {{#if spell.preparation.sourceItem}}from {{spell.preparation.sourceItem.name}}{{/if}}">
+											Always
+										</span>
+									{{else if spell.preparation.preparationMode}}
+										<span class="preparation-mode-tag">{{spell.preparation.preparationMode}}</span>
+									{{/if}}
+								</div>
+								<div class="spell-details">
+									<span class="tags">{{{spell.formattedDetails}}}</span>
+								</div>
 								<div class="spell-preparation">
-									<input type="checkbox" name="prepared" value="{{spell.uuid}}" />
+									<input type="checkbox" name="prepared" value="{{spell.compendiumUuid}}"
+										{{#if spell.preparation.prepared}}checked{{/if}}
+										{{#if spell.preparation.disabled}}disabled{{/if}} />
 								</div>
 							</li>
 						{{/each}}

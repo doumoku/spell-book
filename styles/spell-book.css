@@ -1,16 +1,16 @@
 .spell-book-button {
   width: 100%;
   height: 100%;
+  padding-left: 0.3rem !important;
   color: var(--dnd5e-color-gold);
   cursor: pointer;
-  padding-left: 0.3rem !important;
 }
 
 .spell-book-button:hover {
-  text-shadow: 0 0 8px var(--color-shadow-primary);
   width: 100%;
   height: 100%;
   color: var(--dnd5e-color-gold) !important;
+  text-shadow: 0 0 8px var(--color-shadow-primary);
   cursor: pointer;
 }
 
@@ -36,8 +36,8 @@
 
 .spell-book-content {
   flex: 1;
-  overflow-y: auto;
   padding: 10px;
+  overflow-y: auto;
 }
 
 .spell-level {
@@ -45,15 +45,15 @@
 }
 
 .spell-level-heading {
-  border-bottom: 1px solid var(--color-border-light);
   margin-bottom: 5px;
   padding-bottom: 3px;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .spell-list {
-  list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .spell-item {
@@ -61,6 +61,14 @@
   align-items: center;
   padding: 5px;
   border-bottom: 1px solid var(--color-border-light-secondary);
+}
+
+.spell-item.owned-spell {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.spell-item.prepared-spell {
+  background-color: rgba(0, 128, 0, 0.05);
 }
 
 .spell-item:hover {
@@ -72,13 +80,116 @@
   font-weight: bold;
 }
 
-.spell-school {
+/* Style the spell details with tags */
+.spell-book .spell-details {
+  display: flex;
+  align-items: center;
   margin-right: 10px;
-  font-style: italic;
   color: var(--color-text-dark-secondary);
+  font-style: italic;
+  font-size: var(--font-size-14);
+}
+
+.spell-book .spell-details .tags {
+  --icon-fill: var(--dnd5e-color-black);
+  gap: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+/* Dark mode support */
+:is(.dnd5e-theme-dark, .theme-dark) .spell-book .spell-details .tags {
+  --icon-fill: var(--color-text-light-6);
+}
+
+/* Make sure dnd5e icons render at appropriate size */
+.spell-book .spell-details dnd5e-icon {
+  --icon-size: 1em;
 }
 
 .spell-preparation {
   width: 20px;
   text-align: center;
+}
+
+.always-prepared-tag {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 3px;
+  color: black;
+  font-weight: normal;
+  font-size: 0.8em;
+  background-color: var(--dnd5e-color-gold);
+}
+
+.preparation-mode-tag {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 3px;
+  color: var(--color-text-dark-secondary);
+  font-weight: normal;
+  font-size: 0.8em;
+  background-color: var(--color-border-light);
+}
+
+.spell-book-container input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spell-book-footer {
+  padding: 10px;
+  border-top: 1px solid var(--color-border-light);
+  text-align: center;
+}
+
+.save-spells {
+  padding: 5px 15px;
+  border: none;
+  border-radius: 3px;
+  color: black;
+  cursor: pointer;
+  background: var(--dnd5e-color-gold);
+}
+
+.save-spells:hover {
+  background: var(--color-border-highlight);
+}
+
+/* Style the enriched content links to match our UI */
+.spell-book .spell-name .content-link {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  color: inherit !important;
+  font-weight: inherit !important;
+  font-size: inherit !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* Replace the icon in content links instead of hiding it */
+.spell-book .spell-name .content-link i {
+  font-weight: 900 !important;
+  font-family: 'Font Awesome 6 Pro' !important;
+}
+
+/* Set wand-magic-sparkles icon */
+.spell-book .spell-name .content-link i::before {
+  margin-right: 0.25em !important;
+  content: '\f72b' !important;
+}
+
+.spell-book .spell-name .content-link.broken {
+  border: none !important;
+  background: none !important;
+}
+
+.property-icon {
+  width: 1em;
+  height: 1em;
+  color: var(--color-text-dark-secondary);
+  font-style: italic;
+  vertical-align: middle;
+  background: none;
 }

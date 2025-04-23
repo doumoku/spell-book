@@ -208,7 +208,11 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
       const spell = await fromUuid(uuid);
       if (spell && spell.type === 'spell') {
         if (spell.system.level <= maxSpellLevel) {
-          spellItems.push(spell);
+          // Make sure we're storing the original compendium UUID
+          spellItems.push({
+            ...spell,
+            compendiumUuid: uuid // Store the original compendium UUID
+          });
         }
       }
     } catch (error) {
@@ -220,11 +224,91 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
 }
 
 /**
- * Organize spells by level for display
+ * Check if a spell is already prepared on an actor
+ * @param {Actor5e} actor - The actor to check
+ * @param {Item5e} spell - The spell document
+ * @returns {object} - Status information about the spell preparation
+ */
+export function getSpellPreparationStatus(actor, spell) {
+  console.log(`${MODULE.ID} | Checking preparation status for spell: ${spell.name}`);
+
+  // First check if the spell is already on the actor
+  const actorSpell = actor.items.find((item) => item.type === 'spell' && (item.name === spell.name || item.flags?.core?.sourceId === spell.compendiumUuid));
+
+  console.log(`${MODULE.ID} | Actor has spell:`, !!actorSpell);
+
+  if (!actorSpell) {
+    return {
+      prepared: false,
+      isOwned: false,
+      preparationMode: null,
+      disabled: false,
+      alwaysPrepared: false,
+      sourceItem: null
+    };
+  }
+
+  const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
+  const alwaysPrepared = preparationMode === 'always';
+
+  console.log(`${MODULE.ID} | Spell preparation mode:`, preparationMode);
+  console.log(`${MODULE.ID} | Always prepared:`, alwaysPrepared);
+
+  // Find source item for always prepared spells
+  let sourceItem = null;
+  if (alwaysPrepared) {
+    // Check sourceClass as specified
+    console.log(`${MODULE.ID} | Spell sourceClass:`, actorSpell.system.sourceClass);
+
+    // Get the source identifier (e.g., "cleric")
+    const sourceIdentifier = actorSpell.system.sourceClass;
+    console.log(`${MODULE.ID} | Source identifier:`, sourceIdentifier);
+
+    // Look through relevant actor items to find a match
+    if (sourceIdentifier) {
+      sourceItem = findSpellSource(actor, sourceIdentifier);
+      console.log(`${MODULE.ID} | Found source item:`, sourceItem?.name);
+    }
+  }
+
+  return {
+    prepared: actorSpell.system.preparation?.prepared || alwaysPrepared,
+    isOwned: true,
+    preparationMode: preparationMode,
+    disabled: alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
+    alwaysPrepared: alwaysPrepared,
+    sourceItem: sourceItem
+  };
+}
+
+/**
+ * Find the source item that provides an always-prepared spell
+ * @param {Actor5e} actor - The actor to search
+ * @param {string} sourceIdentifier - The source identifier to match
+ * @returns {object|null} - The source item or null if not found
+ */
+export function findSpellSource(actor, sourceIdentifier) {
+  console.log(`${MODULE.ID} | Looking for source: ${sourceIdentifier}`);
+
+  // Only look through these item types
+  const relevantTypes = ['class', 'subclass', 'race', 'background', 'feat'];
+
+  // Find the first item with a matching identifier
+  const sourceItem = actor.items.find((item) => relevantTypes.includes(item.type) && item.system.identifier?.toLowerCase() === sourceIdentifier);
+
+  console.log(`${MODULE.ID} | Source search result:`, sourceItem ? sourceItem.name : 'Not found');
+  return sourceItem;
+}
+
+/**
+ * Organize spells by level for display with preparation info
  * @param {Array} spellItems - Array of spell documents
+ * @param {Actor5e} actor - The actor to check preparation status against
  * @returns {Array} - Array of spell levels with formatted data for templates
  */
-export function organizeSpellsByLevel(spellItems) {
+export function organizeSpellsByLevel(spellItems, actor) {
+  console.log(`${MODULE.ID} | Organizing ${spellItems.length} spells by level`);
+
   // Organize spells by level
   const spellsByLevel = {};
 
@@ -235,15 +319,57 @@ export function organizeSpellsByLevel(spellItems) {
     if (!spellsByLevel[level]) {
       spellsByLevel[level] = [];
     }
-    spellsByLevel[level].push(spell);
+
+    // Add preparation status information to each spell
+    const prepStatus = getSpellPreparationStatus(actor, spell);
+    console.log(`${MODULE.ID} | Preparation status for ${spell.name}:`, prepStatus);
+
+    const spellData = {
+      ...spell,
+      preparation: prepStatus
+    };
+
+    spellsByLevel[level].push(spellData);
   }
 
   // Convert to sorted array for handlebars
-  return Object.entries(spellsByLevel)
+  const result = Object.entries(spellsByLevel)
     .sort((a, b) => Number(a[0]) - Number(b[0]))
     .map(([level, spells]) => ({
       level: level,
       levelName: level === '0' ? 'Cantrips' : `Level ${level} Spells`,
       spells: spells
     }));
+
+  console.log(`${MODULE.ID} | Final organized spell levels:`, result.length);
+  return result;
+}
+
+/**
+ * Format spell details for display
+ * @param {Object} spell - The spell object with labels
+ * @returns {string} - Formatted spell details string
+ */
+export function formatSpellDetails(spell) {
+  // Get component abbreviations and icons
+  const components = [];
+
+  if (spell.labels.components?.all) {
+    for (const c of spell.labels.components.all) {
+      if (c.icon) {
+        components.push(`<span aria-label="${c.abbr}"><dnd5e-icon src="${c.icon}"></dnd5e-icon></span>`);
+      } else {
+        components.push(c.abbr);
+      }
+    }
+  }
+
+  // Format components with commas between them
+  const componentsStr = components.join(', ');
+
+  // Add activation and school
+  const details = [componentsStr, spell.labels.activation, spell.labels.school].filter(Boolean); // Remove any undefined or null values
+
+  // Join with bullet points
+  return details.join(' • ');
 }

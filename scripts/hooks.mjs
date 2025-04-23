@@ -39,7 +39,7 @@ export function registerHooks() {
     button.className = 'unbutton spell-book-button interface-only';
     button.setAttribute('data-tooltip', 'Spell Book');
     button.setAttribute('aria-label', 'Open Spell Book');
-    button.innerHTML = '<i class="fas fa-book-spells"></i>';
+    button.innerHTML = '<i class="fas fa-hat-wizard"></i>';
 
     // Add click event listener
     button.addEventListener('click', (ev) => {

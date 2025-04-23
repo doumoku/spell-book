@@ -1,5 +1,5 @@
 import { MODULE } from '../constants.mjs';
-import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, getClassSpellList, organizeSpellsByLevel } from '../helpers.mjs';
+import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, formatSpellDetails, getClassSpellList, organizeSpellsByLevel } from '../helpers.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -18,7 +18,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       width: 800
     },
     window: {
-      icon: 'fa-solid fa-book-spells',
+      icon: 'fa-solid fa-hat-wizard',
       resizable: true,
       minimizable: true
     }
@@ -95,7 +95,22 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       console.log(`${MODULE.ID} | Successfully fetched ${spellItems.length} spell items`);
 
       // Organize spells by level
-      context.spellLevels = organizeSpellsByLevel(spellItems);
+      const spellLevels = organizeSpellsByLevel(spellItems, this.actor);
+
+      // Process each level to create enriched content
+      for (const level of spellLevels) {
+        for (const spell of level.spells) {
+          // Store the original compendium UUID on the spell
+          const uuid = spell.compendiumUuid || spell.uuid;
+          console.log(`${MODULE.ID} | Using UUID for enrichment: ${uuid}`);
+
+          // Enrich the name with the UUID link
+          spell.enrichedName = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
+          spell.formattedDetails = formatSpellDetails(spell);
+        }
+      }
+
+      context.spellLevels = spellLevels;
 
       console.log(`${MODULE.ID} | Final context:`, {
         className: context.className,
