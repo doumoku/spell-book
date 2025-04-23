@@ -81,48 +81,69 @@ export class SpellUtils {
    * @returns {Promise<Array|null>} - Array of spell UUIDs or null
    */
   static async getClassSpellList(className) {
+    console.log(`${MODULE.ID} | getClassSpellList called for:`, className);
+
     // Normalize the class name for comparison
     const normalizedClassName = className.toLowerCase();
+    console.log(`${MODULE.ID} | Normalized class name:`, normalizedClassName);
 
     // Filter for journal-type compendium packs
     const journalPacks = Array.from(game.packs).filter((p) => p.metadata.type === 'JournalEntry');
+    console.log(`${MODULE.ID} | Found journal packs:`, journalPacks.length);
 
     for (const pack of journalPacks) {
-      // Get the enriched index with the fields we added to CONFIG.JournalEntry.compendiumIndexFields
-      const index = await pack.getIndex({ fields: ['pages.type', 'pages.name', 'pages.system.type', 'pages.system.identifier'] });
+      console.log(`${MODULE.ID} | Checking pack:`, pack.metadata.label);
 
-      // Find journals that might contain spell lists
-      const potentialJournals = index.filter((entry) => entry.pages?.some((page) => page.type === 'spells' && page.system?.type === 'class'));
+      try {
+        // Just get the basic index first
+        const index = await pack.getIndex();
+        console.log(`${MODULE.ID} | Got index with entries:`, index.size);
 
-      // Skip this pack if no potential journals found
-      if (!potentialJournals.length) continue;
+        // Convert to array for easier processing
+        const entries = Array.from(index.values());
 
-      // Process each potential journal
-      for (const journalData of potentialJournals) {
-        // Check if any page in the index matches our class
-        const hasMatchingPage = journalData.pages?.some(
-          (page) =>
-            page.type === 'spells' && page.system?.type === 'class' && (page.system?.identifier === normalizedClassName || page.name?.toLowerCase().includes(`${normalizedClassName} spell list`))
-        );
+        // Process each journal in the pack
+        for (const journalData of entries) {
+          console.log(`${MODULE.ID} | Checking journal:`, journalData.name);
 
-        // Skip to next journal if no matching page
-        if (!hasMatchingPage) continue;
+          try {
+            // Load the full document
+            console.log(`${MODULE.ID} | Loading full journal:`, journalData._id);
+            const journal = await pack.getDocument(journalData._id);
 
-        // Only now load the full document
-        const journal = await pack.getDocument(journalData._id);
+            // Check each page in the journal
+            for (const page of journal.pages) {
+              // Skip pages that aren't spell lists
+              if (page.type !== 'spells') continue;
 
-        // Find the matching page
-        const classSpellPage = journal.pages.find(
-          (page) =>
-            page.type === 'spells' && page.system?.type === 'class' && (page.system?.identifier === normalizedClassName || page.name.toLowerCase().includes(`${normalizedClassName} spell list`))
-        );
+              const pageName = page.name?.toLowerCase() || '';
+              const pageIdentifier = page.system?.identifier?.toLowerCase() || '';
 
-        if (classSpellPage?.system?.spells) {
-          return classSpellPage.system.spells;
+              // Check if this page matches our class
+              if (pageIdentifier === normalizedClassName || pageName.includes(`${normalizedClassName} spell`) || pageName.includes(`${normalizedClassName}'s spell`)) {
+                console.log(`${MODULE.ID} | Found matching page:`, page.name);
+
+                // Log the full page structure for debugging
+                console.log(`${MODULE.ID} | Page system data:`, page.system);
+
+                // Direct check for spells array
+                if (page.system.spells.size > 0) {
+                  console.log(`${MODULE.ID} | Found spells array with ${page.system.spells.size} entries`);
+                  return page.system.spells;
+                }
+              }
+            }
+          } catch (innerError) {
+            console.warn(`${MODULE.ID} | Error processing journal ${journalData.name}:`, innerError);
+            continue; // Skip to next journal
+          }
         }
+      } catch (error) {
+        console.warn(`${MODULE.ID} | Error processing pack ${pack.metadata.label}:`, error);
       }
     }
 
+    console.log(`${MODULE.ID} | No spell list found for class:`, className);
     return null;
   }
 

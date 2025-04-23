@@ -1,3 +1,4 @@
+import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { MODULE } from './constants.mjs';
 import { SpellUtils } from './helpers.mjs';
 import { registerHooks } from './hooks.mjs';
@@ -10,6 +11,9 @@ Hooks.once('init', async function () {
 
   // Register module hooks
   registerHooks();
+
+  // Expose the PlayerSpellBook class for other modules
+  MODULE.PlayerSpellBook = PlayerSpellBook;
 });
 
 Hooks.once('ready', async function () {

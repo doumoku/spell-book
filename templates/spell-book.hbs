@@ -1,0 +1,28 @@
+<div class="spell-book-container">
+	<header class="spell-book-header">
+		<h2>{{actor.name}}'s {{className}} Spells</h2>
+	</header>
+
+	<section class="spell-book-content">
+		{{#if spellLevels.length}}
+			{{#each spellLevels as |levelData|}}
+				<div class="spell-level">
+					<h3 class="spell-level-heading">{{levelData.levelName}}</h3>
+					<ul class="spell-list">
+						{{#each levelData.spells as |spell|}}
+							<li class="spell-item" data-spell-uuid="{{spell.uuid}}">
+								<div class="spell-name">{{spell.name}}</div>
+								<div class="spell-school">{{spell.system.school}}</div>
+								<div class="spell-preparation">
+									<input type="checkbox" name="prepared" value="{{spell.uuid}}" />
+								</div>
+							</li>
+						{{/each}}
+					</ul>
+				</div>
+			{{/each}}
+		{{else}}
+			<p class="no-spells">No spells found for {{actor.name}}'s class.</p>
+		{{/if}}
+	</section>
+</div>

@@ -1,3 +1,4 @@
+import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { SpellUtils } from './helpers.mjs';
 
 export function registerHooks() {
@@ -9,7 +10,7 @@ export function registerHooks() {
 
   //   if (result.longRest && SpellUtils.canPrepareDifferentSpells(actor)) {
   //     // Prompt to change prepared spells
-  //     new ExtendedCompendiumBrowser({ actor, mode: 'prepare' }).render(true);
+  //     new PlayerSpellBook(actor).render(true);
   //     return false; // Pause rest completion until spell selection is done
   //   }
   //   return true;
@@ -43,7 +44,8 @@ export function registerHooks() {
     // Add click event listener
     button.addEventListener('click', (ev) => {
       ev.preventDefault();
-      console.log('My button was clicked!');
+      const spellBook = new PlayerSpellBook(data.actor);
+      spellBook.render(true);
     });
 
     // Add button to list item

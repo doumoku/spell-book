@@ -20,3 +20,65 @@
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Add to existing spell-book.css */
+.spell-book-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.spell-book-header {
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border-light);
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.spell-book-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.spell-level {
+  margin-bottom: 20px;
+}
+
+.spell-level-heading {
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: 5px;
+  padding-bottom: 3px;
+}
+
+.spell-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.spell-item {
+  display: flex;
+  align-items: center;
+  padding: 5px;
+  border-bottom: 1px solid var(--color-border-light-secondary);
+}
+
+.spell-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.spell-name {
+  flex: 1;
+  font-weight: bold;
+}
+
+.spell-school {
+  margin-right: 10px;
+  font-style: italic;
+  color: var(--color-text-dark-secondary);
+}
+
+.spell-preparation {
+  width: 20px;
+  text-align: center;
+}
