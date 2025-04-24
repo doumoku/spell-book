@@ -282,24 +282,47 @@ export function calculateMaxSpellLevel(actorLevel, spellcasting) {
  */
 export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
   const spellItems = [];
+  const errors = [];
+  const promises = [];
 
+  // Create a batch of promises for parallel fetching
   for (const uuid of spellUuids) {
-    try {
-      const spell = await fromUuid(uuid);
-      if (spell && spell.type === 'spell') {
-        if (spell.system.level <= maxSpellLevel) {
-          // Make sure we're storing the original compendium UUID
-          spellItems.push({
-            ...spell,
-            compendiumUuid: uuid // Store the original compendium UUID
-          });
+    const promise = fromUuid(uuid)
+      .then((spell) => {
+        if (spell && spell.type === 'spell') {
+          if (spell.system.level <= maxSpellLevel) {
+            spellItems.push({
+              ...spell,
+              compendiumUuid: uuid
+            });
+          }
+        } else if (spell) {
+          errors.push({ uuid, reason: 'Not a valid spell document' });
+        } else {
+          errors.push({ uuid, reason: 'Document not found' });
         }
-      }
-    } catch (error) {
-      log(1, `Error fetching spell with uuid ${uuid}:`, error);
+      })
+      .catch((error) => {
+        errors.push({ uuid, reason: error.message || 'Unknown error' });
+      });
+
+    promises.push(promise);
+  }
+
+  // Wait for all promises to resolve
+  await Promise.allSettled(promises);
+
+  // Log errors in bulk rather than one by one
+  if (errors.length > 0) {
+    log(1, `Failed to fetch ${errors.length} spells:`, errors);
+
+    // If all spells failed, this might indicate a systemic issue
+    if (errors.length === spellUuids.size) {
+      log(1, 'All spells failed to load, possible system or compendium issue');
     }
   }
 
+  log(3, `Successfully fetched ${spellItems.length}/${spellUuids.size} spells`);
   return spellItems;
 }
 

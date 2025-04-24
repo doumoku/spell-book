@@ -15,4 +15,13 @@ export function registerSettings() {
     },
     default: 2
   });
+
+  game.settings.register(MODULE.ID, 'enableRestPrompt', {
+    name: 'SPELLBOOK.Settings.EnableRestPrompt.Name',
+    hint: 'SPELLBOOK.Settings.EnableRestPrompt.Hint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true
+  });
 }

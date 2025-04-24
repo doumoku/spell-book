@@ -62,5 +62,14 @@ export const MODULE = {
      * @type {Array<string>}
      */
     PACT: []
+  },
+
+  /**
+   * Cache for storing frequently accessed data
+   * @type {Object}
+   */
+  CACHE: {
+    spellData: {},
+    spellDataTime: {}
   }
 };

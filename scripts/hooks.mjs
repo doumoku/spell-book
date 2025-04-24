@@ -1,20 +1,9 @@
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { canCastSpells } from './helpers.mjs';
+import { registerDnD5eIntegration } from './integrations/dnd5e.mjs';
 
 export function registerHooks() {
-  /**
-   * Hook into long rest completion to prompt for spell changes
-   */
-  // Hooks.on('dnd5e.preRestCompleted', (actor, result) => {
-  //   if (!game.settings.get(MODULE.ID, 'enableAutoPrompt')) return true;
-
-  //   if (result.longRest && canPrepareDifferentSpells(actor)) {
-  //     // Prompt to change prepared spells
-  //     new PlayerSpellBook(actor).render(true);
-  //     return false; // Pause rest completion until spell selection is done
-  //   }
-  //   return true;
-  // });
+  registerDnD5eIntegration();
 
   /**
    * Add spell book button to character sheet

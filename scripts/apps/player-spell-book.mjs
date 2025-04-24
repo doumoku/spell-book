@@ -73,16 +73,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext(options) {
     this.element?.classList.add('loading');
 
-    // Start with basic context
     const context = {
       actor: this.actor,
       spellLevels: [],
       className: '',
+      filters: this._getFilterState(),
+      spellSchools: CONFIG.DND5E.spellSchools,
       buttons: [
         { type: 'submit', icon: 'fa-solid fa-save', label: 'SETTINGS.Save', cssClass: 'submit-button' },
         { type: 'reset', action: 'reset', icon: 'fa-solid fa-undo', label: 'SETTINGS.Reset', cssClass: 'reset-button' }
       ],
-      // Include actor ID for the form handler
       actorId: this.actor.id
     };
 
@@ -110,11 +110,17 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Get the actual spell items
       log(3, `Starting to fetch ${spellUuids.size} spell items`);
-      const spellItems = await fetchSpellDocuments(spellUuids, maxSpellLevel);
+      const spellItems = await this._fetchSpellDataWithCache(spellUuids, maxSpellLevel);
       log(3, `Successfully fetched ${spellItems.length} spell items`);
 
       // Organize spells by level
       const spellLevels = organizeSpellsByLevel(spellItems, this.actor);
+
+      // Sort spells within each level based on current sort setting
+      const sortBy = this._getFilterState().sortBy || 'level';
+      for (const level of spellLevels) {
+        level.spells = this._sortSpells(level.spells, sortBy);
+      }
 
       // Process each level to create enriched content
       for (const level of spellLevels) {
@@ -197,6 +203,166 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         }
       }
     }
+  }
+
+  /**
+   * Fetch spell data with caching
+   * @param {Set<string>} spellUuids - Set of spell UUIDs
+   * @param {number} maxSpellLevel - Maximum spell level to include
+   * @returns {Promise<Array>} - Array of spell documents
+   * @private
+   */
+  async _fetchSpellDataWithCache(spellUuids, maxSpellLevel) {
+    // Create a cache key based on actor ID and spell list
+    const cacheKey = `${this.actor.id}-${maxSpellLevel}`;
+
+    // Check if we have cached data for this actor
+    const cachedData = MODULE.CACHE.spellData[cacheKey];
+    const cacheTime = MODULE.CACHE.spellDataTime[cacheKey] || 0;
+
+    // Use cache if available and less than 5 minutes old
+    if (cachedData && Date.now() - cacheTime < 300000) {
+      log(3, `Using cached spell data for ${this.actor.name} (${cachedData.length} spells)`);
+      return cachedData;
+    }
+
+    // Otherwise fetch fresh data
+    log(3, `Fetching fresh spell data for ${this.actor.name}`);
+    const data = await fetchSpellDocuments(spellUuids, maxSpellLevel);
+
+    // Cache the results
+    MODULE.CACHE.spellData[cacheKey] = data;
+    MODULE.CACHE.spellDataTime[cacheKey] = Date.now();
+
+    return data;
+  }
+
+  /**
+   * Get the current filter state from form inputs
+   * @returns {Object} The current filter state
+   * @private
+   */
+  _getFilterState() {
+    if (!this.element) {
+      return {
+        name: '',
+        level: '',
+        school: '',
+        prepared: false,
+        ritual: false,
+        sortBy: 'level'
+      };
+    }
+
+    return {
+      name: this.element.querySelector('[name="filter-name"]')?.value || '',
+      level: this.element.querySelector('[name="filter-level"]')?.value || '',
+      school: this.element.querySelector('[name="filter-school"]')?.value || '',
+      prepared: this.element.querySelector('[name="filter-prepared"]')?.checked || false,
+      ritual: this.element.querySelector('[name="filter-ritual"]')?.checked || false,
+      sortBy: this.element.querySelector('[name="sort-by"]')?.value || 'level'
+    };
+  }
+
+  /**
+   * @override
+   */
+  _activateListeners(html) {
+    super._activateListeners?.(html);
+
+    // Add filter inputs
+    const filterInputs = html.find('.spell-filters input, .spell-filters select');
+    if (filterInputs.length) {
+      filterInputs.on('change input', this._onFilterChange.bind(this));
+    }
+  }
+
+  /**
+   * Handle filter changes
+   * @param {Event} event The change event
+   * @private
+   */
+  _onFilterChange(event) {
+    // If this is the sort selector, re-sort the list
+    if (event.target.name === 'sort-by') {
+      this._applySorting(event.target.value);
+    }
+
+    // Continue with existing filter logic...
+  }
+
+  /**
+   * Apply sorting to the current spell lists
+   * @param {string} sortBy Sorting criteria
+   * @private
+   */
+  _applySorting(sortBy) {
+    const levelContainers = this.element.querySelectorAll('.spell-level');
+
+    for (const levelContainer of levelContainers) {
+      const list = levelContainer.querySelector('.spell-list');
+      if (!list) continue;
+
+      const items = Array.from(list.children);
+
+      items.sort((a, b) => {
+        switch (sortBy) {
+          case 'name':
+            return a.querySelector('.spell-name').textContent.localeCompare(b.querySelector('.spell-name').textContent);
+
+          case 'school':
+            const schoolA = a.querySelector('.spell-details')?.textContent || '';
+            const schoolB = b.querySelector('.spell-details')?.textContent || '';
+            return schoolA.localeCompare(schoolB) || a.querySelector('.spell-name').textContent.localeCompare(b.querySelector('.spell-name').textContent);
+
+          case 'prepared':
+            const aPrepared = a.classList.contains('prepared-spell') ? 0 : 1;
+            const bPrepared = b.classList.contains('prepared-spell') ? 0 : 1;
+            return aPrepared - bPrepared || a.querySelector('.spell-name').textContent.localeCompare(b.querySelector('.spell-name').textContent);
+
+          default:
+            return 0; // Keep current order
+        }
+      });
+
+      // Re-append the sorted items
+      for (const item of items) {
+        list.appendChild(item);
+      }
+    }
+  }
+
+  /**
+   * Sort spell list by specified criteria
+   * @param {Array} spells Array of spells to sort
+   * @param {string} sortBy Sorting criteria
+   * @returns {Array} Sorted array of spells
+   * @private
+   */
+  _sortSpells(spells, sortBy) {
+    return [...spells].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+
+        case 'school':
+          const schoolA = a.system.school || '';
+          const schoolB = b.system.school || '';
+          return schoolA.localeCompare(schoolB) || a.name.localeCompare(b.name);
+
+        case 'prepared':
+          // Sort prepared spells first, then by name
+          const prepA = a.preparation.prepared ? 0 : 1;
+          const prepB = b.preparation.prepared ? 0 : 1;
+          return prepA - prepB || a.name.localeCompare(b.name);
+
+        case 'level':
+        default:
+          // Level sorting is handled by organizeSpellsByLevel,
+          // so we just sort by name within each level
+          return a.name.localeCompare(b.name);
+      }
+    });
   }
 
   /* -------------------------------------------- */

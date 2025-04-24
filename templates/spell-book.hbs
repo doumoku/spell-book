@@ -1,6 +1,52 @@
 <div class="spell-book-container">
 	<section class="spell-book-content">
 		{{#if spellLevels.length}}
+			<div class="spell-filters">
+				<div class="filter-group">
+					<input type="text" name="filter-name" placeholder="{{localize 'SPELLBOOK.Filters.SearchPlaceholder'}}"
+						value="{{filters.name}}">
+					<select name="filter-level">
+						<option value="">{{localize 'SPELLBOOK.Filters.AllLevels'}}</option>
+						{{#each spellLevels as |level|}}
+							<option value="{{level.level}}" {{#if (eq ../filters.level level.level)}}selected{{/if}}>
+								{{level.levelName}}
+							</option>
+						{{/each}}
+					</select>
+					<select name="filter-school">
+						<option value="">{{localize 'SPELLBOOK.Filters.AllSchools'}}</option>
+						{{#each spellSchools as |schoolName schoolKey|}}
+							<option value="{{schoolKey}}" {{#if (eq ../filters.school schoolKey)}}selected{{/if}}>
+								{{schoolName.label}}
+							</option>
+						{{/each}}
+					</select>
+					<select name="sort-by">
+						<option value="level" {{#if (eq filters.sortBy 'level')}}selected{{/if}}>
+							{{localize 'SPELLBOOK.Sort.ByLevel'}}
+						</option>
+						<option value="name" {{#if (eq filters.sortBy 'name')}}selected{{/if}}>
+							{{localize 'SPELLBOOK.Sort.ByName'}}
+						</option>
+						<option value="school" {{#if (eq filters.sortBy 'school')}}selected{{/if}}>
+							{{localize 'SPELLBOOK.Sort.BySchool'}}
+						</option>
+						<option value="prepared" {{#if (eq filters.sortBy 'prepared')}}selected{{/if}}>
+							{{localize 'SPELLBOOK.Sort.ByPrepared'}}
+						</option>
+					</select>
+				</div>
+				<div class="filter-toggles">
+					<label>
+						<input type="checkbox" name="filter-prepared" {{#if filters.prepared}}checked{{/if}}>
+						{{localize 'SPELLBOOK.Filters.PreparedOnly'}}
+					</label>
+					<label>
+						<input type="checkbox" name="filter-ritual" {{#if filters.ritual}}checked{{/if}}>
+						{{localize 'SPELLBOOK.Filters.RitualOnly'}}
+					</label>
+				</div>
+			</div>
 			{{#each spellLevels as |levelData|}}
 				<div class="spell-level">
 					<h3 class="spell-level-heading">{{levelData.levelName}}</h3>

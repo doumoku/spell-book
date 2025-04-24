@@ -162,6 +162,74 @@
 }
 
 /* ----------------------------------------- */
+/* Sort and Filter Elements                  */
+/* ----------------------------------------- */
+/* Add to spell-book.css */
+.spell-book .spell-filters {
+  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border-light);
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.spell-book .filter-group {
+  gap: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.spell-book .filter-group input[type='text'] {
+  flex: 1;
+  min-width: 150px;
+}
+
+.spell-book .filter-group select {
+  min-width: 120px;
+}
+
+.spell-book .filter-toggles {
+  gap: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.spell-book .filter-toggles label {
+  gap: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.spell-book .no-filter-results {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--color-border-light);
+  border-radius: 3px;
+  color: var(--color-text-dark-secondary);
+  font-style: italic;
+  text-align: center;
+}
+
+.spell-book.loading .spell-book-content {
+  position: relative;
+}
+
+.spell-book.loading .spell-book-content::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  content: '';
+  background: rgba(0, 0, 0, 0.1) url('../../../icons/svg/wait.svg') no-repeat center center;
+  background-size: 50px;
+}
+
+/* ----------------------------------------- */
 /* Preparation Status Elements               */
 /* ----------------------------------------- */
 .spell-book .spell-preparation {
