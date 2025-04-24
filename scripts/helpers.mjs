@@ -351,25 +351,33 @@ export function organizeSpellsByLevel(spellItems, actor) {
  * @returns {string} - Formatted spell details string
  */
 export function formatSpellDetails(spell) {
-  // Get component abbreviations and icons
   const components = [];
+  const details = [];
 
   if (spell.labels.components?.all) {
     for (const c of spell.labels.components.all) {
-      if (c.icon) {
-        components.push(`<span aria-label="${c.abbr}"><dnd5e-icon src="${c.icon}"></dnd5e-icon></span>`);
-      } else {
-        components.push(c.abbr);
-      }
+      components.push(c.abbr);
     }
   }
 
   // Format components with commas between them
-  const componentsStr = components.join(', ');
+  const componentsStr = components.length > 0 ? components.join(', ') : '';
 
-  // Add activation and school
-  const details = [componentsStr, spell.labels.activation, spell.labels.school].filter(Boolean); // Remove any undefined or null values
+  // Add components if there are any
+  if (componentsStr) {
+    details.push(componentsStr);
+  }
+
+  // Add activation
+  if (spell.labels.activation) {
+    details.push(spell.labels.activation);
+  }
+
+  // Add school
+  if (spell.labels.school) {
+    details.push(spell.labels.school);
+  }
 
   // Join with bullet points
-  return details.join(' • ');
+  return details.filter(Boolean).join(' • ');
 }

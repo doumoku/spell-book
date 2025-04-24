@@ -27,16 +27,14 @@
 /* ----------------------------------------- */
 /* Layout and Structure                      */
 /* ----------------------------------------- */
+
+.application.spell-book {
+  max-height: calc(100vh - 150px);
+}
 .spell-book .spell-book-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.spell-book .spell-book-header {
-  padding: 10px;
-  border-bottom: 1px solid var(--color-border-light);
-  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .spell-book .spell-book-content {
@@ -77,7 +75,10 @@
   display: flex;
   align-items: center;
   padding: 5px;
-  border-bottom: 1px solid var(--color-border-light-secondary);
+  border-bottom: 1px solid #c9c7b82a;
+}
+.theme-light .spell-book .spell-item {
+  border-bottom: 1px solid #5a5a5a5e;
 }
 
 .spell-book .spell-item.owned-spell {
@@ -104,10 +105,14 @@
   display: flex;
   align-items: center;
   margin-right: 10px;
-  color: var(--color-text-dark-secondary);
+  color: #bababa;
   font-style: italic;
   font-size: var(--font-size-14);
   line-height: 1.5;
+}
+
+.theme-light .spell-book .spell-details {
+  color: var(--color-text-primary);
 }
 
 .spell-book .spell-details .tags {
@@ -165,7 +170,7 @@
   margin-left: 5px;
   padding: 0 5px;
   border-radius: 3px;
-  color: var(--color-text-dark-secondary);
+  color: #bababa;
   font-weight: normal;
   font-size: 0.8em;
   background-color: var(--color-border-light);
@@ -207,8 +212,7 @@
 }
 
 .spell-book .spell-name .content-link i {
-  font-weight: 900 !important;
-  font-family: 'Font Awesome 6 Pro' !important;
+  color: inherit;
 }
 
 .spell-book .spell-name .content-link i::before {
@@ -227,7 +231,7 @@
 .spell-book .property-icon {
   width: 1em;
   height: 1em;
-  color: var(--color-text-dark-secondary);
+  color: #bababa;
   font-style: italic;
   vertical-align: middle;
   background: none;

@@ -14,8 +14,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     title: 'Spell Book',
     classes: ['spell-book'],
     position: {
-      height: 600,
-      width: 800
+      height: '600',
+      width: '600'
     },
     window: {
       icon: 'fa-solid fa-hat-wizard',
@@ -26,7 +26,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @override */
   static PARTS = {
-    form: { template: `modules/${MODULE.ID}/templates/spell-book.hbs` }
+    // header: { template: '' },
+    form: { template: `modules/${MODULE.ID}/templates/spell-book.hbs` },
+    footer: { template: 'templates/generic/form-footer.hbs' }
   };
 
   /* -------------------------------------------- */
@@ -38,6 +40,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @type {Actor5e}
    */
   actor = null;
+
+  get title() {
+    return `${this.actor.name}'s Spell Book`;
+  }
 
   /* -------------------------------------------- */
   /*  Constructor                                 */
@@ -64,7 +70,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const context = {
       actor: this.actor,
       spellLevels: [],
-      className: ''
+      className: '',
+      buttons: [
+        { type: 'submit', icon: 'fa-solid fa-save', label: 'SETTINGS.Save' },
+        { type: 'reset', action: 'reset', icon: 'fa-solid fa-undo', label: 'SETTINGS.Reset' }
+      ]
     };
 
     try {
