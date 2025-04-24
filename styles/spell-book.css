@@ -49,8 +49,10 @@
 .spell-book .spell-book-container {
   display: flex;
   position: relative;
+  position: relative;
   flex: 1;
   flex-direction: row;
+  padding-bottom: 0;
   overflow: hidden;
 }
 
@@ -113,16 +115,43 @@
 }
 
 .spell-book .collapsed-footer {
+  z-index: 10;
   position: absolute;
   right: 0;
   bottom: 0;
   left: 0;
-  margin-top: 0;
-  padding: 10px;
-  border-top: 1px solid var(--color-border-light);
-  background-color: var(--color-bg);
-  transition: transform 0.3s ease;
-  transform: translateX(0);
+  height: auto;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); /* Add slight shadow for separation */
+}
+
+/* Make the footer content display horizontally */
+.spell-book .collapsed-footer .spell-prep-tracking {
+  margin-bottom: 4px;
+  font-size: var(--font-size-12);
+}
+
+.spell-book .collapsed-footer .footer-buttons {
+  gap: 8px;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+/* Make the buttons more compact */
+.spell-book .collapsed-footer .footer-buttons button {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: var(--font-size-12);
+  white-space: nowrap;
+}
+
+/* Ensure content area doesn't overlap with the footer */
+.spell-book.sidebar-collapsed .spell-book-content {
+  position: relative;
+  height: 100%;
+  margin-bottom: -50px;
+  padding-bottom: 50px;
+  overflow-y: auto;
 }
 
 .spell-book .collapsed-footer.hidden {
@@ -200,10 +229,11 @@
 }
 
 .spell-book .spell-name {
-  flex: 1;
-  min-width: 100px;
+  flex: 0 1 auto;
+  min-width: unset;
+  max-width: 50%;
   margin-right: 8px;
-  overflow: hidden;
+  overflow: visible;
   font-weight: bold;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -219,10 +249,9 @@
 /* ----------------------------------------- */
 .spell-book .spell-details {
   display: flex;
-  flex: 2;
+  flex: 1 1 auto;
   justify-content: flex-end;
   align-items: center;
-  width: auto;
   margin-right: 10px;
   overflow: hidden;
   color: #bababa;
@@ -242,6 +271,7 @@
   gap: 0.25rem;
   display: flex;
   align-items: center;
+  padding-right: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -510,5 +540,32 @@
 @media (max-width: 550px) {
   .spell-book .spell-details {
     flex: 0.5;
+  }
+}
+
+/* Media queries to control which element gets ellipses at different widths */
+@media (max-width: 750px) {
+  .spell-book .spell-details {
+    max-width: 40%; /* Limit width first */
+  }
+}
+
+@media (max-width: 650px) {
+  .spell-book .spell-details {
+    max-width: 30%; /* Shrink more */
+  }
+
+  .spell-book .spell-name {
+    max-width: 60%; /* Keep name wider */
+  }
+}
+
+@media (max-width: 550px) {
+  .spell-book .spell-details {
+    max-width: 25%; /* Significantly restrict */
+  }
+
+  .spell-book .spell-name {
+    max-width: 65%; /* Name gets priority */
   }
 }
