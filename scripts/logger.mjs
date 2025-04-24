@@ -28,19 +28,19 @@ export function log(level, ...args) {
     args.unshift(callerInfo);
   }
 
-  // const now = new Date();
-  // const logEntry = {
-  //   type:
-  //     level === 1 ? 'error'
-  //     : level === 2 ? 'warn'
-  //     : 'debug',
-  //   timestamp: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`,
-  //   level,
-  //   content: args
-  // };
+  const now = new Date();
+  const logEntry = {
+    type:
+      level === 1 ? 'error'
+      : level === 2 ? 'warn'
+      : 'debug',
+    timestamp: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`,
+    level,
+    content: args
+  };
 
-  // if (!window.console_logs) window.console_logs = [];
-  // window.console_logs.push(logEntry);
+  if (!window.console_logs) window.console_logs = [];
+  window.console_logs.push(logEntry);
 
   if (MODULE.LOG_LEVEL > 0 && level <= MODULE.LOG_LEVEL) {
     switch (level) {

@@ -1,5 +1,6 @@
 import { MODULE } from '../constants.mjs';
 import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, formatSpellDetails, getClassSpellList, organizeSpellsByLevel, saveActorPreparedSpells } from '../helpers.mjs';
+import { log } from '../logger.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -31,8 +32,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @override */
   static PARTS = {
-    form: { template: `modules/${MODULE.ID}/templates/spell-book.hbs` },
-    footer: { template: `modules/${MODULE.ID}/templates/spell-book-footer.hbs` }
+    form: { template: MODULE.TEMPLATES.SPELL_BOOK_CONTENT },
+    footer: { template: MODULE.TEMPLATES.SPELL_BOOK_FOOTER }
   };
 
   /* -------------------------------------------- */
@@ -103,12 +104,12 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Determine max spell level based on actor's level and spell slot table
       const actorLevel = this.actor.system.details.level;
       const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
-      log(1, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
+      log(3, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
 
       // Get the actual spell items
-      log(1, `Starting to fetch ${spellUuids.size} spell items`);
+      log(3, `Starting to fetch ${spellUuids.size} spell items`);
       const spellItems = await fetchSpellDocuments(spellUuids, maxSpellLevel);
-      log(1, `Successfully fetched ${spellItems.length} spell items`);
+      log(3, `Successfully fetched ${spellItems.length} spell items`);
 
       // Organize spells by level
       const spellLevels = organizeSpellsByLevel(spellItems, this.actor);
@@ -118,7 +119,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const spell of level.spells) {
           // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid;
-          log(1, `Using UUID for enrichment: ${uuid}`);
+          log(3, `Using UUID for enrichment: ${uuid}`);
 
           // Enrich the name with the UUID link
           spell.enrichedName = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
@@ -156,7 +157,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         maximum: maxPrepared
       };
 
-      log(1, 'Final context:', {
+      log(3, 'Final context:', {
         className: context.className,
         spellLevelCount: context.spellLevels.length,
         totalSpells: context.spellLevels.reduce((count, level) => count + level.spells.length, 0),
@@ -178,11 +179,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _onRender(context, options) {
     super._onRender?.(context, options);
-
-    // Add actor ID to the form for use in form handler
-    if (this.element && this.actor) {
-      this.element.dataset.actorId = this.actor.id;
-    }
 
     // Update the preparation count in the footer
     if (context.spellPreparation) {
@@ -208,6 +204,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<Actor|null>} - The updated actor or null if failed
    */
   static async formHandler(event, form, formData) {
+    log(1, 'FormData Collected:', { event: event, form: form, formData: formData.object });
     try {
       const actor = this.actor;
       if (!actor) {
