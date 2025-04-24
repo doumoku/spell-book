@@ -26,16 +26,9 @@ export const MODULE = {
    * @type {Object}
    */
   TEMPLATES: {
-    /**
-     * Path to the main spell book content template.
-     * @type {string}
-     */
     SPELL_BOOK_CONTENT: 'modules/spell-book/templates/spell-book.hbs',
-
-    /**
-     * Path to the spell book footer template.
-     * @type {string}
-     */
+    SPELL_BOOK_SIDEBAR: 'modules/spell-book/templates/spell-book-sidebar.hbs',
+    SPELL_BOOK_LIST: 'modules/spell-book/templates/spell-book-list.hbs',
     SPELL_BOOK_FOOTER: 'modules/spell-book/templates/spell-book-footer.hbs'
   },
 
@@ -51,16 +44,7 @@ export const MODULE = {
    * @type {Object}
    */
   SPELLCASTING_CLASSES: {
-    /**
-     * Classes that use known spells casting mechanics.
-     * @type {Array<string>}
-     */
     KNOWN: [],
-
-    /**
-     * Classes that use pact magic casting mechanics.
-     * @type {Array<string>}
-     */
     PACT: []
   },
 

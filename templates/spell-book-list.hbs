@@ -1,0 +1,45 @@
+<div class="spells-container">
+	{{#if spellLevels.length}}
+		{{#each spellLevels as |levelData|}}
+			<div class="spell-level">
+				<h3 class="spell-level-heading">{{levelData.levelName}}</h3>
+				<ul class="spell-list">
+					{{#each levelData.spells as |spell|}}
+						<li
+							class="spell-item{{#if spell.preparation.isOwned}} owned-spell{{/if}}{{#if spell.preparation.prepared}} prepared-spell{{/if}}"
+							data-spell-uuid="{{spell.compendiumUuid}}" data-spell-level="{{../level}}"
+							data-spell-school="{{spell.system.school}}">
+							<div class="spell-name">
+								{{{spell.enrichedName}}}
+								{{#if spell.preparation.alwaysPrepared}}
+									<span class="always-prepared-tag"
+										data-tooltip="{{localize 'SPELLBOOK.Preparation.AlwaysPreparedTooltip'}}{{#if spell.preparation.sourceItem}} {{localize 'SPELLBOOK.Preparation.FromSource'}} {{spell.preparation.sourceItem.name}}{{/if}}">
+										{{localize 'SPELLBOOK.Preparation.Always'}}
+									</span>
+								{{else if spell.preparation.preparationMode}}
+									<span class="preparation-mode-tag">{{spell.preparation.preparationMode}}</span>
+								{{/if}}
+							</div>
+							<div class="spell-details">
+								<span class="tags">{{{spell.formattedDetails}}}</span>
+							</div>
+							<div class="spell-preparation">
+								<input type="checkbox" name="spellPreparation.{{spell.compendiumUuid}}" value="1"
+									data-uuid="{{spell.compendiumUuid}}" data-name="{{spell.name}}"
+									data-ritual="{{spell.system.components.ritual}}" data-was-prepared="{{spell.preparation.prepared}}"
+									{{#if spell.preparation.prepared}}checked{{/if}} {{#if spell.preparation.disabled}}disabled{{/if}} />
+							</div>
+						</li>
+					{{/each}}
+				</ul>
+			</div>
+		{{/each}}
+	{{else}}
+		<p class="no-spells">{{localize 'SPELLBOOK.Errors.NoSpellsFound' actor=actor.name}}</p>
+	{{/if}}
+
+	<!-- No results message (initially hidden) -->
+	<div class="no-filter-results" style="display: none;">
+		{{localize 'SPELLBOOK.Filters.NoResults'}}
+	</div>
+</div>

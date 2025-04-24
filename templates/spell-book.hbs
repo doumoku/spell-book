@@ -1,87 +1,24 @@
 <div class="spell-book-container">
-	<section class="spell-book-content">
-		{{#if spellLevels.length}}
-			<div class="spell-filters">
-				<div class="filter-group">
-					<input type="text" name="filter-name" placeholder="{{localize 'SPELLBOOK.Filters.SearchPlaceholder'}}"
-						value="{{filters.name}}">
-					<select name="filter-level">
-						<option value="">{{localize 'SPELLBOOK.Filters.AllLevels'}}</option>
-						{{#each spellLevels as |level|}}
-							<option value="{{level.level}}" {{#if (eq ../filters.level level.level)}}selected{{/if}}>
-								{{level.levelName}}
-							</option>
-						{{/each}}
-					</select>
-					<select name="filter-school">
-						<option value="">{{localize 'SPELLBOOK.Filters.AllSchools'}}</option>
-						{{#each spellSchools as |schoolName schoolKey|}}
-							<option value="{{schoolKey}}" {{#if (eq ../filters.school schoolKey)}}selected{{/if}}>
-								{{schoolName.label}}
-							</option>
-						{{/each}}
-					</select>
-					<select name="sort-by">
-						<option value="level" {{#if (eq filters.sortBy 'level')}}selected{{/if}}>
-							{{localize 'SPELLBOOK.Sort.ByLevel'}}
-						</option>
-						<option value="name" {{#if (eq filters.sortBy 'name')}}selected{{/if}}>
-							{{localize 'SPELLBOOK.Sort.ByName'}}
-						</option>
-						<option value="school" {{#if (eq filters.sortBy 'school')}}selected{{/if}}>
-							{{localize 'SPELLBOOK.Sort.BySchool'}}
-						</option>
-						<option value="prepared" {{#if (eq filters.sortBy 'prepared')}}selected{{/if}}>
-							{{localize 'SPELLBOOK.Sort.ByPrepared'}}
-						</option>
-					</select>
-				</div>
-				<div class="filter-toggles">
-					<label>
-						<input type="checkbox" name="filter-prepared" {{#if filters.prepared}}checked{{/if}}>
-						{{localize 'SPELLBOOK.Filters.PreparedOnly'}}
-					</label>
-					<label>
-						<input type="checkbox" name="filter-ritual" {{#if filters.ritual}}checked{{/if}}>
-						{{localize 'SPELLBOOK.Filters.RitualOnly'}}
-					</label>
-				</div>
-			</div>
-			{{#each spellLevels as |levelData|}}
-				<div class="spell-level">
-					<h3 class="spell-level-heading">{{levelData.levelName}}</h3>
-					<ul class="spell-list">
-						{{#each levelData.spells as |spell|}}
-							<li
-								class="spell-item{{#if spell.preparation.isOwned}} owned-spell{{/if}}{{#if spell.preparation.prepared}} prepared-spell{{/if}}"
-								data-spell-uuid="{{spell.compendiumUuid}}">
-								<div class="spell-name">
-									{{{spell.enrichedName}}}
-									{{#if spell.preparation.alwaysPrepared}}
-										<span class="always-prepared-tag"
-											data-tooltip="{{localize 'SPELLBOOK.Preparation.AlwaysPreparedTooltip'}}{{#if spell.preparation.sourceItem}} {{localize 'SPELLBOOK.Preparation.FromSource'}} {{spell.preparation.sourceItem.name}}{{/if}}">
-											{{localize 'SPELLBOOK.Preparation.Always'}}
-										</span>
-									{{else if spell.preparation.preparationMode}}
-										<span class="preparation-mode-tag">{{spell.preparation.preparationMode}}</span>
-									{{/if}}
-								</div>
-								<div class="spell-details">
-									<span class="tags">{{{spell.formattedDetails}}}</span>
-								</div>
-								<div class="spell-preparation">
-									<input type="checkbox" name="spellPreparation.{{spell.compendiumUuid}}" value="1"
-										data-uuid="{{spell.compendiumUuid}}" data-name="{{spell.name}}"
-										data-was-prepared="{{spell.preparation.prepared}}" {{#if spell.preparation.prepared}}checked{{/if}}
-										{{#if spell.preparation.disabled}}disabled{{/if}} />
-								</div>
-							</li>
-						{{/each}}
-					</ul>
-				</div>
-			{{/each}}
-		{{else}}
-			<p class="no-spells">{{localize 'SPELLBOOK.Errors.NoSpellsFound' actor=actor.name}}</p>
-		{{/if}}
-	</section>
+  <!-- Sidebar toggle button -->
+  <div class="sidebar-toggle">
+    <button type="button" data-action="toggleSidebar">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+  </div>
+
+  <!-- Sidebar section -->
+  <div class="sidebar">
+    {{> "modules/spell-book/templates/spell-book-sidebar.hbs"}}
+
+    <!-- The footer will be rendered here when sidebar is open -->
+    <div class="sidebar-footer-container"></div>
+  </div>
+
+  <!-- Main content -->
+  <section class="spell-book-content">
+    {{> "modules/spell-book/templates/spell-book-list.hbs"}}
+  </section>
+
+  <!-- Container for footer buttons when sidebar is collapsed -->
+  <div class="collapsed-footer hidden"></div>
 </div>
