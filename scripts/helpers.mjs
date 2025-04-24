@@ -1,4 +1,5 @@
 import { MODULE } from './constants.mjs';
+import { log } from './logger.mjs';
 
 /**
  * Discover all spellcasting classes by examining compendium content
@@ -161,7 +162,7 @@ export async function getClassSpellList(className, classUuid) {
  * @returns {Promise<void>}
  */
 export async function saveActorPreparedSpells(actor, newPreparedUuids) {
-  console.log(`${MODULE.ID} | Saving prepared spells:`, newPreparedUuids);
+  log(1, 'Saving prepared spells:, newPreparedUuids');
 
   // Get previously prepared spells
   const previousPreparedUuids = actor.getFlag(MODULE.ID, MODULE.FLAGS.PREPARED_SPELLS) || [];
@@ -423,7 +424,7 @@ export function organizeSpellsByLevel(spellItems, actor) {
     .sort((a, b) => Number(a[0]) - Number(b[0]))
     .map(([level, spells]) => ({
       level: level,
-      levelName: level === '0' ? 'Cantrips' : `Level ${level} Spells`,
+      levelName: level === '0' ? game.i18n.localize('SPELLBOOK.SpellLevel.Cantrips') : game.i18n.format('SPELLBOOK.SpellLevel.LevelSpells', { level: level }),
       spells: spells
     }));
 

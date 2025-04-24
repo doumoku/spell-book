@@ -37,8 +37,8 @@ export function registerHooks() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'unbutton spell-book-button interface-only';
-    button.setAttribute('data-tooltip', 'Spell Book');
-    button.setAttribute('aria-label', 'Open Spell Book');
+    button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.OpenSpellBook'));
+    button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.OpenSpellBook'));
     button.innerHTML = '<i class="fas fa-hat-wizard"></i>';
 
     // Add click event listener

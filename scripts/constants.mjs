@@ -14,6 +14,8 @@ export const MODULE = {
     SPELL_FILTER: ''
   },
 
+  LOG_LEVEL: 0,
+
   // This gets populated during initialization
   SPELLCASTING_CLASSES: {
     KNOWN: [],

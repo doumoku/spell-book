@@ -13,8 +13,8 @@
 									{{{spell.enrichedName}}}
 									{{#if spell.preparation.alwaysPrepared}}
 										<span class="always-prepared-tag"
-											data-tooltip="Always prepared {{#if spell.preparation.sourceItem}}from {{spell.preparation.sourceItem.name}}{{/if}}">
-											Always
+											data-tooltip="{{localize 'SPELLBOOK.Preparation.AlwaysPreparedTooltip'}}{{#if spell.preparation.sourceItem}} {{localize 'SPELLBOOK.Preparation.FromSource'}} {{spell.preparation.sourceItem.name}}{{/if}}">
+											{{localize 'SPELLBOOK.Preparation.Always'}}
 										</span>
 									{{else if spell.preparation.preparationMode}}
 										<span class="preparation-mode-tag">{{spell.preparation.preparationMode}}</span>
@@ -34,7 +34,7 @@
 				</div>
 			{{/each}}
 		{{else}}
-			<p class="no-spells">No spells found for {{actor.name}}'s class.</p>
+			<p class="no-spells">{{localize 'SPELLBOOK.Errors.NoSpellsFound' actor=actor.name}}</p>
 		{{/if}}
 	</section>
 </div>

@@ -2,6 +2,7 @@ import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { MODULE } from './constants.mjs';
 import { discoverSpellcastingClasses } from './helpers.mjs';
 import { registerHooks } from './hooks.mjs';
+import { registerSettings } from './settings.mjs';
 
 Hooks.once('init', async function () {
   console.log(`${MODULE.ID} | Initializing ${MODULE.NAME} module`);
@@ -11,6 +12,9 @@ Hooks.once('init', async function () {
 
   // Register module hooks
   registerHooks();
+
+  // Register module settings
+  registerSettings();
 
   // Expose the PlayerSpellBook class for other modules
   MODULE.PlayerSpellBook = PlayerSpellBook;

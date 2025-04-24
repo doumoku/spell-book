@@ -11,7 +11,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
   static DEFAULT_OPTIONS = {
     id: `player-${MODULE.ID}`,
-    title: 'Spell Book',
     tag: 'form',
     form: {
       handler: PlayerSpellBook.formHandler,
@@ -47,7 +46,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   actor = null;
 
   get title() {
-    return `${this.actor.name}'s Spell Book`;
+    return game.i18n.format('SPELLBOOK.Application.ActorTitle', { name: this.actor.name });
   }
 
   /* -------------------------------------------- */
@@ -189,7 +188,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     if (context.spellPreparation) {
       const countDisplay = this.element.querySelector('.spell-prep-tracking');
       if (countDisplay) {
-        countDisplay.textContent = `${context.spellPreparation.current}/${context.spellPreparation.maximum} Prepared Spells`;
+        countDisplay.textContent = game.i18n.format('SPELLBOOK.Footer.PreparedCount', {
+          current: context.spellPreparation.current,
+          maximum: context.spellPreparation.maximum
+        });
       }
     }
   }
@@ -226,7 +228,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Save prepared spells to actor
       await saveActorPreparedSpells(actor, preparedSpells);
 
-      ui.notifications.info(`${actor.name}'s prepared spells have been updated.`);
+      ui.notifications.info(game.i18n.format('SPELLBOOK.Notifications.SpellsUpdated', { name: actor.name }));
 
       // Re-render any open character sheets
       if (actor.sheet.rendered) {
@@ -236,7 +238,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       return actor;
     } catch (error) {
       console.error(`${MODULE.ID} | Error handling form submission:`, error);
-      ui.notifications.error('Failed to update prepared spells.');
+      ui.notifications.error(game.i18n.localize('SPELLBOOK.Notifications.UpdateFailed'));
       return null;
     }
   }
