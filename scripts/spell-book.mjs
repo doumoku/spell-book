@@ -5,7 +5,7 @@ import { registerHooks } from './hooks.mjs';
 import { registerSettings } from './settings.mjs';
 
 Hooks.once('init', async function () {
-  console.log(`${MODULE.ID} | Initializing ${MODULE.NAME} module`);
+  log(1, `Initializing ${MODULE.NAME} module`);
 
   CONFIG.JournalEntry.compendiumIndexFields = ['_id', 'name', 'pages', 'type', 'uuid'];
   CONFIG.Item.compendiumIndexFields = ['system.spellcasting.progression', 'system.spellcasting.preparation.mode'];
@@ -25,5 +25,5 @@ Hooks.once('ready', async function () {
   await discoverSpellcastingClasses();
 
   // Register the module's compendium pack for use
-  console.log(`${MODULE.ID} | Module ready with compendium pack: custom-spell-lists`);
+  log(1, 'Module ready with compendium pack: custom-spell-lists');
 });

@@ -6,7 +6,7 @@ import { log } from './logger.mjs';
  * @returns {Promise<void>}
  */
 export async function discoverSpellcastingClasses() {
-  console.log(`${MODULE.ID} | Discovering spellcasting classes...`);
+  log(1, 'Discovering spellcasting classes...');
 
   // Reset the arrays
   MODULE.SPELLCASTING_CLASSES.KNOWN = [];
@@ -52,15 +52,15 @@ export async function discoverSpellcastingClasses() {
             MODULE.SPELLCASTING_CLASSES.KNOWN.push(classIdentifier);
           }
         } catch (error) {
-          console.warn(`${MODULE.ID} | Error processing class ${entry.name}:`, error);
+          log(2, `Error processing class ${entry.name}:`, error);
         }
       }
     } catch (error) {
-      console.warn(`${MODULE.ID} | Error processing pack ${pack.metadata.label}:`, error);
+      log(2, `Error processing pack ${pack.metadata.label}:`, error);
     }
   }
 
-  console.log(`${MODULE.ID} | Discovered spellcasting classes:`, {
+  log(1, 'Discovered spellcasting classes:', {
     known: MODULE.SPELLCASTING_CLASSES.KNOWN,
     pact: MODULE.SPELLCASTING_CLASSES.PACT
   });
@@ -82,7 +82,7 @@ export function canCastSpells(actor) {
  * @returns {Promise<Array|null>} - Array of spell UUIDs or null
  */
 export async function getClassSpellList(className, classUuid) {
-  console.log(`${MODULE.ID} | Getting spell list for ${className}`);
+  log(1, `Getting spell list for ${className}`);
 
   // Normalize the class name for comparison
   const normalizedClassName = className.toLowerCase();
@@ -93,9 +93,9 @@ export async function getClassSpellList(className, classUuid) {
     try {
       const classItem = await fromUuid(classUuid);
       sourceCompendium = classItem?._source?._stats?.compendiumSource;
-      console.log(`${MODULE.ID} | Extracted source: ${sourceCompendium}`);
+      log(1, `Extracted source: ${sourceCompendium}`);
     } catch (error) {
-      console.warn(`${MODULE.ID} | Error extracting source from classUuid`);
+      log(2, 'Error extracting source from classUuid');
     }
   }
 
@@ -104,7 +104,7 @@ export async function getClassSpellList(className, classUuid) {
     .filter((p) => p.metadata.type === 'JournalEntry')
     .filter((p) => !sourceCompendium || p.metadata.packageName === sourceCompendium.split('.')[1]);
 
-  console.log(`${MODULE.ID} | Searching ${journalPacks.length} journal packs`);
+  log(1, `Searching ${journalPacks.length} journal packs`);
 
   for (const pack of journalPacks) {
     try {
@@ -132,26 +132,26 @@ export async function getClassSpellList(className, classUuid) {
             const isUuidMatch = !sourceCompendium || sourceCompendium.split('.').slice(0, 2).join('.') === journal.uuid.split('.').slice(0, 2).join('.');
 
             if (isNameMatch && isUuidMatch) {
-              console.log(`${MODULE.ID} | Found matching spell list: ${page.name}`);
+              log(1, `Found matching spell list: ${page.name}`);
 
               // Direct check for spells array
               if (page.system.spells.size > 0) {
-                console.log(`${MODULE.ID} | Found ${page.system.spells.size} spells`);
+                log(1, `Found ${page.system.spells.size} spells`);
                 return page.system.spells;
               }
             }
           }
         } catch (innerError) {
-          console.warn(`${MODULE.ID} | Error processing journal ${journalData.name}`);
+          log(2, `Error processing journal ${journalData.name}`);
           continue;
         }
       }
     } catch (error) {
-      console.warn(`${MODULE.ID} | Error processing pack ${pack.metadata.label}`);
+      log(2, `Error processing pack ${pack.metadata.label}`);
     }
   }
 
-  console.log(`${MODULE.ID} | No spell list found for ${className}`);
+  log(1, `No spell list found for ${className}`);
   return null;
 }
 
@@ -206,7 +206,7 @@ export async function saveActorPreparedSpells(actor, newPreparedUuids) {
           toCreate.push(spellData);
         }
       } catch (error) {
-        console.error(`${MODULE.ID} | Error fetching spell ${uuid}:`, error);
+        log(1, `Error fetching spell ${uuid}:`, error);
       }
     }
   }
@@ -231,7 +231,7 @@ export async function saveActorPreparedSpells(actor, newPreparedUuids) {
   }
 
   // 3. Apply all changes
-  console.log(`${MODULE.ID} | Changes:`, {
+  log(1, 'Changes:', {
     create: toCreate.length,
     update: toUpdate.length,
     delete: toDelete.length
@@ -303,7 +303,7 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
         }
       }
     } catch (error) {
-      console.warn(`${MODULE.ID} | Error fetching spell with uuid ${uuid}:`, error);
+      log(2, `Error fetching spell with uuid ${uuid}:`, error);
     }
   }
 
@@ -317,12 +317,12 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
  * @returns {object} - Status information about the spell preparation
  */
 export function getSpellPreparationStatus(actor, spell) {
-  console.log(`${MODULE.ID} | Checking preparation status for spell: ${spell.name}`);
+  log(1, `Checking preparation status for spell: ${spell.name}`);
 
   // First check if the spell is already on the actor
   const actorSpell = actor.items.find((item) => item.type === 'spell' && (item.name === spell.name || item.flags?.core?.sourceId === spell.compendiumUuid));
 
-  console.log(`${MODULE.ID} | Actor has spell:`, !!actorSpell);
+  log(1, 'Actor has spell:', !!actorSpell);
 
   if (!actorSpell) {
     return {
@@ -338,23 +338,23 @@ export function getSpellPreparationStatus(actor, spell) {
   const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
   const alwaysPrepared = preparationMode === 'always';
 
-  console.log(`${MODULE.ID} | Spell preparation mode:`, preparationMode);
-  console.log(`${MODULE.ID} | Always prepared:`, alwaysPrepared);
+  log(1, 'Spell preparation mode:', preparationMode);
+  log(1, 'Always prepared:', alwaysPrepared);
 
   // Find source item for always prepared spells
   let sourceItem = null;
   if (alwaysPrepared) {
     // Check sourceClass as specified
-    console.log(`${MODULE.ID} | Spell sourceClass:`, actorSpell.system.sourceClass);
+    log(1, 'Spell sourceClass:', actorSpell.system.sourceClass);
 
     // Get the source identifier (e.g., "cleric")
     const sourceIdentifier = actorSpell.system.sourceClass;
-    console.log(`${MODULE.ID} | Source identifier:`, sourceIdentifier);
+    log(1, 'Source identifier:', sourceIdentifier);
 
     // Look through relevant actor items to find a match
     if (sourceIdentifier) {
       sourceItem = findSpellSource(actor, sourceIdentifier);
-      console.log(`${MODULE.ID} | Found source item:`, sourceItem?.name);
+      log(1, 'Found source item:', sourceItem?.name);
     }
   }
 
@@ -375,7 +375,7 @@ export function getSpellPreparationStatus(actor, spell) {
  * @returns {object|null} - The source item or null if not found
  */
 export function findSpellSource(actor, sourceIdentifier) {
-  console.log(`${MODULE.ID} | Looking for source: ${sourceIdentifier}`);
+  log(1, `Looking for source: ${sourceIdentifier}`);
 
   // Only look through these item types
   const relevantTypes = ['class', 'subclass', 'race', 'background', 'feat'];
@@ -383,7 +383,7 @@ export function findSpellSource(actor, sourceIdentifier) {
   // Find the first item with a matching identifier
   const sourceItem = actor.items.find((item) => relevantTypes.includes(item.type) && item.system.identifier?.toLowerCase() === sourceIdentifier);
 
-  console.log(`${MODULE.ID} | Source search result:`, sourceItem ? sourceItem.name : 'Not found');
+  log(1, 'Source search result:', sourceItem ? sourceItem.name : 'Not found');
   return sourceItem;
 }
 
@@ -394,7 +394,7 @@ export function findSpellSource(actor, sourceIdentifier) {
  * @returns {Array} - Array of spell levels with formatted data for templates
  */
 export function organizeSpellsByLevel(spellItems, actor) {
-  console.log(`${MODULE.ID} | Organizing ${spellItems.length} spells by level`);
+  log(1, `Organizing ${spellItems.length} spells by level`);
 
   // Organize spells by level
   const spellsByLevel = {};
@@ -409,7 +409,7 @@ export function organizeSpellsByLevel(spellItems, actor) {
 
     // Add preparation status information to each spell
     const prepStatus = getSpellPreparationStatus(actor, spell);
-    console.log(`${MODULE.ID} | Preparation status for ${spell.name}:`, prepStatus);
+    log(1, `Preparation status for ${spell.name}:`, prepStatus);
 
     const spellData = {
       ...spell,
@@ -428,7 +428,7 @@ export function organizeSpellsByLevel(spellItems, actor) {
       spells: spells
     }));
 
-  console.log(`${MODULE.ID} | Final organized spell levels:`, result.length);
+  log(1, 'Final organized spell levels:', result.length);
   return result;
 }
 

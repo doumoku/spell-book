@@ -96,19 +96,19 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Get the spell list for this class
       const spellUuids = await getClassSpellList(className, classUuid);
       if (!spellUuids || !spellUuids.size) {
-        console.log(`${MODULE.ID} | No spells found for class:`, className);
+        log(1, 'No spells found for class:', className);
         return context;
       }
 
       // Determine max spell level based on actor's level and spell slot table
       const actorLevel = this.actor.system.details.level;
       const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
-      console.log(`${MODULE.ID} | Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
+      log(1, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
 
       // Get the actual spell items
-      console.log(`${MODULE.ID} | Starting to fetch ${spellUuids.size} spell items`);
+      log(1, `Starting to fetch ${spellUuids.size} spell items`);
       const spellItems = await fetchSpellDocuments(spellUuids, maxSpellLevel);
-      console.log(`${MODULE.ID} | Successfully fetched ${spellItems.length} spell items`);
+      log(1, `Successfully fetched ${spellItems.length} spell items`);
 
       // Organize spells by level
       const spellLevels = organizeSpellsByLevel(spellItems, this.actor);
@@ -118,7 +118,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const spell of level.spells) {
           // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid;
-          console.log(`${MODULE.ID} | Using UUID for enrichment: ${uuid}`);
+          log(1, `Using UUID for enrichment: ${uuid}`);
 
           // Enrich the name with the UUID link
           spell.enrichedName = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
@@ -156,7 +156,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         maximum: maxPrepared
       };
 
-      console.log(`${MODULE.ID} | Final context:`, {
+      log(1, 'Final context:', {
         className: context.className,
         spellLevelCount: context.spellLevels.length,
         totalSpells: context.spellLevels.reduce((count, level) => count + level.spells.length, 0),
@@ -165,7 +165,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       return context;
     } catch (error) {
-      console.error(`${MODULE.ID} | Error preparing spell book context:`, error);
+      log(1, 'Error preparing spell book context:', error);
       return context;
     }
   }
@@ -208,11 +208,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Promise<Actor|null>} - The updated actor or null if failed
    */
   static async formHandler(event, form, formData) {
-    console.error({ event: event, form: form, formData: formData });
     try {
       const actor = this.actor;
       if (!actor) {
-        console.error(`${MODULE.ID} | No actor found in application`);
+        log(1, 'No actor found in application');
         return null;
       }
 
@@ -237,7 +236,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       return actor;
     } catch (error) {
-      console.error(`${MODULE.ID} | Error handling form submission:`, error);
+      log(1, 'Error handling form submission:', error);
       ui.notifications.error(game.i18n.localize('SPELLBOOK.Notifications.UpdateFailed'));
       return null;
     }
