@@ -129,7 +129,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const spell of level.spells) {
           // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid;
-          log(3, `Using UUID for enrichment: ${uuid}`);
 
           // Enrich the name with the UUID link
           spell.enrichedName = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
@@ -200,7 +199,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Set up text search event listener
       const searchInput = this.element.querySelector('input[name="filter-name"]');
       if (searchInput) {
-        searchInput.addEventListener('input', this._onSearchInput.bind(this));
+        searchInput.addEventListener('input', (event) => {
+          console.log('Search input event triggered', { value: event.target.value });
+          log(1, 'Search input event triggered with value:', event.target.value);
+          this._onSearchInput.bind(this)(event);
+        });
       }
 
       // Update the preparation count in the footer
@@ -484,14 +487,19 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static toggleSidebar(event, form) {
-    const app = this.object;
-    if (!app) return;
+    log(1, 'toggleSidebar action triggered');
 
-    const isCollapsing = !app.element.classList.contains('sidebar-collapsed');
-    app.element.classList.toggle('sidebar-collapsed');
+    const isCollapsing = !this.element.classList.contains('sidebar-collapsed');
+    this.element.classList.toggle('sidebar-collapsed');
+
+    // Rotate the caret icon
+    const caretIcon = event.currentTarget.querySelector('i');
+    if (caretIcon) {
+      caretIcon.style.transform = isCollapsing ? 'rotate(180deg)' : 'rotate(0)';
+    }
 
     // Reposition footer
-    app._positionFooter();
+    this._positionFooter();
 
     // Store user preference
     game.user.setFlag(MODULE.ID, 'sidebarCollapsed', isCollapsing);
@@ -506,10 +514,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static filterSpells(event, form) {
-    const app = this.object;
-    if (!app) return;
-
-    app._applyFilters();
+    log(1, 'filterSpells action triggered');
+    this._applyFilters();
   }
 
   /**
@@ -519,11 +525,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static sortSpells(event, form) {
-    const app = this.object;
-    if (!app) return;
-
+    log(1, 'sortSpells action triggered');
     const sortBy = event.target.value;
-    app._applySorting(sortBy);
+    this._applySorting(sortBy);
   }
 
   /**

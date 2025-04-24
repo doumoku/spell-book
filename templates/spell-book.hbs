@@ -1,13 +1,12 @@
 <div class="spell-book-container">
-  <!-- Sidebar toggle button -->
-  <div class="sidebar-toggle">
-    <button type="button" data-action="toggleSidebar">
-      <i class="fas fa-chevron-left"></i>
+  <!-- Sidebar section with the toggle button embedded -->
+  <div class="sidebar card">
+    <!-- Move the toggle button inside the sidebar div -->
+    <button type="button" class="sidebar-collapser collapser vertical unbutton interface-only"
+      data-action="toggleSidebar" data-tooltip="{{localize 'SPELLBOOK.UI.ToggleSidebar'}}" aria-label="Toggle Sidebar">
+      <i class="fas fa-caret-left"></i>
     </button>
-  </div>
 
-  <!-- Sidebar section -->
-  <div class="sidebar">
     {{> "modules/spell-book/templates/spell-book-sidebar.hbs"}}
 
     <!-- The footer will be rendered here when sidebar is open -->

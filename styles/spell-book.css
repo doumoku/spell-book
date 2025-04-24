@@ -30,19 +30,18 @@
 
 .application.spell-book {
   min-width: 550px;
+  max-width: calc(100vw - 250px);
   min-height: 400px;
   max-height: calc(100vh - 150px);
 }
 
-/* Make the main application container use flexbox */
 .spell-book .window-content {
   display: flex;
   flex-direction: column;
-  padding: 0; /* Remove default padding */
-  overflow: hidden; /* Prevent double scrollbars */
+  padding: 0;
+  overflow: hidden;
 }
 
-/* Main container with sidebar and content */
 .spell-book .spell-book-container {
   display: flex;
   position: relative;
@@ -54,77 +53,84 @@
 /* ----------------------------------------- */
 /* Sidebar and Toggle                        */
 /* ----------------------------------------- */
-
-/* Sidebar with filters and footer */
 .spell-book .sidebar {
+  z-index: 1;
+  transform-style: preserve-3d;
   display: flex;
+  position: relative;
   flex-direction: column;
-  width: 220px;
+  width: 200px;
   border-right: 1px solid var(--color-border-light);
-  overflow-y: auto;
+  box-shadow: 0 0 6px var(--color-shadow-dark);
+  overflow-x: visible;
+  background: #1b1d249d;
   transition:
     width 0.3s ease,
     margin-left 0.3s ease;
 }
 
-/* Position the toggle button outside the sidebar */
-.spell-book .sidebar-toggle {
-  z-index: 10;
+.spell-book .sidebar-collapser {
+  text-align: center;
+  align-items: center;
+  place-content: center;
+  display: grid;
   position: absolute;
-  top: 10px;
-  left: 220px;
-  transition: left 0.3s ease;
-}
-
-.spell-book .sidebar-toggle button {
-  width: 20px;
-  height: 40px;
-  padding: 0;
-  border: 1px solid var(--color-border-light);
-  border-left: none;
-  border-radius: 0 4px 4px 0;
+  top: 0.5rem;
+  right: -16px;
+  width: 16px;
+  height: 32px;
+  border: none;
+  border-color: #1b1d249d;
+  border-radius: 0 3px 3px 0;
   cursor: pointer;
-  background: var(--color-bg);
+  background: #1b1d249d;
+  box-shadow: 0 0 6px var(--color-shadow-dark);
+  transition: all 250ms ease;
+  transform: translateZ(-1px);
 }
 
-.spell-book .sidebar-toggle button:hover {
-  background: var(--color-border-highlight-light);
+.spell-book .sidebar-collapser i {
+  font-size: 12px;
+  margin-left: 6px;
 }
 
-/* Collapsed sidebar state */
-.spell-book.sidebar-collapsed .sidebar {
-  width: 0;
-  margin-left: -220px;
+.spell-book .sidebar-collapser:hover {
+  border-color: var(--dnd5e-color-gold);
+  background: var(--dnd5e-background-card);
 }
 
-.spell-book.sidebar-collapsed .sidebar-toggle {
-  left: 0;
-}
-
-.spell-book.sidebar-collapsed .sidebar-toggle button i {
+.spell-book.sidebar-collapsed .sidebar-collapser i {
   transform: rotate(180deg);
 }
 
-/* Container for buttons when sidebar is collapsed */
+.spell-book.sidebar-collapsed .sidebar {
+  width: 0;
+  margin-left: -200px;
+}
+
 .spell-book .collapsed-footer {
-  margin-top: auto;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin-top: 0;
   padding: 10px;
   border-top: 1px solid var(--color-border-light);
+  background-color: var(--color-bg);
 }
 
 .spell-book .collapsed-footer.hidden {
   display: none;
 }
 
-/* Sidebar footer container */
 .spell-book .sidebar-footer-container {
   margin-top: auto;
 }
 
-/* Main content area with spells */
 .spell-book .spell-book-content {
   flex: 1;
   padding: 10px;
+  padding-left: 20px;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -139,13 +145,15 @@
 /* Spell Level Sections                      */
 /* ----------------------------------------- */
 .spell-book .spell-level {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .spell-book .spell-level-heading {
-  margin-bottom: 5px;
-  padding-bottom: 3px;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
   border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-text-light-highlight);
+  font-size: 1.2em;
 }
 
 /* ----------------------------------------- */
@@ -160,9 +168,14 @@
 .spell-book .spell-item {
   display: flex;
   align-items: center;
-  padding: 5px;
+  min-width: 0;
+  margin-bottom: 2px;
+  padding: 4px 6px;
   border-bottom: 1px solid #c9c7b82a;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.05);
 }
+
 .theme-light .spell-book .spell-item {
   border-bottom: 1px solid #5a5a5a5e;
 }
@@ -172,17 +185,26 @@
 }
 
 .spell-book .spell-item.prepared-spell {
-  background-color: rgba(0, 128, 0, 0.05);
+  background-color: rgba(0, 128, 0, 0.1);
 }
 
 .spell-book .spell-item:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .spell-book .spell-name {
   flex: 1;
+  min-width: 100px;
+  margin-right: 8px;
+  overflow: hidden;
   font-weight: bold;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.spell-book .spell-name .spell-school-icon {
+  margin-right: 5px;
+  color: var(--color-text-light-highlight);
 }
 
 /* ----------------------------------------- */
@@ -190,12 +212,15 @@
 /* ----------------------------------------- */
 .spell-book .spell-details {
   display: flex;
+  flex: 2;
   align-items: center;
   margin-right: 10px;
+  overflow: hidden;
   color: #bababa;
   font-style: italic;
   font-size: var(--font-size-14);
   line-height: 1.5;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -231,7 +256,6 @@
   height: 1em;
 }
 
-/* Dark mode support */
 :is(.dnd5e-theme-dark, .theme-dark) .spell-book .spell-details .tags {
   --icon-fill: var(--color-text-light-6);
 }
@@ -297,7 +321,7 @@
   left: 0;
   pointer-events: none;
   content: '';
-  background: rgba(0, 0, 0, 0.1) url('../../../icons/svg/wait.svg') no-repeat center center;
+  background: rgba(0, 0, 0, 0.1) url('../../../../icons/svg/wait.svg') no-repeat center center;
   background-size: 50px;
 }
 
@@ -305,8 +329,13 @@
 /* Preparation Status Elements               */
 /* ----------------------------------------- */
 .spell-book .spell-preparation {
+  flex-shrink: 0;
   width: 20px;
-  text-align: center;
+}
+
+.spell-book .spell-preparation input[type='checkbox'] {
+  margin: 0;
+  cursor: pointer;
 }
 
 .spell-book .always-prepared-tag {
@@ -441,7 +470,7 @@
     border-bottom: 1px solid var(--color-border-light);
   }
 
-  .spell-book .sidebar-toggle {
+  .spell-book .sidebar-collapser {
     display: none;
   }
 
@@ -452,5 +481,17 @@
 
   .spell-book .collapsed-footer {
     display: none !important;
+  }
+}
+
+@media (max-width: 650px) {
+  .spell-book .spell-details {
+    flex: 1;
+  }
+}
+
+@media (max-width: 550px) {
+  .spell-book .spell-details {
+    flex: 0.5;
   }
 }

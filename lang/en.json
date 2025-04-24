@@ -33,5 +33,6 @@
   "SPELLBOOK.Sort.BySchool": "Sort by School",
   "SPELLBOOK.SpellLevel.Cantrips": "Cantrips",
   "SPELLBOOK.SpellLevel.LevelSpells": "Level {level} Spells",
-  "SPELLBOOK.UI.OpenSpellBook": "Spell Book"
+  "SPELLBOOK.UI.OpenSpellBook": "Spell Book",
+  "SPELLBOOK.UI.ToggleSidebar": "Toggle Sidebar"
 }
