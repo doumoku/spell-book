@@ -31,15 +31,26 @@
 .application.spell-book {
   max-height: calc(100vh - 150px);
 }
-.spell-book .spell-book-container {
+
+/* Make the main application container use flexbox */
+.spell-book .window-content {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  padding: 0; /* Remove default padding */
+  overflow: hidden; /* Prevent double scrollbars */
+}
+
+.spell-book .spell-book-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden; /* Don't scroll the container itself */
 }
 
 .spell-book .spell-book-content {
   flex: 1;
   padding: 10px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -96,6 +107,7 @@
 .spell-book .spell-name {
   flex: 1;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 /* ----------------------------------------- */
@@ -109,6 +121,7 @@
   font-style: italic;
   font-size: var(--font-size-14);
   line-height: 1.5;
+  white-space: nowrap;
 }
 
 .theme-light .spell-book .spell-details {
@@ -235,4 +248,47 @@
   font-style: italic;
   vertical-align: middle;
   background: none;
+}
+
+/* ----------------------------------------- */
+/* Footer and Button Styling                 */
+/* ----------------------------------------- */
+.spell-book .spell-prep-tracking {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-top: 8px;
+}
+
+.spell-book .footer-buttons {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  margin: 8px 8px 16px 8px;
+}
+
+.spell-book .footer-buttons button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  padding: 8px;
+  transition: all 0.4s ease;
+}
+
+.spell-book .footer-buttons button i {
+  margin-right: 5px;
+}
+
+/* For responsive designs */
+@media (max-width: 768px) {
+  .spell-book .footer-buttons {
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .spell-book .footer-buttons button {
+    width: 100%;
+  }
 }

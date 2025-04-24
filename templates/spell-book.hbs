@@ -6,7 +6,6 @@
 					<h3 class="spell-level-heading">{{levelData.levelName}}</h3>
 					<ul class="spell-list">
 						{{#each levelData.spells as |spell|}}
-							{{log spell}}
 							<li
 								class="spell-item{{#if spell.preparation.isOwned}} owned-spell{{/if}}{{#if spell.preparation.prepared}} prepared-spell{{/if}}"
 								data-spell-uuid="{{spell.compendiumUuid}}">

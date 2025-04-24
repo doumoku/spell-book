@@ -28,7 +28,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   static PARTS = {
     // header: { template: '' },
     form: { template: `modules/${MODULE.ID}/templates/spell-book.hbs` },
-    footer: { template: 'templates/generic/form-footer.hbs' }
+    footer: { template: `modules/${MODULE.ID}/templates/spell-book-footer.hbs` }
   };
 
   /* -------------------------------------------- */
@@ -72,8 +72,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       spellLevels: [],
       className: '',
       buttons: [
-        { type: 'submit', icon: 'fa-solid fa-save', label: 'SETTINGS.Save' },
-        { type: 'reset', action: 'reset', icon: 'fa-solid fa-undo', label: 'SETTINGS.Reset' }
+        { type: 'submit', icon: 'fa-solid fa-save', label: 'SETTINGS.Save', cssClass: 'submit-button' },
+        { type: 'reset', action: 'reset', icon: 'fa-solid fa-undo', label: 'SETTINGS.Reset', cssClass: 'reset-button' }
       ]
     };
 
