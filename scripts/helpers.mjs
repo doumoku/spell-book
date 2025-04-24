@@ -157,11 +157,97 @@ export async function getClassSpellList(className, classUuid) {
 /**
  * Save prepared spells for an actor
  * @param {Actor5e} actor - The actor to save spells for
- * @param {string[]} spells - Array of spell UUIDs
+ * @param {string[]} newPreparedUuids - Array of spell UUIDs to prepare
  * @returns {Promise<void>}
  */
-export async function saveActorPreparedSpells(actor, spells) {
-  await actor.setFlag(MODULE.ID, MODULE.FLAGS.PREPARED_SPELLS, spells);
+export async function saveActorPreparedSpells(actor, newPreparedUuids) {
+  console.log(`${MODULE.ID} | Saving prepared spells:`, newPreparedUuids);
+
+  // Get previously prepared spells
+  const previousPreparedUuids = actor.getFlag(MODULE.ID, MODULE.FLAGS.PREPARED_SPELLS) || [];
+
+  // Save the new list to actor flags
+  await actor.setFlag(MODULE.ID, MODULE.FLAGS.PREPARED_SPELLS, newPreparedUuids);
+
+  // Create arrays for different operations
+  const toCreate = [];
+  const toUpdate = [];
+  const toDelete = [];
+
+  // 1. Handle newly prepared spells (create or update)
+  for (const uuid of newPreparedUuids) {
+    // Skip if it's an always prepared spell
+    const existingSpell = actor.items.find((i) => i.type === 'spell' && (i.flags?.core?.sourceId === uuid || i.uuid === uuid));
+
+    if (existingSpell) {
+      // Spell exists - update if needed
+      if (!existingSpell.system.preparation?.prepared) {
+        toUpdate.push({
+          '_id': existingSpell.id,
+          'system.preparation.prepared': true
+        });
+      }
+    } else {
+      // Spell doesn't exist - create it
+      try {
+        const sourceSpell = await fromUuid(uuid);
+        if (sourceSpell) {
+          // Create a copy with prepared state
+          const spellData = sourceSpell.toObject();
+          if (!spellData.system.preparation) {
+            spellData.system.preparation = {};
+          }
+          spellData.system.preparation.prepared = true;
+          spellData.flags = spellData.flags || {};
+          spellData.flags.core = spellData.flags.core || {};
+          spellData.flags.core.sourceId = uuid;
+
+          toCreate.push(spellData);
+        }
+      } catch (error) {
+        console.error(`${MODULE.ID} | Error fetching spell ${uuid}:`, error);
+      }
+    }
+  }
+
+  // 2. Handle unprepared spells - find spells to remove
+  for (const uuid of previousPreparedUuids) {
+    if (!newPreparedUuids.includes(uuid)) {
+      // This spell was previously prepared but isn't anymore
+      const spellToRemove = actor.items.find(
+        (i) =>
+          i.type === 'spell' &&
+          (i.flags?.core?.sourceId === uuid || i.uuid === uuid) &&
+          // Only delete if this is a standard prepared spell, not always prepared, innate, etc.
+          i.system.preparation?.mode === 'prepared' &&
+          !i.system.preparation?.prepared
+      );
+
+      if (spellToRemove) {
+        toDelete.push(spellToRemove.id);
+      }
+    }
+  }
+
+  // 3. Apply all changes
+  console.log(`${MODULE.ID} | Changes:`, {
+    create: toCreate.length,
+    update: toUpdate.length,
+    delete: toDelete.length
+  });
+
+  // Execute changes in sequence to avoid conflicts
+  if (toUpdate.length > 0) {
+    await actor.updateEmbeddedDocuments('Item', toUpdate);
+  }
+
+  if (toCreate.length > 0) {
+    await actor.createEmbeddedDocuments('Item', toCreate);
+  }
+
+  if (toDelete.length > 0) {
+    await actor.deleteEmbeddedDocuments('Item', toDelete);
+  }
 }
 
 /**

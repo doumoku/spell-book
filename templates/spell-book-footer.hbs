@@ -1,6 +1,6 @@
 {{!-- Footer based off FoundryVTTs /templates/generic/form-footer.hbs --}}
 <footer>
-	<div class="spell-prep-tracking">0/15</div>
+	<div class="spell-prep-tracking">{{spellPreparation.current}}/{{spellPreparation.maximum}} Prepared Spells</div>
 	<div class="footer-buttons">
 		{{#each buttons as |button|}}
 			<button type="{{button.type}}" {{#if button.name}}name="{{button.name}}" {{/if}} class="{{button.cssClass}}"
