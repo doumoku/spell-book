@@ -194,6 +194,11 @@
   cursor: not-allowed;
 }
 
+.spell-book .spell-prep-tracking.at-max {
+  color: var(--color-level-warning);
+  font-weight: bold;
+}
+
 /* ----------------------------------------- */
 /* Action Buttons                            */
 /* ----------------------------------------- */

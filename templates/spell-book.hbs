@@ -24,8 +24,9 @@
 									<span class="tags">{{{spell.formattedDetails}}}</span>
 								</div>
 								<div class="spell-preparation">
-									<input type="checkbox" name="prepared" value="{{spell.compendiumUuid}}"
-										{{#if spell.preparation.prepared}}checked{{/if}}
+									<input type="checkbox" name="spellPreparation.{{spell.compendiumUuid}}" value="1"
+										data-uuid="{{spell.compendiumUuid}}" data-name="{{spell.name}}"
+										data-was-prepared="{{spell.preparation.prepared}}" {{#if spell.preparation.prepared}}checked{{/if}}
 										{{#if spell.preparation.disabled}}disabled{{/if}} />
 								</div>
 							</li>

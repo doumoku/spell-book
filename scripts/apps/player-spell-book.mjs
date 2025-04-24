@@ -71,6 +71,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @override
    */
   async _prepareContext(options) {
+    this.element?.classList.add('loading');
+
     // Start with basic context
     const context = {
       actor: this.actor,
@@ -168,6 +170,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     } catch (error) {
       log(1, 'Error preparing spell book context:', error);
       return context;
+    } finally {
+      // Remove loading spinner when done
+      this.element?.classList.remove('loading');
     }
   }
 
@@ -184,10 +189,12 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     if (context.spellPreparation) {
       const countDisplay = this.element.querySelector('.spell-prep-tracking');
       if (countDisplay) {
-        countDisplay.textContent = game.i18n.format('SPELLBOOK.Footer.PreparedCount', {
-          current: context.spellPreparation.current,
-          maximum: context.spellPreparation.maximum
-        });
+        // Add visual indicator when at/over max
+        if (context.spellPreparation.current >= context.spellPreparation.maximum) {
+          countDisplay.classList.add('at-max');
+        } else {
+          countDisplay.classList.remove('at-max');
+        }
       }
     }
   }
@@ -208,21 +215,49 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     try {
       const actor = this.actor;
       if (!actor) {
-        log(1, 'No actor found in application');
+        log(1, 'No actor found');
         return null;
       }
 
-      // Extract prepared spells from form data
-      // This will be an array if multiple checkboxes are checked, or a single value if only one
-      let preparedSpells = formData.object.prepared || [];
+      // Extract prepared spells from form data - this contains the checked boxes
+      const spellPreparationData = formData.object.spellPreparation || {};
 
-      // Ensure we have an array
-      if (!Array.isArray(preparedSpells)) {
-        preparedSpells = [preparedSpells];
+      // Debug the collected form data to see what's coming in
+      log(3, 'Spell preparation data from form:', spellPreparationData);
+
+      // Gather all spell information from the form
+      const spellData = {};
+
+      // Process each input in the form to gather spell data
+      const checkboxes = form.querySelectorAll('input[type="checkbox"][data-uuid]');
+      for (const checkbox of checkboxes) {
+        const uuid = checkbox.dataset.uuid;
+        const name = checkbox.dataset.name;
+        const wasPrepared = checkbox.dataset.wasPrepared === 'true';
+
+        // Check if this spell is prepared in the form data
+        // Look directly at the checkbox's checked state as a fallback
+        const isPrepared = checkbox.disabled ? wasPrepared : !!spellPreparationData[uuid] || checkbox.checked;
+
+        log(3, `Processing spell ${name} (${uuid}):`, {
+          wasPrepared,
+          isPrepared,
+          isDisabled: checkbox.disabled,
+          formValue: spellPreparationData[uuid],
+          checkedState: checkbox.checked
+        });
+
+        spellData[uuid] = {
+          name,
+          wasPrepared,
+          isPrepared,
+          // This helps identify disabled checkboxes (always prepared spells)
+          isAlwaysPrepared: checkbox.disabled
+        };
       }
 
-      // Save prepared spells to actor
-      await saveActorPreparedSpells(actor, preparedSpells);
+      // Save the processed spell data to actor
+      await saveActorPreparedSpells(actor, spellData);
 
       ui.notifications.info(game.i18n.format('SPELLBOOK.Notifications.SpellsUpdated', { name: actor.name }));
 
