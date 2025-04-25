@@ -1,52 +1,34 @@
 <div class="spell-filters">
+	<!-- Search always stays on top -->
 	<div class="filter-group">
 		<input type="text" name="filter-name" placeholder="{{localize 'SPELLBOOK.Filters.SearchPlaceholder'}}"
 			value="{{filters.name}}" data-filter="name">
-
-		<select name="filter-level" data-action="filterSpells" data-filter="level">
-			<option value="">{{localize 'SPELLBOOK.Filters.AllLevels'}}</option>
-			{{#each spellLevels as |level|}}
-				<option value="{{level.level}}" {{#if (eq ../filters.level level.level)}}selected{{/if}}>
-					{{level.levelName}}
-				</option>
-			{{/each}}
-		</select>
-
-		<select name="filter-school" data-action="filterSpells" data-filter="school">
-			<option value="">{{localize 'SPELLBOOK.Filters.AllSchools'}}</option>
-			{{#each spellSchools as |schoolName schoolKey|}}
-				<option value="{{schoolKey}}" {{#if (eq ../filters.school schoolKey)}}selected{{/if}}>
-					{{schoolName.label}}
-				</option>
-			{{/each}}
-		</select>
-
-		<select name="sort-by" data-action="sortSpells">
-			<option value="level" {{#if (eq filters.sortBy 'level')}}selected{{/if}}>
-				{{localize 'SPELLBOOK.Sort.ByLevel'}}
-			</option>
-			<option value="name" {{#if (eq filters.sortBy 'name')}}selected{{/if}}>
-				{{localize 'SPELLBOOK.Sort.ByName'}}
-			</option>
-			<option value="school" {{#if (eq filters.sortBy 'school')}}selected{{/if}}>
-				{{localize 'SPELLBOOK.Sort.BySchool'}}
-			</option>
-			<option value="prepared" {{#if (eq filters.sortBy 'prepared')}}selected{{/if}}>
-				{{localize 'SPELLBOOK.Sort.ByPrepared'}}
-			</option>
-		</select>
 	</div>
 
+	<!-- Dropdowns -->
+	<div class="filter-group">
+		{{#each filterDropdowns as |dropdown|}}
+			<div class="filter-item">
+				{{#if dropdown.label}}<label>{{dropdown.label}}</label>{{/if}}
+				<select name="{{dropdown.name}}" data-action="filterSpells" data-filter="{{dropdown.filter}}">
+					{{#each dropdown.options as |option|}}
+						<option value="{{option.value}}" {{#if option.selected}}selected{{/if}}>
+							{{option.label}}
+						</option>
+					{{/each}}
+				</select>
+			</div>
+		{{/each}}
+	</div>
+
+	<!-- Checkboxes -->
 	<div class="filter-toggles">
-		<label>
-			<input type="checkbox" name="filter-prepared" data-action="filterSpells" data-filter="prepared"
-				{{#if filters.prepared}}checked{{/if}}>
-			{{localize 'SPELLBOOK.Filters.PreparedOnly'}}
-		</label>
-		<label>
-			<input type="checkbox" name="filter-ritual" data-action="filterSpells" data-filter="ritual"
-				{{#if filters.ritual}}checked{{/if}}>
-			{{localize 'SPELLBOOK.Filters.RitualOnly'}}
-		</label>
+		{{#each filterCheckboxes as |checkbox|}}
+			<label>
+				<input type="checkbox" name="{{checkbox.name}}" data-action="filterSpells" data-filter="{{checkbox.filter}}"
+					{{#if checkbox.checked}}checked{{/if}}>
+				{{checkbox.label}}
+			</label>
+		{{/each}}
 	</div>
 </div>

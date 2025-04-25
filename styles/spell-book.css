@@ -108,15 +108,10 @@
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-.spell-book .filter-group {
-  gap: 0.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.spell-book .filter-group input[type='text'] {
-  width: 100%;
-  font-size: var(--font-size-11);
+.spell-book input[name='filter-name'] {
+  padding: 0.5rem;
+  border-width: 2px;
+  font-size: var(--font-size-13);
 }
 
 .spell-book .filter-group select {
@@ -127,14 +122,38 @@
 .spell-book .filter-toggles {
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap;
-  font-size: var(--font-size-11);
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border-light-tertiary);
 }
 
 .spell-book .filter-toggles label {
-  gap: 0.25rem;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  font-size: var(--font-size-12);
+}
+
+.spell-book .filter-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: var(--font-size-10);
+  opacity: 0.8;
+}
+
+.spell-book .filter-item label {
+  margin-bottom: 0.25rem;
+  font-size: var(--font-size-11);
+  color: var(--color-text-light-highlight);
+}
+
+.spell-book .filter-item.active select,
+.spell-book .filter-toggles label.active {
+  border-color: var(--color-border-highlight);
+  box-shadow: 0 0 3px var(--color-shadow-highlight);
 }
 
 /* ----------------------------------------- */

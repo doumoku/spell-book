@@ -427,9 +427,13 @@ export function organizeSpellsByLevel(spellItems, actor) {
     const prepStatus = getSpellPreparationStatus(actor, spell);
     log(3, `Preparation status for ${spell.name}:`, prepStatus);
 
+    // Add additional data for filtering
+    const filterData = extractSpellFilterData(spell);
+
     const spellData = {
       ...spell,
-      preparation: prepStatus
+      preparation: prepStatus,
+      filterData
     };
 
     spellsByLevel[level].push(spellData);
@@ -483,4 +487,82 @@ export function formatSpellDetails(spell) {
 
   // Join with bullet points
   return details.filter(Boolean).join(' • ');
+}
+
+/**
+ * Extracts additional spell data for filtering
+ * @param {Object} spell - The spell document
+ * @returns {Object} - Additional data for filtering
+ */
+export function extractSpellFilterData(spell) {
+  // Extract casting time
+  const castingTime = {
+    value: spell.system.activation?.value || '',
+    type: spell.system.activation?.type || '',
+    label: spell.labels?.activation || ''
+  };
+
+  // Extract range
+  const range = {
+    units: spell.system.range?.units || '',
+    label: spell.labels?.range || ''
+  };
+
+  // Extract damage types
+  const damageTypes = [];
+  if (spell.labels?.damages?.length) {
+    for (const damage of spell.labels.damages) {
+      if (damage.damageType && !damageTypes.includes(damage.damageType)) {
+        damageTypes.push(damage.damageType);
+      }
+    }
+  }
+
+  // Check for ritual
+  const isRitual = spell.labels?.components?.tags?.includes(game.i18n.localize('DND5E.Item.Property.Ritual')) || false;
+
+  // Check for concentration
+  const concentration = spell.system.duration?.concentration || false;
+
+  // Check for saving throws
+  let requiresSave = false;
+  if (spell.system.activities) {
+    for (const [key, activity] of Object.entries(spell.system.activities)) {
+      if (activity.value?.type === 'save') {
+        requiresSave = true;
+        break;
+      }
+    }
+  }
+
+  // If no saving throw detected in activities, check description
+  if (!requiresSave && spell.system.description?.value) {
+    const saveText = game.i18n.localize('SPELLBOOK.Filters.SavingThrow').toLowerCase();
+    requiresSave = spell.system.description.value.toLowerCase().includes(saveText);
+  }
+
+  // Extract conditions applied by scanning description
+  const description = spell.system.description?.value || '';
+  const conditions = [];
+  if (description) {
+    // Convert to lowercase for case-insensitive matching
+    const lowerDesc = description.toLowerCase();
+
+    // Check for each condition
+    for (const [key, condition] of Object.entries(CONFIG.DND5E.conditionTypes)) {
+      if (lowerDesc.includes(condition.label.toLowerCase())) {
+        conditions.push(key);
+      }
+    }
+  }
+
+  return {
+    castingTime,
+    range,
+    damageTypes,
+    isRitual,
+    concentration,
+    requiresSave,
+    conditions
+  };
 }

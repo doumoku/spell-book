@@ -8,7 +8,11 @@
 						<li
 							class="spell-item{{#if spell.preparation.isOwned}} owned-spell{{/if}}{{#if spell.preparation.prepared}} prepared-spell{{/if}}"
 							data-spell-uuid="{{spell.compendiumUuid}}" data-spell-level="{{../level}}"
-							data-spell-school="{{spell.system.school}}">
+							data-spell-school="{{spell.system.school}}" data-casting-time-type="{{spell.filterData.castingTime.type}}"
+							data-casting-time-value="{{spell.filterData.castingTime.value}}"
+							data-range-units="{{spell.filterData.range.units}}" data-damage-types="{{spell.filterData.damageTypes}}"
+							data-ritual="{{spell.filterData.isRitual}}" data-concentration="{{spell.filterData.concentration}}"
+							data-requires-save="{{spell.filterData.requiresSave}}" data-conditions="{{spell.filterData.conditions}}">
 							<div class="spell-name">
 								{{{spell.enrichedName}}}
 								{{#if spell.preparation.alwaysPrepared}}
@@ -26,7 +30,7 @@
 							<div class="spell-preparation">
 								<input type="checkbox" name="spellPreparation.{{spell.compendiumUuid}}" value="1"
 									data-uuid="{{spell.compendiumUuid}}" data-name="{{spell.name}}"
-									data-ritual="{{spell.system.components.ritual}}" data-was-prepared="{{spell.preparation.prepared}}"
+									data-ritual="{{spell.filterData.isRitual}}" data-was-prepared="{{spell.preparation.prepared}}"
 									{{#if spell.preparation.prepared}}checked{{/if}} {{#if spell.preparation.disabled}}disabled{{/if}} />
 							</div>
 						</li>

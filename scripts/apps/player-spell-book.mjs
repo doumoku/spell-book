@@ -118,6 +118,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Organize spells by level
       const spellLevels = organizeSpellsByLevel(spellItems, this.actor);
 
+      // Store the context for access by other methods
+      this.context = context;
+
       // Sort spells within each level based on current sort setting
       const sortBy = this._getFilterState().sortBy || 'level';
       for (const level of spellLevels) {
@@ -165,6 +168,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         current: preparedCount,
         maximum: maxPrepared
       };
+
+      // Prepare filter dropdowns and checkboxes
+      context.filterDropdowns = this._prepareFilterDropdowns();
+      context.filterCheckboxes = this._prepareFilterCheckboxes();
 
       log(3, 'Final context:', {
         className: context.className,
@@ -291,6 +298,220 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Prepare filter dropdown options
+   * @returns {Array} - Array of filter dropdown objects
+   * @private
+   */
+  _prepareFilterDropdowns() {
+    const filters = this._getFilterState();
+    const dropdowns = [];
+
+    // Spell Level dropdown
+    const levelOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    // Add options for each spell level found
+    this.context.spellLevels.forEach((level) => {
+      let levelLabel;
+      if (level.level === '0') {
+        levelLabel = game.i18n.localize('SPELLBOOK.Filters.Cantrip');
+      } else {
+        // Format as 1st, 2nd, 3rd, 4th, etc.
+        const levelNum = parseInt(level.level);
+        let suffix;
+
+        if (levelNum === 1) suffix = 'st';
+        else if (levelNum === 2) suffix = 'nd';
+        else if (levelNum === 3) suffix = 'rd';
+        else suffix = 'th';
+
+        levelLabel = `${levelNum}${suffix} Level`;
+      }
+
+      levelOptions.push({
+        value: level.level,
+        label: levelLabel,
+        selected: filters.level === level.level
+      });
+    });
+
+    dropdowns.push({
+      name: 'filter-level',
+      filter: 'level',
+      label: game.i18n.localize('SPELLBOOK.Filters.Level'),
+      options: levelOptions
+    });
+
+    // School dropdown
+    const schoolOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    // Add options for each spell school
+    Object.entries(CONFIG.DND5E.spellSchools).forEach(([key, school]) => {
+      schoolOptions.push({
+        value: key,
+        label: school.label,
+        selected: filters.school === key
+      });
+    });
+
+    dropdowns.push({
+      name: 'filter-school',
+      filter: 'school',
+      label: game.i18n.localize('SPELLBOOK.Filters.School'),
+      options: schoolOptions
+    });
+
+    // Casting Time dropdown
+    const castingTimeOptions = [
+      { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') },
+      { value: 'action:1', label: game.i18n.localize('SPELLBOOK.Filters.Action') },
+      { value: 'bonus:1', label: game.i18n.localize('SPELLBOOK.Filters.BonusAction') },
+      { value: 'reaction:1', label: game.i18n.localize('SPELLBOOK.Filters.Reaction') },
+      { value: 'minute:1', label: game.i18n.localize('SPELLBOOK.Filters.Minute') },
+      { value: 'minute:10', label: game.i18n.localize('SPELLBOOK.Filters.Minutes10') },
+      { value: 'hour:1', label: game.i18n.localize('SPELLBOOK.Filters.Hour') },
+      { value: 'hour:8', label: game.i18n.localize('SPELLBOOK.Filters.Hours8') },
+      { value: 'hour:12', label: game.i18n.localize('SPELLBOOK.Filters.Hours12') },
+      { value: 'hour:24', label: game.i18n.localize('SPELLBOOK.Filters.Day') }
+    ];
+
+    dropdowns.push({
+      name: 'filter-casting-time',
+      filter: 'castingTime',
+      label: game.i18n.localize('SPELLBOOK.Filters.CastingTime'),
+      options: castingTimeOptions.map((option) => ({
+        ...option,
+        selected: filters.castingTime === option.value
+      }))
+    });
+
+    // Range dropdown
+    const rangeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    // Add options for each distance unit
+    Object.entries(CONFIG.DND5E.distanceUnits).forEach(([key, label]) => {
+      rangeOptions.push({
+        value: key,
+        label: label,
+        selected: filters.range === key
+      });
+    });
+
+    dropdowns.push({
+      name: 'filter-range',
+      filter: 'range',
+      label: game.i18n.localize('SPELLBOOK.Filters.Range'),
+      options: rangeOptions
+    });
+
+    // Damage Type dropdown
+    const damageTypeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    // Add options for each damage type
+    Object.entries(CONFIG.DND5E.damageTypes).forEach(([key, damageType]) => {
+      damageTypeOptions.push({
+        value: key,
+        label: damageType.label,
+        selected: filters.damageType === key
+      });
+    });
+
+    dropdowns.push({
+      name: 'filter-damage-type',
+      filter: 'damageType',
+      label: game.i18n.localize('SPELLBOOK.Filters.DamageType'),
+      options: damageTypeOptions
+    });
+
+    // Conditions dropdown
+    const conditionOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    // Add options for each condition type
+    Object.entries(CONFIG.DND5E.conditionTypes).forEach(([key, condition]) => {
+      conditionOptions.push({
+        value: key,
+        label: condition.label,
+        selected: filters.condition === key
+      });
+    });
+
+    dropdowns.push({
+      name: 'filter-condition',
+      filter: 'condition',
+      label: game.i18n.localize('SPELLBOOK.Filters.Condition'),
+      options: conditionOptions
+    });
+
+    // Save Required dropdown
+    const saveOptions = [
+      { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') },
+      { value: 'true', label: game.i18n.localize('SPELLBOOK.Filters.True'), selected: filters.requiresSave === 'true' },
+      { value: 'false', label: game.i18n.localize('SPELLBOOK.Filters.False'), selected: filters.requiresSave === 'false' }
+    ];
+
+    dropdowns.push({
+      name: 'filter-requires-save',
+      filter: 'requiresSave',
+      label: game.i18n.localize('SPELLBOOK.Filters.RequiresSave'),
+      options: saveOptions
+    });
+
+    // Concentration dropdown
+    const concentrationOptions = [
+      { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') },
+      { value: 'true', label: game.i18n.localize('SPELLBOOK.Filters.True'), selected: filters.concentration === 'true' },
+      { value: 'false', label: game.i18n.localize('SPELLBOOK.Filters.False'), selected: filters.concentration === 'false' }
+    ];
+
+    dropdowns.push({
+      name: 'filter-concentration',
+      filter: 'concentration',
+      label: game.i18n.localize('SPELLBOOK.Filters.Concentration'),
+      options: concentrationOptions
+    });
+
+    // Sort dropdown (not a filter, but fits the same UI pattern)
+    const sortOptions = [
+      { value: 'level', label: game.i18n.localize('SPELLBOOK.Sort.ByLevel'), selected: filters.sortBy === 'level' },
+      { value: 'name', label: game.i18n.localize('SPELLBOOK.Sort.ByName'), selected: filters.sortBy === 'name' },
+      { value: 'school', label: game.i18n.localize('SPELLBOOK.Sort.BySchool'), selected: filters.sortBy === 'school' },
+      { value: 'prepared', label: game.i18n.localize('SPELLBOOK.Sort.ByPrepared'), selected: filters.sortBy === 'prepared' }
+    ];
+
+    dropdowns.push({
+      name: 'sort-by',
+      filter: 'sortBy',
+      label: game.i18n.localize('SPELLBOOK.Filters.SortBy'),
+      options: sortOptions
+    });
+
+    return dropdowns;
+  }
+
+  /**
+   * Prepare filter checkbox options
+   * @returns {Array} - Array of filter checkbox objects
+   * @private
+   */
+  _prepareFilterCheckboxes() {
+    const filters = this._getFilterState();
+
+    return [
+      {
+        name: 'filter-prepared',
+        filter: 'prepared',
+        label: game.i18n.localize('SPELLBOOK.Filters.PreparedOnly'),
+        checked: filters.prepared
+      },
+      {
+        name: 'filter-ritual',
+        filter: 'ritual',
+        label: game.i18n.localize('SPELLBOOK.Filters.RitualOnly'),
+        checked: filters.ritual
+      }
+    ];
+  }
+
+  /**
    * Get the current filter state from form inputs
    * @returns {Object} The current filter state
    * @private
@@ -301,8 +522,14 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         name: '',
         level: '',
         school: '',
+        castingTime: '',
+        range: '',
+        damageType: '',
+        condition: '',
+        requiresSave: '',
         prepared: false,
         ritual: false,
+        concentration: '',
         sortBy: 'level'
       };
     }
@@ -311,8 +538,14 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       name: this.element.querySelector('[name="filter-name"]')?.value || '',
       level: this.element.querySelector('[name="filter-level"]')?.value || '',
       school: this.element.querySelector('[name="filter-school"]')?.value || '',
+      castingTime: this.element.querySelector('[name="filter-casting-time"]')?.value || '',
+      range: this.element.querySelector('[name="filter-range"]')?.value || '',
+      damageType: this.element.querySelector('[name="filter-damage-type"]')?.value || '',
+      condition: this.element.querySelector('[name="filter-condition"]')?.value || '',
+      requiresSave: this.element.querySelector('[name="filter-requires-save"]')?.value || '',
       prepared: this.element.querySelector('[name="filter-prepared"]')?.checked || false,
       ritual: this.element.querySelector('[name="filter-ritual"]')?.checked || false,
+      concentration: this.element.querySelector('[name="filter-concentration"]')?.value || '',
       sortBy: this.element.querySelector('[name="sort-by"]')?.value || 'level'
     };
   }
@@ -339,14 +572,24 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       let visibleCount = 0;
 
       for (const item of spellItems) {
+        // Extract basic spell metadata
         const nameEl = item.querySelector('.spell-name');
         const detailsEl = item.querySelector('.spell-details');
         const name = nameEl?.textContent.toLowerCase() || '';
         const details = detailsEl?.textContent.toLowerCase() || '';
         const isPrepared = item.classList.contains('prepared-spell');
-        const isRitual = item.querySelector('input[type="checkbox"]')?.dataset.ritual === 'true' || details.includes('ritual');
         const level = item.dataset.spellLevel || '';
         const school = item.dataset.spellSchool || '';
+
+        // Extract filter data from dataset
+        const castingTimeType = item.dataset.castingTimeType || '';
+        const castingTimeValue = item.dataset.castingTimeValue || '';
+        const rangeUnits = item.dataset.rangeUnits || '';
+        const damageTypes = (item.dataset.damageTypes || '').split(',');
+        const isRitual = item.dataset.ritual === 'true';
+        const isConcentration = item.dataset.concentration === 'true';
+        const requiresSave = item.dataset.requiresSave === 'true';
+        const conditions = (item.dataset.conditions || '').split(',');
 
         // Check all filter conditions
         let visible = true;
@@ -366,6 +609,38 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           visible = false;
         }
 
+        // Casting Time filter
+        if (filters.castingTime) {
+          const [filterType, filterValue] = filters.castingTime.split(':');
+          if (castingTimeType !== filterType || castingTimeValue !== filterValue) {
+            visible = false;
+          }
+        }
+
+        // Range filter
+        if (filters.range && rangeUnits !== filters.range) {
+          visible = false;
+        }
+
+        // Damage Type filter
+        if (filters.damageType && !damageTypes.includes(filters.damageType)) {
+          visible = false;
+        }
+
+        // Condition filter
+        if (filters.condition && !conditions.includes(filters.condition)) {
+          visible = false;
+        }
+
+        // Requires Save filter
+        if (filters.requiresSave) {
+          if (filters.requiresSave === 'true' && !requiresSave) {
+            visible = false;
+          } else if (filters.requiresSave === 'false' && requiresSave) {
+            visible = false;
+          }
+        }
+
         // Prepared only
         if (filters.prepared && !isPrepared) {
           visible = false;
@@ -374,6 +649,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         // Ritual only
         if (filters.ritual && !isRitual) {
           visible = false;
+        }
+
+        // Concentration filter
+        if (filters.concentration) {
+          const spellConcentration = isConcentration;
+          if (filters.concentration === 'true' && !spellConcentration) {
+            visible = false;
+          } else if (filters.concentration === 'false' && spellConcentration) {
+            visible = false;
+          }
         }
 
         // Update visibility
