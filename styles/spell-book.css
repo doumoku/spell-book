@@ -45,6 +45,7 @@
   padding: 0;
   overflow: hidden;
   height: 100%;
+  transition: all 450ms ease;
 }
 
 .spell-book .spell-book-container {
@@ -72,7 +73,7 @@
   overflow-x: visible;
   background: #1b1d24e6;
   box-shadow: 0 0 6px var(--color-shadow-dark);
-  /* transition: transform 0.3s ease; */
+  transition: all 450ms ease;
   transform: translateX(0);
 }
 
@@ -117,6 +118,7 @@
   padding: 0;
   border: none;
   position: absolute;
+  transition: all 450ms ease;
 }
 
 .spell-book .collapsed-footer {
@@ -585,54 +587,4 @@
   .spell-book .spell-name {
     max-width: 65%; /* Name gets priority */
   }
-}
-
-/* Add base transitions to elements that will change */
-.spell-book .sidebar,
-.spell-book .spell-book-content,
-.spell-book .collapsed-footer,
-.spell-book .sidebar-footer-container {
-  transition: all 0.6s ease-in-out;
-}
-
-/* Specific transition for the sidebar */
-.spell-book .sidebar {
-  transition:
-    transform 0.6s ease-in-out,
-    height 0.6s ease-in-out,
-    margin-right 0.6s ease-in-out,
-    opacity 0.6s ease-in-out,
-    visibility 0.6s ease-in-out;
-}
-
-/* Transition for the content area */
-.spell-book .spell-book-content {
-  transition:
-    width 0.6s ease-in-out,
-    padding 0.6s ease-in-out,
-    margin 0.6s ease-in-out,
-    flex 0.6s ease-in-out;
-}
-
-/* Transition for the footer visibility */
-.spell-book .collapsed-footer,
-.spell-book .sidebar-footer-container {
-  transition:
-    opacity 0.6s ease-in-out,
-    visibility 0.6s ease-in-out,
-    height 0.6s ease-in-out;
-}
-
-/* Make the collapsed footer fade in */
-.spell-book .collapsed-footer.hidden {
-  opacity: 0;
-  visibility: hidden;
-  height: 0;
-  overflow: hidden;
-}
-
-.spell-book .collapsed-footer {
-  opacity: 1;
-  visibility: visible;
-  height: auto;
 }
