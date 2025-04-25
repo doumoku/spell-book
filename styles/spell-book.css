@@ -44,6 +44,7 @@
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 .spell-book .spell-book-container {
@@ -71,7 +72,7 @@
   overflow-x: visible;
   background: #1b1d24e6;
   box-shadow: 0 0 6px var(--color-shadow-dark);
-  transition: transform 0.3s ease;
+  /* transition: transform 0.3s ease; */
   transform: translateX(0);
 }
 
@@ -112,6 +113,10 @@
   min-width: 0;
   margin-right: calc(var(--spell-book-sidebar-width) * -1);
   transform: translateX(-100%);
+  height: 0;
+  padding: 0;
+  border: none;
+  position: absolute;
 }
 
 .spell-book .collapsed-footer {
@@ -147,15 +152,32 @@
 
 /* Ensure content area doesn't overlap with the footer */
 .spell-book.sidebar-collapsed .spell-book-content {
-  position: relative;
-  height: 100%;
-  margin-bottom: -50px;
-  padding-bottom: 50px;
+  flex: 1;
+  height: 90%;
   overflow-y: auto;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.spell-book.sidebar-collapsed .spell-book-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .spell-book .collapsed-footer.hidden {
   display: none;
+}
+
+.spell-book.sidebar-collapsed .collapsed-footer {
+  height: 10%;
+  position: static;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .spell-book .sidebar-footer-container {
@@ -168,7 +190,7 @@
   padding-left: 20px;
   overflow-x: hidden;
   overflow-y: auto;
-  transition: padding-left 0.3s ease;
+  /* transition: padding-left 0.3s ease; */
 }
 
 .spell-book .spell-book-footer {
@@ -210,6 +232,7 @@
   border-bottom: 1px solid #c9c7b82a;
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 .theme-light .spell-book .spell-item {
@@ -229,14 +252,12 @@
 }
 
 .spell-book .spell-name {
-  flex: 0 1 auto;
-  min-width: unset;
-  max-width: 50%;
-  margin-right: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
   overflow: visible;
   font-weight: bold;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin-right: 8px;
+  font-size: var(--font-size-14);
 }
 
 .spell-book .spell-name .spell-school-icon {
@@ -248,18 +269,14 @@
 /* Spell Details and Components              */
 /* ----------------------------------------- */
 .spell-book .spell-details {
-  display: flex;
   flex: 1 1 auto;
-  justify-content: flex-end;
-  align-items: center;
-  margin-right: 10px;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 10px;
   color: #bababa;
   font-style: italic;
-  font-size: var(--font-size-14);
-  line-height: 1.5;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--font-size-12);
 }
 
 .theme-light .spell-book .spell-details {
@@ -373,7 +390,7 @@
 /* Preparation Status Elements               */
 /* ----------------------------------------- */
 .spell-book .spell-preparation {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   width: 20px;
 }
 
@@ -568,4 +585,54 @@
   .spell-book .spell-name {
     max-width: 65%; /* Name gets priority */
   }
+}
+
+/* Add base transitions to elements that will change */
+.spell-book .sidebar,
+.spell-book .spell-book-content,
+.spell-book .collapsed-footer,
+.spell-book .sidebar-footer-container {
+  transition: all 0.6s ease-in-out;
+}
+
+/* Specific transition for the sidebar */
+.spell-book .sidebar {
+  transition:
+    transform 0.6s ease-in-out,
+    height 0.6s ease-in-out,
+    margin-right 0.6s ease-in-out,
+    opacity 0.6s ease-in-out,
+    visibility 0.6s ease-in-out;
+}
+
+/* Transition for the content area */
+.spell-book .spell-book-content {
+  transition:
+    width 0.6s ease-in-out,
+    padding 0.6s ease-in-out,
+    margin 0.6s ease-in-out,
+    flex 0.6s ease-in-out;
+}
+
+/* Transition for the footer visibility */
+.spell-book .collapsed-footer,
+.spell-book .sidebar-footer-container {
+  transition:
+    opacity 0.6s ease-in-out,
+    visibility 0.6s ease-in-out,
+    height 0.6s ease-in-out;
+}
+
+/* Make the collapsed footer fade in */
+.spell-book .collapsed-footer.hidden {
+  opacity: 0;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+}
+
+.spell-book .collapsed-footer {
+  opacity: 1;
+  visibility: visible;
+  height: auto;
 }
