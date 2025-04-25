@@ -64,7 +64,7 @@
 .spell-book .sidebar {
   transform-style: preserve-3d;
   display: flex;
-  z-index: 1;
+  z-index: 2;
   position: relative;
   flex-direction: column;
   width: var(--spell-book-sidebar-width);
@@ -79,13 +79,13 @@
 .spell-book .sidebar-collapser {
   place-content: center;
   display: grid;
-  z-index: 2;
+  z-index: 1;
   position: absolute;
   top: 0.5rem;
   right: -16px;
   width: 16px;
   height: 32px;
-  border-radius: 0 3px 3px 0;
+  border: none;
   cursor: pointer;
   background: #1b1d24e6;
   box-shadow: 0 0 6px var(--color-shadow-dark);
@@ -160,7 +160,6 @@
 
 .spell-book.sidebar-collapsed .collapsed-footer {
   display: flex;
-  position: static;
   flex-direction: column;
   justify-content: space-between;
   height: 10%;
