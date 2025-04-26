@@ -170,7 +170,7 @@
 
 .spell-book.sidebar-collapsed .spell-book-content {
   flex: 1;
-  height: 90%;
+  height: calc(100% - 100px);
   margin-bottom: 0;
   padding-bottom: 0;
   overflow-y: auto;
@@ -232,14 +232,21 @@
 
 .spell-book .spell-item {
   display: flex;
+  position: relative;
   align-items: center;
-  min-width: 0;
+  min-height: 40px;
   margin-bottom: 2px;
   padding: 4px 6px;
   border-bottom: 1px solid #c9c7b82a;
   border-radius: 3px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.05);
+}
+
+.spell-book .spell-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 .spell-book .spell-item.owned-spell {
@@ -277,21 +284,17 @@
 }
 
 .spell-book .spell-name {
-  flex: 0 0 auto;
-  margin-right: 8px;
-  overflow: visible;
-  font-weight: bold;
-  font-size: var(--font-size-14);
-  white-space: nowrap;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
 }
 
 .spell-book .spell-icon {
   object-fit: cover;
   object-position: top;
-  flex: 0 0 var(--gold-icon-size);
-  width: 32px;
-  height: 32px;
-  margin-right: 8px;
+  width: 36px;
+  height: 36px;
   border: 2px solid var(--dnd5e-color-gold);
   border-radius: 4px;
   vertical-align: middle;
@@ -299,9 +302,52 @@
   box-shadow: 0 0 4px var(--dnd5e-shadow-45);
 }
 
+.spell-book .name-stacked {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 8px;
+}
+
+.spell-book .name-stacked .title {
+  overflow: hidden;
+  color: var(--color-text-light-highlight);
+  font-weight: bold;
+  font-size: var(--font-size-15);
+  font-family: var(--dnd5e-font-roboto-slab, serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: text-shadow 250ms ease;
+}
+
+.spell-book .name-stacked .subtitle {
+  margin-left: 2px;
+  overflow: hidden;
+  color: #bababa;
+  font-size: var(--font-size-11);
+  font-family: var(--dnd5e-font-roboto, sans-serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spell-book .spell-item:hover .name-stacked .title {
+  text-shadow: 0 0 3px var(--color-shadow-highlight);
+}
+
+.spell-book .spell-name a {
+  display: inline-flex;
+  margin-right: 8px;
+  border: none;
+  text-decoration: none;
+}
+
 .spell-book .spell-name .content-link {
-  display: inline-flex !important;
-  align-items: center;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  background: none;
+  box-shadow: none;
 }
 
 .spell-book .spell-name .content-link i {
@@ -312,14 +358,12 @@
 /* Spell Details                             */
 /* ----------------------------------------- */
 .spell-book .spell-details {
-  flex: 1 1 auto;
-  margin-right: 10px;
-  overflow: hidden;
+  width: 100%;
+  margin-top: 4px;
+  margin-left: 40px;
   color: #bababa;
   font-style: italic;
   font-size: var(--font-size-12);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .spell-book .spell-details .tags {
@@ -359,6 +403,7 @@
 .spell-book .spell-preparation {
   flex: 0 0 auto;
   width: 20px;
+  margin-left: 8px;
 }
 
 .spell-book .spell-preparation input[type='checkbox'] {
@@ -412,25 +457,22 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 10%;
   padding: 8px;
-  border-top: 1px solid var(--color-border-light);
-  background: rgba(0, 0, 0, 0.03);
 }
 
 .spell-book .collapsed-footer .spell-prep-tracking {
   margin-bottom: 4px;
-  font-size: var(--font-size-12);
+  font-size: var(--font-size-14);
 }
 
 .spell-book .collapsed-footer .footer-buttons {
   gap: 8px;
   flex-direction: row;
-  justify-content: space-around;
 }
 
 .spell-book .collapsed-footer .footer-buttons button {
   flex: 0 1 auto;
+  width: auto;
   min-width: 0;
   padding: 4px 8px;
   font-size: var(--font-size-12);

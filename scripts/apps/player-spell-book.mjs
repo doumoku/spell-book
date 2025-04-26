@@ -133,11 +133,27 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid;
 
+          // Create enriched HTML with the correct UUID
           let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
-          const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
-          enrichedHTML = enrichedHTML.replace(/<i class="[^"]*"><\/i>/, iconImg);
 
-          spell.enrichedName = enrichedHTML;
+          // Extract just the icon and make it a clickable link
+          const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
+
+          // Replace the default icon with our custom one, but keep the link structure
+          const linkMatch = enrichedHTML.match(/<a[^>]*>(.*?)<\/a>/);
+          let enrichedIcon = '';
+
+          if (linkMatch) {
+            // Extract the <a> tag attributes
+            const linkOpenTag = enrichedHTML.match(/<a[^>]*>/)[0];
+            // Create a new link with just the icon
+            enrichedIcon = `${linkOpenTag}${iconImg}</a>`;
+          } else {
+            // Fallback if link extraction fails
+            enrichedIcon = `<a class="content-link" data-uuid="${uuid}">${iconImg}</a>`;
+          }
+
+          spell.enrichedIcon = enrichedIcon;
           spell.formattedDetails = formatSpellDetails(spell);
         }
       }
