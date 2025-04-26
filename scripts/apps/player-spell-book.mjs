@@ -253,7 +253,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     // Add listeners to preparation checkboxes
     const prepCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
     prepCheckboxes.forEach((checkbox) => {
-      checkbox.addEventListener('change', () => {
+      checkbox.addEventListener('change', (event) => {
+        // Update the prepared-spell class based on checkbox state
+        const spellItem = event.target.closest('.spell-item');
+        if (spellItem) {
+          if (event.target.checked) {
+            spellItem.classList.add('prepared-spell');
+          } else {
+            spellItem.classList.remove('prepared-spell');
+          }
+        }
         this._updateSpellPreparationTracking();
       });
     });
