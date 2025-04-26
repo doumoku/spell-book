@@ -335,6 +335,11 @@
   text-shadow: 0 0 3px var(--color-shadow-highlight);
 }
 
+.spell-book .spell-item:hover .name-stacked .title .always-prepared-tag,
+.spell-book .spell-item:hover .name-stacked .title .preparation-mode-tag {
+  text-shadow: none;
+}
+
 .spell-book .spell-name a {
   display: inline-flex;
   margin-right: 8px;
@@ -421,9 +426,9 @@
   padding: 0 5px;
   border-radius: 3px;
   color: black;
-  font-weight: normal;
-  font-size: 0.8em;
-  background-color: var(--dnd5e-color-gold);
+  font-weight: 600;
+  font-size: 0.75rem;
+  background-color: #3fc6c1;
 }
 
 .spell-book .preparation-mode-tag {
