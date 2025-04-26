@@ -38,7 +38,7 @@
   "SPELLBOOK.Filters.SearchPlaceholder": "Search spells...",
   "SPELLBOOK.Filters.SortBy": "Sort By",
   "SPELLBOOK.Filters.True": "Yes",
-  "SPELLBOOK.Footer.PreparedCount": "{current}/{maximum} Prepared Spells",
+  "SPELLBOOK.Footer.PreparedLabel": "Prepared Spells",
   "SPELLBOOK.Notifications.SpellsUpdated": "{name}'s prepared spells have been updated.",
   "SPELLBOOK.Notifications.UpdateFailed": "Failed to update prepared spells.",
   "SPELLBOOK.Preparation.Always": "Always",

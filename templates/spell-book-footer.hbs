@@ -1,7 +1,8 @@
 {{!-- Footer based off FoundryVTTs /templates/generic/form-footer.hbs --}}
 <footer>
 	<div class="spell-prep-tracking">
-		{{localize 'SPELLBOOK.Footer.PreparedCount' current=spellPreparation.current maximum=spellPreparation.maximum}}
+		<span class="current-count">{{spellPreparation.current}}</span>/<span
+			class="max-count">{{spellPreparation.maximum}}</span>{{localize 'SPELLBOOK.Footer.PreparedLabel'}}
 	</div>
 	<div class="footer-buttons">
 		{{#each buttons as |button|}}

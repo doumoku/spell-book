@@ -206,18 +206,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Set up filter event handlers for immediate response
       this._setupFilterListeners();
 
-      // Update the preparation count in the footer
-      if (context.spellPreparation) {
-        const countDisplay = this.element.querySelector('.spell-prep-tracking');
-        if (countDisplay) {
-          // Add visual indicator when at/over max
-          if (context.spellPreparation.current >= context.spellPreparation.maximum) {
-            countDisplay.classList.add('at-max');
-          } else {
-            countDisplay.classList.remove('at-max');
-          }
-        }
-      }
+      // Set up spell preparation checkbox listeners
+      this._setupPreparationListeners();
 
       // Set sidebar state based on user preference
       const sidebarCollapsed = game.user.getFlag(MODULE.ID, 'sidebarCollapsed');
@@ -228,8 +218,88 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Always apply filters to ensure initial state is correct
       this._applyFilters();
+
+      // Initialize spell preparation tracking state
+      this._updateSpellPreparationTracking();
     } catch (error) {
       log(1, 'Error in _onRender:', error);
+    }
+  }
+
+  /**
+   * Set up event listeners for preparation checkboxes
+   * @private
+   */
+  _setupPreparationListeners() {
+    // Add listeners to preparation checkboxes
+    const prepCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+    prepCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        this._updateSpellPreparationTracking();
+      });
+    });
+  }
+
+  /**
+   * Update the spell preparation tracking and manage checkbox states
+   * @private
+   */
+  _updateSpellPreparationTracking() {
+    // TODO: Add special handling for cantrips - they should not count against
+    // prepared spell limits and should have different visual treatment
+
+    const preparedCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+    const countDisplay = this.element.querySelector('.spell-prep-tracking');
+
+    if (!countDisplay) return;
+
+    // Count checked non-disabled checkboxes (excludes "always prepared" spells)
+    let preparedCount = 0;
+    preparedCheckboxes.forEach((checkbox) => {
+      if (checkbox.checked) preparedCount++;
+    });
+
+    // Get the maximum from the context
+    const maxPrepared = this.context?.spellPreparation?.maximum || 0;
+
+    // Update the counter text using the span elements
+    const currentCountEl = countDisplay.querySelector('.current-count');
+    const maxCountEl = countDisplay.querySelector('.max-count');
+
+    if (currentCountEl) currentCountEl.textContent = preparedCount;
+    if (maxCountEl) maxCountEl.textContent = maxPrepared;
+
+    // Add visual indicator when at/over max
+    if (preparedCount >= maxPrepared) {
+      countDisplay.classList.add('at-max');
+    } else {
+      countDisplay.classList.remove('at-max');
+    }
+
+    // Only apply limits if we have a valid maximum (avoid limiting when max is 0)
+    if (maxPrepared > 0) {
+      // Disable unchecked checkboxes when at maximum
+      if (preparedCount >= maxPrepared) {
+        // Add class to form to indicate we're at max spells
+        this.element.classList.add('at-max-spells');
+
+        preparedCheckboxes.forEach((checkbox) => {
+          if (!checkbox.checked) {
+            checkbox.disabled = true;
+            // Add class to parent spell item for styling
+            checkbox.closest('.spell-item')?.classList.add('max-prepared');
+          }
+        });
+      } else {
+        // Remove max spells class
+        this.element.classList.remove('at-max-spells');
+
+        // Re-enable all preparation checkboxes
+        preparedCheckboxes.forEach((checkbox) => {
+          checkbox.disabled = false;
+          checkbox.closest('.spell-item')?.classList.remove('max-prepared');
+        });
+      }
     }
   }
 
