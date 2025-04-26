@@ -281,6 +281,7 @@ export function calculateMaxSpellLevel(actorLevel, spellcasting) {
  * @returns {Promise<Array>} - Array of spell documents
  */
 export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
+  //TODO: Find a way to perform a 'getIndex' type scenario on spellUUids so we don't need the full document.
   const start = performance.now();
   const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
 
