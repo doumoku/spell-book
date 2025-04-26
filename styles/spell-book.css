@@ -441,6 +441,16 @@
   background-color: #cea4e5;
 }
 
+.spell-book .granted-spell-tag {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 3px;
+  color: black;
+  font-weight: 600;
+  font-size: 0.75rem;
+  background-color: #f59f70;
+}
+
 /* ----------------------------------------- */
 /* Footer Components                         */
 /* ----------------------------------------- */

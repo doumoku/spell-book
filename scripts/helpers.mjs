@@ -637,7 +637,8 @@ export function getSpellPreparationStatus(actor, spell) {
       preparationMode: null,
       disabled: false,
       alwaysPrepared: false,
-      sourceItem: null
+      sourceItem: null,
+      grantedSpell: false
     };
   }
 
@@ -649,6 +650,7 @@ export function getSpellPreparationStatus(actor, spell) {
 
   // Determine source item
   let sourceItem = null;
+  let grantedSpell = false;
 
   // Check advancement origin or cached activity flags
   const advancementOrigin = actorSpell.flags?.dnd5e?.advancementOrigin;
@@ -674,6 +676,7 @@ export function getSpellPreparationStatus(actor, spell) {
         name: resolvedSource.name,
         type: resolvedSource.type
       };
+      grantedSpell = true;
       log(3, `Found source item: ${resolvedSource.name}`);
     }
   }
@@ -703,11 +706,12 @@ export function getSpellPreparationStatus(actor, spell) {
   }
 
   return {
-    prepared: actorSpell.system.preparation?.prepared || alwaysPrepared,
+    prepared: grantedSpell || actorSpell.system.preparation?.prepared || alwaysPrepared,
     isOwned: true,
-    preparationMode: preparationMode,
-    disabled: alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
+    preparationMode: grantedSpell ? game.i18n.localize('SPELLBOOK.SpellSource.Granted') : preparationMode,
+    disabled: grantedSpell || alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
     alwaysPrepared: alwaysPrepared,
-    sourceItem: sourceItem
+    sourceItem: sourceItem,
+    grantedSpell: grantedSpell
   };
 }
