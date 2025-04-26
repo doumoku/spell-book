@@ -327,97 +327,26 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
 }
 
 /**
- * Check if a spell is already prepared on an actor
- * @param {Actor5e} actor - The actor to check
- * @param {Item5e} spell - The spell document
- * @returns {object} - Status information about the spell preparation
- */
-export function getSpellPreparationStatus(actor, spell) {
-  log(3, `Checking preparation status for spell: ${spell.name}`);
-
-  // First check if the spell is already on the actor
-  const actorSpell = actor.items.find((item) => item.type === 'spell' && (item.name === spell.name || item.flags?.core?.sourceId === spell.compendiumUuid));
-
-  log(3, 'Actor has spell:', !!actorSpell);
-
-  if (!actorSpell) {
-    return {
-      prepared: false,
-      isOwned: false,
-      preparationMode: null,
-      disabled: false,
-      alwaysPrepared: false,
-      sourceItem: null
-    };
-  }
-
-  const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
-  const alwaysPrepared = preparationMode === 'always';
-
-  log(3, 'Spell preparation mode:', preparationMode);
-  log(3, 'Always prepared:', alwaysPrepared);
-
-  // Find source item for always prepared spells
-  let sourceItem = null;
-  if (alwaysPrepared) {
-    // Check sourceClass as specified
-    log(3, 'Spell sourceClass:', actorSpell.system.sourceClass);
-
-    // Get the source identifier (e.g., "cleric")
-    const sourceIdentifier = actorSpell.system.sourceClass;
-    log(3, 'Source identifier:', sourceIdentifier);
-
-    // Look through relevant actor items to find a match
-    if (sourceIdentifier) {
-      sourceItem = findSpellSource(actor, sourceIdentifier);
-      log(3, 'Found source item:', sourceItem?.name);
-    }
-  }
-
-  return {
-    prepared: actorSpell.system.preparation?.prepared || alwaysPrepared,
-    isOwned: true,
-    preparationMode: preparationMode,
-    disabled: alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
-    alwaysPrepared: alwaysPrepared,
-    sourceItem: sourceItem
-  };
-}
-
-/**
- * Find the source item that provides an always-prepared spell
- * @param {Actor5e} actor - The actor to search
- * @param {string} sourceIdentifier - The source identifier to match
- * @returns {object|null} - The source item or null if not found
- */
-export function findSpellSource(actor, sourceIdentifier) {
-  log(3, `Looking for source: ${sourceIdentifier}`);
-
-  // Only look through these item types
-  const relevantTypes = ['class', 'subclass', 'race', 'background', 'feat'];
-
-  // Find the first item with a matching identifier
-  const sourceItem = actor.items.find((item) => relevantTypes.includes(item.type) && item.system.identifier?.toLowerCase() === sourceIdentifier);
-
-  log(3, 'Source search result:', sourceItem ? sourceItem.name : 'Not found');
-  return sourceItem;
-}
-
-/**
  * Organize spells by level for display with preparation info
  * @param {Array} spellItems - Array of spell documents
  * @param {Actor5e} actor - The actor to check preparation status against
  * @returns {Array} - Array of spell levels with formatted data for templates
  */
-export function organizeSpellsByLevel(spellItems, actor) {
-  log(3, `Organizing ${spellItems.length} spells by level`);
+export async function organizeSpellsByLevel(spellItems, actor) {
+  log(2, `Organizing ${spellItems.length} spells by level for ${actor.name}`);
 
   // Organize spells by level
   const spellsByLevel = {};
+  const processedSpellIds = new Set(); // Track spells by ID
+  const processedSpellNames = new Set(); // Track spells by name (lowercase)
 
+  // First, add all spells from the class spell list
+  log(2, 'Adding spells from class spell list');
   for (const spell of spellItems) {
-    if (!spell?.system?.level && spell.system.level !== 0) continue;
+    if (spell?.system?.level === undefined) continue;
+
     const level = spell.system.level;
+    const spellName = spell.name.toLowerCase();
 
     if (!spellsByLevel[level]) {
       spellsByLevel[level] = [];
@@ -425,7 +354,6 @@ export function organizeSpellsByLevel(spellItems, actor) {
 
     // Add preparation status information to each spell
     const prepStatus = getSpellPreparationStatus(actor, spell);
-    log(3, `Preparation status for ${spell.name}:`, prepStatus);
 
     // Add additional data for filtering
     const filterData = extractSpellFilterData(spell);
@@ -437,6 +365,48 @@ export function organizeSpellsByLevel(spellItems, actor) {
     };
 
     spellsByLevel[level].push(spellData);
+    processedSpellIds.add(spell.id || spell.compendiumUuid || spell.uuid);
+    processedSpellNames.add(spellName);
+  }
+
+  // Next, add any additional spells directly from the actor
+  log(2, 'Adding additional spells from actor');
+  const actorSpells = await findActorSpells(actor, processedSpellIds, processedSpellNames);
+
+  for (const { spell, source } of actorSpells) {
+    if (spell?.system?.level === undefined) continue;
+
+    const level = spell.system.level;
+    log(2, `Adding actor spell: ${spell.name} (level ${level}, source: ${source.name})`);
+
+    if (!spellsByLevel[level]) {
+      spellsByLevel[level] = [];
+    }
+
+    // Determine preparation status
+    const isAlwaysPrepared = spell.system?.preparation?.mode === 'always';
+    const isPrepared = isAlwaysPrepared || spell.system?.preparation?.prepared;
+
+    const prepStatus = {
+      prepared: isPrepared,
+      isOwned: true,
+      preparationMode: spell.system?.preparation?.mode || 'prepared',
+      disabled: isAlwaysPrepared || ['innate', 'pact', 'atwill'].includes(spell.system?.preparation?.mode),
+      alwaysPrepared: isAlwaysPrepared,
+      sourceItem: source
+    };
+
+    const filterData = extractSpellFilterData(spell);
+
+    const spellData = {
+      ...spell,
+      preparation: prepStatus,
+      filterData
+    };
+
+    spellsByLevel[level].push(spellData);
+    processedSpellIds.add(spell.id || spell.uuid);
+    processedSpellNames.add(spell.name.toLowerCase());
   }
 
   // Convert to sorted array for handlebars
@@ -448,7 +418,9 @@ export function organizeSpellsByLevel(spellItems, actor) {
       spells: spells
     }));
 
-  log(3, 'Final organized spell levels:', result.length);
+  log(2, `Final organized spell levels: ${result.length}`);
+  log(2, `Total spells after organization: ${result.reduce((sum, level) => sum + level.spells.length, 0)}`);
+
   return result;
 }
 
@@ -564,5 +536,178 @@ export function extractSpellFilterData(spell) {
     concentration,
     requiresSave,
     conditions
+  };
+}
+
+/**
+ * Simplified spell source finding for actor spells
+ * @param {Actor5e} actor - The actor to check
+ * @returns {Promise<Array>} - Array of actor spells with source information
+ */
+export async function findActorSpells(actor, processedSpellIds, processedSpellNames) {
+  const actorSpells = actor.items.filter((item) => item.type === 'spell');
+  const newSpells = [];
+
+  for (const spell of actorSpells) {
+    const spellId = spell.id || spell.uuid;
+    const spellName = spell.name.toLowerCase();
+
+    // Skip if already processed
+    if (processedSpellIds.has(spellId) || processedSpellNames.has(spellName)) {
+      continue;
+    }
+
+    const source = determineSpellSource(actor, spell);
+
+    newSpells.push({
+      spell,
+      source
+    });
+  }
+
+  return newSpells;
+}
+
+/**
+ * Determine the source of a spell on the actor
+ * @param {Actor5e} actor - The actor
+ * @param {Item5e} spell - The spell item
+ * @returns {Object} - Source information for the spell
+ */
+export function determineSpellSource(actor, spell) {
+  // Check advancement origin first
+  const advancementOrigin = spell.flags?.dnd5e?.advancementOrigin;
+  if (advancementOrigin) {
+    const sourceItemId = advancementOrigin.split('.')[0];
+    const sourceItem = actor.items.get(sourceItemId);
+
+    if (sourceItem) {
+      return {
+        name: sourceItem.name,
+        type: sourceItem.type,
+        id: sourceItem.id
+      };
+    }
+  }
+
+  // Check cached activity source
+  const cachedFor = spell.flags?.dnd5e?.cachedFor;
+  if (cachedFor && typeof cachedFor === 'string') {
+    try {
+      const activity = fromUuidSync(cachedFor, { relative: actor });
+      const item = activity.item;
+
+      if (item) {
+        return {
+          name: item.name,
+          type: item.type,
+          id: item.id
+        };
+      }
+    } catch (error) {
+      log(1, `Error resolving cached activity source for ${spell.name}:`, error);
+    }
+  }
+
+  // Fallback to default source if no origin found
+  return {
+    name: 'Unknown Source',
+    type: 'feature'
+  };
+}
+
+/**
+ * Check if a spell is already prepared on an actor
+ * @param {Actor5e} actor - The actor to check
+ * @param {Item5e} spell - The spell document
+ * @returns {object} - Status information about the spell preparation
+ */
+export function getSpellPreparationStatus(actor, spell) {
+  log(3, `Checking preparation status for spell: ${spell.name}`);
+
+  // First check if the spell is already on the actor
+  const actorSpell = actor.items.find((item) => item.type === 'spell' && (item.name === spell.name || item.flags?.core?.sourceId === spell.compendiumUuid));
+
+  log(3, 'Actor has spell:', !!actorSpell);
+
+  if (!actorSpell) {
+    return {
+      prepared: false,
+      isOwned: false,
+      preparationMode: null,
+      disabled: false,
+      alwaysPrepared: false,
+      sourceItem: null
+    };
+  }
+
+  const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
+  const alwaysPrepared = preparationMode === 'always';
+
+  log(3, 'Spell preparation mode:', preparationMode);
+  log(3, 'Always prepared:', alwaysPrepared);
+
+  // Determine source item
+  let sourceItem = null;
+
+  // Check advancement origin or cached activity flags
+  const advancementOrigin = actorSpell.flags?.dnd5e?.advancementOrigin;
+  const cachedFor = actorSpell.flags?.dnd5e?.cachedFor;
+
+  if (advancementOrigin || cachedFor) {
+    let resolvedSource = null;
+
+    if (advancementOrigin) {
+      const sourceItemId = advancementOrigin.split('.')[0];
+      resolvedSource = actor.items.get(sourceItemId);
+    } else if (cachedFor) {
+      try {
+        const activity = fromUuidSync(cachedFor, { relative: actor });
+        resolvedSource = activity.item;
+      } catch (error) {
+        log(1, `Error resolving cached activity source for ${actorSpell.name}:`, error);
+      }
+    }
+
+    if (resolvedSource) {
+      sourceItem = {
+        name: resolvedSource.name,
+        type: resolvedSource.type
+      };
+      log(3, `Found source item: ${resolvedSource.name}`);
+    }
+  }
+
+  // Fallback source determination if no direct source found
+  if (!sourceItem) {
+    if (alwaysPrepared) {
+      const subclass = actor.items.find((i) => i.type === 'subclass');
+      if (subclass) {
+        sourceItem = {
+          name: subclass.name,
+          type: 'subclass'
+        };
+      }
+    } else if (preparationMode === 'pact') {
+      const subclass = actor.items.find((i) => i.type === 'subclass');
+      sourceItem = subclass ? { name: subclass.name, type: 'subclass' } : { name: 'Pact Magic', type: 'class' };
+    } else {
+      const classItem = actor.items.find((i) => i.type === 'class');
+      if (classItem) {
+        sourceItem = {
+          name: classItem.name,
+          type: 'class'
+        };
+      }
+    }
+  }
+
+  return {
+    prepared: actorSpell.system.preparation?.prepared || alwaysPrepared,
+    isOwned: true,
+    preparationMode: preparationMode,
+    disabled: alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
+    alwaysPrepared: alwaysPrepared,
+    sourceItem: sourceItem
   };
 }

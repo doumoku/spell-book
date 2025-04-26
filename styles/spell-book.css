@@ -435,10 +435,10 @@
   margin-left: 5px;
   padding: 0 5px;
   border-radius: 3px;
-  color: #bababa;
-  font-weight: normal;
-  font-size: 0.8em;
-  background-color: var(--color-border-light);
+  color: black;
+  font-weight: 600;
+  font-size: 0.75rem;
+  background-color: #cea4e5;
 }
 
 /* ----------------------------------------- */

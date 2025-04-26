@@ -116,7 +116,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       log(3, `Successfully fetched ${spellItems.length} spell items`);
 
       // Organize spells by level
-      const spellLevels = organizeSpellsByLevel(spellItems, this.actor);
+      const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
 
       // Store the context for access by other methods
       this.context = context;

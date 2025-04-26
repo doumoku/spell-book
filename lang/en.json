@@ -42,8 +42,6 @@
   "SPELLBOOK.Notifications.SpellsUpdated": "{name}'s prepared spells have been updated.",
   "SPELLBOOK.Notifications.UpdateFailed": "Failed to update prepared spells.",
   "SPELLBOOK.Preparation.Always": "Always",
-  "SPELLBOOK.Preparation.AlwaysPreparedTooltip": "Always prepared",
-  "SPELLBOOK.Preparation.FromSource": "from",
   "SPELLBOOK.Rest.DialogTitle": "Prepare Spells After Rest",
   "SPELLBOOK.Rest.KeepSpells": "Keep Current Spells",
   "SPELLBOOK.Rest.OpenSpellbook": "Open Spell Book",
