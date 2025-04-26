@@ -72,8 +72,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @override
    */
   async _prepareContext(options) {
-    this.element?.classList.add('loading');
-
     const context = {
       actor: this.actor,
       spellLevels: [],
@@ -129,10 +127,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Process each level to create enriched content
       for (const level of spellLevels) {
+        let failedUUIDs = [];
         for (const spell of level.spells) {
           // Store the original compendium UUID on the spell
-          const uuid = spell.compendiumUuid || spell.uuid;
-          log(1, 'uuid found for icon?', { spell: spell.name, cUUID: spell.compendiumUuid, sUUID: spell.uuid, deriviedUUID: uuid });
+          const uuid = spell.compendiumUuid || spell.uuid || spell?._stats?.compendiumSource;
+          if (!uuid) {
+            failedUUIDs.push(spell);
+          }
 
           // Create enriched HTML with the correct UUID
           let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
@@ -156,6 +157,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
           spell.enrichedIcon = enrichedIcon;
           spell.formattedDetails = formatSpellDetails(spell);
+        }
+        if (failedUUIDs.length > 0) {
+          log(2, 'Some spells failed UUID check:', failedUUIDs);
         }
       }
 
@@ -204,9 +208,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     } catch (error) {
       log(1, 'Error preparing spell book context:', error);
       return context;
-    } finally {
-      // Remove loading spinner when done
-      this.element?.classList.remove('loading');
     }
   }
 

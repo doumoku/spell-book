@@ -333,7 +333,7 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
  * @returns {Array} - Array of spell levels with formatted data for templates
  */
 export async function organizeSpellsByLevel(spellItems, actor) {
-  log(2, `Organizing ${spellItems.length} spells by level for ${actor.name}`);
+  log(3, `Organizing ${spellItems.length} spells by level for ${actor.name}`);
 
   // Organize spells by level
   const spellsByLevel = {};
@@ -341,7 +341,7 @@ export async function organizeSpellsByLevel(spellItems, actor) {
   const processedSpellNames = new Set(); // Track spells by name (lowercase)
 
   // First, add all spells from the class spell list
-  log(2, 'Adding spells from class spell list');
+  log(3, 'Adding spells from class spell list');
   for (const spell of spellItems) {
     if (spell?.system?.level === undefined) continue;
 
@@ -370,14 +370,14 @@ export async function organizeSpellsByLevel(spellItems, actor) {
   }
 
   // Next, add any additional spells directly from the actor
-  log(2, 'Adding additional spells from actor');
+  log(3, 'Adding additional spells from actor');
   const actorSpells = await findActorSpells(actor, processedSpellIds, processedSpellNames);
 
   for (const { spell, source } of actorSpells) {
     if (spell?.system?.level === undefined) continue;
 
     const level = spell.system.level;
-    log(2, `Adding actor spell: ${spell.name} (level ${level}, source: ${source.name})`);
+    log(3, `Adding actor spell: ${spell.name} (level ${level}, source: ${source.name})`);
 
     if (!spellsByLevel[level]) {
       spellsByLevel[level] = [];
@@ -408,8 +408,8 @@ export async function organizeSpellsByLevel(spellItems, actor) {
       spells: spells
     }));
 
-  log(2, `Final organized spell levels: ${result.length}`);
-  log(2, `Total spells after organization: ${result.reduce((sum, level) => sum + level.spells.length, 0)}`);
+  log(3, `Final organized spell levels: ${result.length}`);
+  log(3, `Total spells after organization: ${result.reduce((sum, level) => sum + level.spells.length, 0)}`);
 
   return result;
 }
