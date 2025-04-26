@@ -265,9 +265,27 @@
   white-space: nowrap;
 }
 
-.spell-book .spell-name .spell-school-icon {
-  margin-right: 5px;
-  color: var(--color-text-light-highlight);
+.spell-book .spell-icon {
+  width: 32px;
+  height: 32px;
+  margin-right: 8px;
+  border-radius: 4px;
+  object-fit: cover;
+  vertical-align: middle;
+  flex: 0 0 var(--gold-icon-size);
+  border: 2px solid var(--dnd5e-color-gold);
+  box-shadow: 0 0 4px var(--dnd5e-shadow-45);
+  background-color: var(--dnd5e-color-light-gray);
+  object-position: top;
+}
+
+.spell-book .spell-name .content-link {
+  display: inline-flex !important;
+  align-items: center;
+}
+
+.spell-book .spell-name .content-link i {
+  display: none;
 }
 
 /* ----------------------------------------- */
