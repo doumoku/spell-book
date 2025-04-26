@@ -383,18 +383,8 @@ export async function organizeSpellsByLevel(spellItems, actor) {
       spellsByLevel[level] = [];
     }
 
-    // Determine preparation status
-    const isAlwaysPrepared = spell.system?.preparation?.mode === 'always';
-    const isPrepared = isAlwaysPrepared || spell.system?.preparation?.prepared;
-
-    const prepStatus = {
-      prepared: isPrepared,
-      isOwned: true,
-      preparationMode: spell.system?.preparation?.mode || 'prepared',
-      disabled: isAlwaysPrepared || ['innate', 'pact', 'atwill'].includes(spell.system?.preparation?.mode),
-      alwaysPrepared: isAlwaysPrepared,
-      sourceItem: source
-    };
+    // Pass the actual spell object directly
+    const prepStatus = getSpellPreparationStatus(actor, spell);
 
     const filterData = extractSpellFilterData(spell);
 
@@ -623,12 +613,80 @@ export function determineSpellSource(actor, spell) {
  * @returns {object} - Status information about the spell preparation
  */
 export function getSpellPreparationStatus(actor, spell) {
-  log(3, `Checking preparation status for spell: ${spell.name}`);
+  log(3, `Checking preparation status for spell: ${spell.name} (ID: ${spell.id || 'unknown'})`);
 
-  // First check if the spell is already on the actor
+  // If the spell is coming from findActorSpells, it's already an actor item
+  if (spell.parent === actor || spell._id) {
+    log(3, 'This is already an actor spell, using directly');
+    const actorSpell = spell;
+
+    const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
+    const alwaysPrepared = preparationMode === 'always';
+
+    // Check for cached activity to determine if this is granted from an item
+    const cachedFor = actorSpell.flags?.dnd5e?.cachedFor;
+    let isGranted = false;
+    let sourceItem = null;
+
+    if (cachedFor && typeof cachedFor === 'string') {
+      log(3, `Spell has cachedFor flag: ${cachedFor}`);
+
+      try {
+        // Try to parse the cachedFor path to get the item directly
+        const pathParts = cachedFor.split('.');
+        if (pathParts.length >= 3 && pathParts[1] === 'Item') {
+          const itemId = pathParts[2];
+          log(3, `Looking for item ID: ${itemId}`);
+
+          const item = actor.items.get(itemId);
+          if (item) {
+            log(3, `Found item by ID: ${item.name}`);
+            isGranted = true;
+            sourceItem = {
+              name: item.name,
+              type: item.type,
+              id: item.id
+            };
+          }
+        }
+      } catch (error) {
+        log(1, `Error handling cachedFor: ${error}`);
+      }
+    }
+    // If not granted, check for advancement origin
+    else if (actorSpell.flags?.dnd5e?.advancementOrigin) {
+      const advOrigin = actorSpell.flags.dnd5e.advancementOrigin;
+      const originParts = advOrigin.split('.');
+      const sourceItemId = originParts[0];
+
+      const originItem = actor.items.get(sourceItemId);
+      if (originItem) {
+        sourceItem = {
+          name: originItem.name,
+          type: originItem.type,
+          id: originItem.id
+        };
+      }
+    }
+
+    return {
+      prepared: isGranted || actorSpell.system.preparation?.prepared || alwaysPrepared,
+      isOwned: true,
+      preparationMode: preparationMode,
+      disabled: isGranted || alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
+      alwaysPrepared: alwaysPrepared,
+      sourceItem: sourceItem,
+      isGranted: isGranted
+    };
+  }
+
+  // Otherwise it's a compendium spell, look for it on the actor
   const actorSpell = actor.items.find((item) => item.type === 'spell' && (item.name === spell.name || item.flags?.core?.sourceId === spell.compendiumUuid));
 
   log(3, 'Actor has spell:', !!actorSpell);
+  if (actorSpell) {
+    log(3, `Found actor spell: ${actorSpell.name} (ID: ${actorSpell.id})`);
+  }
 
   if (!actorSpell) {
     return {
@@ -638,51 +696,123 @@ export function getSpellPreparationStatus(actor, spell) {
       disabled: false,
       alwaysPrepared: false,
       sourceItem: null,
-      grantedSpell: false
+      isGranted: false
     };
   }
+
+  // Log full spell data for debugging
+  log(3, 'Actor spell data:', {
+    id: actorSpell.id,
+    name: actorSpell.name,
+    preparationMode: actorSpell.system.preparation?.mode,
+    prepared: actorSpell.system.preparation?.prepared,
+    flags: actorSpell.flags
+  });
 
   const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
   const alwaysPrepared = preparationMode === 'always';
 
-  log(3, 'Spell preparation mode:', preparationMode);
-  log(3, 'Always prepared:', alwaysPrepared);
-
   // Determine source item
   let sourceItem = null;
   let grantedSpell = false;
+  let isGranted = false;
 
   // Check advancement origin or cached activity flags
   const advancementOrigin = actorSpell.flags?.dnd5e?.advancementOrigin;
   const cachedFor = actorSpell.flags?.dnd5e?.cachedFor;
 
-  if (advancementOrigin || cachedFor) {
-    let resolvedSource = null;
+  log(3, 'Checking for spell source:');
+  log(3, ` - advancementOrigin: ${advancementOrigin || 'none'}`);
+  log(3, ` - cachedFor: ${cachedFor || 'none'}`);
 
-    if (advancementOrigin) {
-      const sourceItemId = advancementOrigin.split('.')[0];
-      resolvedSource = actor.items.get(sourceItemId);
-    } else if (cachedFor) {
+  // Check if this is a granted spell from an item via cachedFor
+  if (cachedFor && typeof cachedFor === 'string') {
+    log(3, `Attempting to resolve cachedFor path: ${cachedFor}`);
+
+    try {
+      // Log the full actor structure to check where things are stored
+      log(3, `Actor items count: ${actor.items.size}`);
+
+      // Try to resolve the cached activity
+      const activity = fromUuidSync(cachedFor, { relative: actor });
+      log(3, `Activity resolution result: ${activity ? 'Success' : 'Failed'}`);
+
+      if (activity) {
+        log(3, `Activity data:`, {
+          id: activity.id,
+          type: activity.type,
+          name: activity.name,
+          itemId: activity.item?.id,
+          itemName: activity.item?.name
+        });
+
+        if (activity.item) {
+          isGranted = true;
+          grantedSpell = true;
+          sourceItem = {
+            name: activity.item.name,
+            type: activity.item.type,
+            id: activity.item.id
+          };
+          log(3, `✓ Confirmed granted spell from item: ${activity.item.name}`);
+        } else {
+          log(3, `✗ Activity found but no item property`);
+        }
+      } else {
+        log(3, `✗ Failed to resolve activity from cachedFor`);
+      }
+    } catch (error) {
+      log(1, `Error resolving cached activity source for ${actorSpell.name}:`, error);
+
+      // Let's try a different approach - parse the cachedFor path manually
       try {
-        const activity = fromUuidSync(cachedFor, { relative: actor });
-        resolvedSource = activity.item;
-      } catch (error) {
-        log(1, `Error resolving cached activity source for ${actorSpell.name}:`, error);
+        log(3, `Trying manual path resolution for: ${cachedFor}`);
+        // The path is like ".Item.gv4JVuAlMv4ofuqy.Activity.NGoTVneu5RYDoqnb"
+        const pathParts = cachedFor.split('.');
+        if (pathParts.length >= 3 && pathParts[1] === 'Item') {
+          const itemId = pathParts[2];
+          log(3, `Looking for item ID: ${itemId}`);
+
+          const item = actor.items.get(itemId);
+          if (item) {
+            log(3, `✓ Found item by ID: ${item.name}`);
+            isGranted = true;
+            grantedSpell = true;
+            sourceItem = {
+              name: item.name,
+              type: item.type,
+              id: item.id
+            };
+          } else {
+            log(3, `✗ Could not find item with ID: ${itemId}`);
+          }
+        }
+      } catch (parseError) {
+        log(1, `Error in manual path resolution:`, parseError);
       }
     }
+  } else if (advancementOrigin) {
+    log(3, `Processing advancement origin: ${advancementOrigin}`);
+    const sourceItemId = advancementOrigin.split('.')[0];
+    const resolvedSource = actor.items.get(sourceItemId);
 
     if (resolvedSource) {
       sourceItem = {
         name: resolvedSource.name,
-        type: resolvedSource.type
+        type: resolvedSource.type,
+        id: resolvedSource.id
       };
       grantedSpell = true;
-      log(3, `Found source item: ${resolvedSource.name}`);
+      log(3, `✓ Found source item from advancement: ${resolvedSource.name}`);
+    } else {
+      log(3, `✗ Could not find source item with ID: ${sourceItemId}`);
     }
   }
 
   // Fallback source determination if no direct source found
   if (!sourceItem) {
+    log(3, 'No direct source found, trying fallback methods');
+
     if (alwaysPrepared) {
       const subclass = actor.items.find((i) => i.type === 'subclass');
       if (subclass) {
@@ -690,10 +820,12 @@ export function getSpellPreparationStatus(actor, spell) {
           name: subclass.name,
           type: 'subclass'
         };
+        log(3, `Fallback to subclass (always prepared): ${subclass.name}`);
       }
     } else if (preparationMode === 'pact') {
       const subclass = actor.items.find((i) => i.type === 'subclass');
       sourceItem = subclass ? { name: subclass.name, type: 'subclass' } : { name: 'Pact Magic', type: 'class' };
+      log(3, `Fallback to pact source: ${sourceItem.name}`);
     } else {
       const classItem = actor.items.find((i) => i.type === 'class');
       if (classItem) {
@@ -701,17 +833,25 @@ export function getSpellPreparationStatus(actor, spell) {
           name: classItem.name,
           type: 'class'
         };
+        log(3, `Fallback to class source: ${classItem.name}`);
+      } else {
+        log(3, 'No fallback source found');
       }
     }
   }
 
-  return {
+  const result = {
     prepared: grantedSpell || actorSpell.system.preparation?.prepared || alwaysPrepared,
     isOwned: true,
-    preparationMode: grantedSpell ? game.i18n.localize('SPELLBOOK.SpellSource.Granted') : preparationMode,
+    preparationMode: preparationMode,
     disabled: grantedSpell || alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
     alwaysPrepared: alwaysPrepared,
     sourceItem: sourceItem,
-    grantedSpell: grantedSpell
+    isGranted: isGranted
   };
+
+  log(3, `Final spell preparation status:`, result);
+  log(3, `========== END SPELL CHECK: ${spell.name} ==========`);
+
+  return result;
 }

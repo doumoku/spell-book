@@ -16,16 +16,17 @@
 							<div class="spell-name">
 								{{{spell.enrichedIcon}}}
 								<div class="name-stacked">
+									{{log spell}}
 									<span class="title">{{spell.name}}
-										{{#if spell.preparation.alwaysPrepared}}
-											<span class="always-prepared-tag"
-												data-tooltip="{{#if spell.preparation.sourceItem.name}}{{spell.preparation.sourceItem.name}}{{else}}Always Prepared{{/if}}">
-												{{localize 'SPELLBOOK.Preparation.Always'}}
-											</span>
-										{{else if spell.preparation.grantedSpell}}
+										{{#if spell.preparation.isGranted}}
 											<span class="granted-spell-tag"
 												data-tooltip="{{#if spell.preparation.sourceItem.name}}{{spell.preparation.sourceItem.name}}{{/if}}">
 												{{localize 'SPELLBOOK.SpellSource.Granted'}}
+											</span>
+										{{else if spell.preparation.alwaysPrepared}}
+											<span class="always-prepared-tag"
+												data-tooltip="{{#if spell.preparation.sourceItem.name}}{{spell.preparation.sourceItem.name}}{{else}}Always Prepared{{/if}}">
+												{{localize 'SPELLBOOK.Preparation.Always'}}
 											</span>
 										{{else if spell.preparation.preparationMode}}
 											<span class="preparation-mode-tag"

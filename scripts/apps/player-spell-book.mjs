@@ -132,6 +132,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const spell of level.spells) {
           // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid;
+          log(1, 'uuid found for icon?', { spell: spell.name, cUUID: spell.compendiumUuid, sUUID: spell.uuid, deriviedUUID: uuid });
 
           // Create enriched HTML with the correct UUID
           let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
