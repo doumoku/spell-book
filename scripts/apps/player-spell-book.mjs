@@ -203,15 +203,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Move footer to the appropriate container
       this._positionFooter();
 
-      // Set up text search event listener
-      const searchInput = this.element.querySelector('input[name="filter-name"]');
-      if (searchInput) {
-        searchInput.addEventListener('input', (event) => {
-          console.log('Search input event triggered', { value: event.target.value });
-          log(1, 'Search input event triggered with value:', event.target.value);
-          this._onSearchInput.bind(this)(event);
-        });
-      }
+      // Set up filter event handlers for immediate response
+      this._setupFilterListeners();
 
       // Update the preparation count in the footer
       if (context.spellPreparation) {
@@ -238,6 +231,52 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     } catch (error) {
       log(1, 'Error in _onRender:', error);
     }
+  }
+
+  /**
+   * Set up event listeners for all filter elements
+   * @private
+   */
+  _setupFilterListeners() {
+    // Text search (already handled separately, keeping for reference)
+    const searchInput = this.element.querySelector('input[name="filter-name"]');
+    if (searchInput) {
+      searchInput.addEventListener('input', this._onSearchInput.bind(this));
+    }
+
+    // Add listeners to all dropdown selects (both filters and sort)
+    const dropdowns = this.element.querySelectorAll('select[name^="filter-"], select[name="sort-by"]');
+    dropdowns.forEach((dropdown) => {
+      dropdown.addEventListener('change', () => {
+        this._applyFilters();
+
+        // Handle special case for sort-by
+        if (dropdown.name === 'sort-by') {
+          this._applySorting(dropdown.value);
+        }
+      });
+    });
+
+    // Add listeners to checkbox filters
+    const checkboxes = this.element.querySelectorAll('input[type="checkbox"][name^="filter-"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        this._applyFilters();
+      });
+    });
+  }
+
+  /**
+   * Handler for search input to ensure it's properly bound to this instance
+   * @param {Event} event - The input event
+   * @private
+   */
+  _onSearchInput(event) {
+    // Debounce text search for better performance
+    clearTimeout(this._searchTimer);
+    this._searchTimer = setTimeout(() => {
+      this._applyFilters();
+    }, 200); // 200ms debounce
   }
 
   /**
@@ -799,7 +838,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static filterSpells(event, form) {
-    log(1, 'filterSpells action triggered');
+    log(3, 'filterSpells action triggered');
     this._applyFilters();
   }
 
@@ -810,7 +849,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @static
    */
   static sortSpells(event, form) {
-    log(1, 'sortSpells action triggered');
+    log(3, 'sortSpells action triggered');
     const sortBy = event.target.value;
     this._applySorting(sortBy);
   }
