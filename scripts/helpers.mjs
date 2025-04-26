@@ -281,9 +281,14 @@ export function calculateMaxSpellLevel(actorLevel, spellcasting) {
  * @returns {Promise<Array>} - Array of spell documents
  */
 export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
+  const start = performance.now();
+  const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
+
   const spellItems = [];
   const errors = [];
   const promises = [];
+
+  timing('Start fetchSpellDocuments');
 
   // Create a batch of promises for parallel fetching
   for (const uuid of spellUuids) {
@@ -308,21 +313,25 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
 
     promises.push(promise);
   }
+  timing('Prepared all spell fetch promises');
 
   // Wait for all promises to resolve
   await Promise.allSettled(promises);
+  timing('Completed all spell fetch promises');
 
   // Log errors in bulk rather than one by one
   if (errors.length > 0) {
     log(1, `Failed to fetch ${errors.length} spells:`, errors);
 
-    // If all spells failed, this might indicate a systemic issue
     if (errors.length === spellUuids.size) {
       log(1, 'All spells failed to load, possible system or compendium issue');
     }
   }
+  timing('Logged fetch errors if any');
 
   log(3, `Successfully fetched ${spellItems.length}/${spellUuids.size} spells`);
+  timing('Finished fetchSpellDocuments');
+
   return spellItems;
 }
 

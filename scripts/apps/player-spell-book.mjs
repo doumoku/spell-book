@@ -72,6 +72,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @override
    */
   async _prepareContext(options) {
+    const start = performance.now();
     const context = {
       actor: this.actor,
       spellLevels: [],
@@ -86,72 +87,69 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       TEMPLATES: MODULE.TEMPLATES
     };
 
+    const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
+
     try {
-      // Find the class item for this actor
+      timing('Start _prepareContext');
+
       const classItem = findSpellcastingClass(this.actor);
-      if (!classItem) return context;
-
-      // Find the matching spellcasting class
-      const className = classItem.name.toLowerCase();
-      const classUuid = classItem.uuid;
-      context.className = classItem.name;
-
-      // Get the spell list for this class
-      const spellUuids = await getClassSpellList(className, classUuid);
-      if (!spellUuids || !spellUuids.size) {
-        log(1, 'No spells found for class:', className);
+      if (!classItem) {
+        timing('No class item found');
         return context;
       }
 
-      // Determine max spell level based on actor's level and spell slot table
+      const className = classItem.name.toLowerCase();
+      const classUuid = classItem.uuid;
+      context.className = classItem.name;
+      timing('Found class item');
+
+      const spellUuids = await getClassSpellList(className, classUuid);
+      if (!spellUuids || !spellUuids.size) {
+        log(1, 'No spells found for class:', className);
+        timing('No spells found');
+        return context;
+      }
+      timing('Fetched class spell list');
+
       const actorLevel = this.actor.system.details.level;
       const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
       log(3, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
+      timing('Calculated max spell level');
 
-      // Get the actual spell items
       log(3, `Starting to fetch ${spellUuids.size} spell items`);
       const spellItems = await this._fetchSpellDataWithCache(spellUuids, maxSpellLevel);
       log(3, `Successfully fetched ${spellItems.length} spell items`);
+      timing('Fetched spell data with cache');
 
-      // Organize spells by level
       const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
+      timing('Organized spells by level');
 
-      // Store the context for access by other methods
       this.context = context;
 
-      // Sort spells within each level based on current sort setting
       const sortBy = this._getFilterState().sortBy || 'level';
       for (const level of spellLevels) {
         level.spells = this._sortSpells(level.spells, sortBy);
       }
+      timing('Sorted spells within levels');
 
-      // Process each level to create enriched content
       for (const level of spellLevels) {
         let failedUUIDs = [];
         for (const spell of level.spells) {
-          // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid || spell?._stats?.compendiumSource;
           if (!uuid) {
             failedUUIDs.push(spell);
           }
 
-          // Create enriched HTML with the correct UUID
           let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
 
-          // Extract just the icon and make it a clickable link
           const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
-
-          // Replace the default icon with our custom one, but keep the link structure
           const linkMatch = enrichedHTML.match(/<a[^>]*>(.*?)<\/a>/);
           let enrichedIcon = '';
 
           if (linkMatch) {
-            // Extract the <a> tag attributes
             const linkOpenTag = enrichedHTML.match(/<a[^>]*>/)[0];
-            // Create a new link with just the icon
             enrichedIcon = `${linkOpenTag}${iconImg}</a>`;
           } else {
-            // Fallback if link extraction fails
             enrichedIcon = `<a class="content-link" data-uuid="${uuid}">${iconImg}</a>`;
           }
 
@@ -162,15 +160,14 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           log(2, 'Some spells failed UUID check:', failedUUIDs);
         }
       }
+      timing('Enriched spells with icons and formatted details');
 
       context.spellLevels = spellLevels;
 
-      // Calculate prepared spell count and maximum
       let preparedCount = 0;
       let maxPrepared = 0;
 
       if (classItem) {
-        // Calculate based on class and level
         const spellcastingAbility = classItem.system.spellcasting?.ability;
         if (spellcastingAbility) {
           const abilityMod = this.actor.system.abilities[spellcastingAbility]?.mod || 0;
@@ -179,7 +176,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         }
       }
 
-      // Count currently prepared spells
       for (const level of spellLevels) {
         for (const spell of level.spells) {
           if (spell.preparation.prepared && !spell.preparation.alwaysPrepared) {
@@ -187,15 +183,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           }
         }
       }
+      timing('Calculated prepared spells');
 
       context.spellPreparation = {
         current: preparedCount,
         maximum: maxPrepared
       };
 
-      // Prepare filter dropdowns and checkboxes
       context.filterDropdowns = this._prepareFilterDropdowns();
       context.filterCheckboxes = this._prepareFilterCheckboxes();
+      timing('Prepared filters');
 
       log(3, 'Final context:', {
         className: context.className,
@@ -203,6 +200,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         totalSpells: context.spellLevels.reduce((count, level) => count + level.spells.length, 0),
         preparation: context.spellPreparation
       });
+      timing('Finished _prepareContext');
 
       return context;
     } catch (error) {
@@ -412,26 +410,36 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   async _fetchSpellDataWithCache(spellUuids, maxSpellLevel) {
+    const start = performance.now();
+    const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
+
     // Create a cache key based on actor ID and spell list
     const cacheKey = `${this.actor.id}-${maxSpellLevel}`;
+    timing('Created cache key');
 
     // Check if we have cached data for this actor
     const cachedData = MODULE.CACHE.spellData[cacheKey];
     const cacheTime = MODULE.CACHE.spellDataTime[cacheKey] || 0;
+    timing('Checked cache presence');
 
     // Use cache if available and less than 5 minutes old
     if (cachedData && Date.now() - cacheTime < 300000) {
       log(3, `Using cached spell data for ${this.actor.name} (${cachedData.length} spells)`);
+      timing('Using cached data');
       return cachedData;
     }
 
     // Otherwise fetch fresh data
     log(3, `Fetching fresh spell data for ${this.actor.name}`);
+    timing('Starting fetch of fresh spell data');
+
     const data = await fetchSpellDocuments(spellUuids, maxSpellLevel);
+    timing('Fetched fresh spell data');
 
     // Cache the results
     MODULE.CACHE.spellData[cacheKey] = data;
     MODULE.CACHE.spellDataTime[cacheKey] = Date.now();
+    timing('Cached fresh spell data');
 
     return data;
   }
