@@ -133,8 +133,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           // Store the original compendium UUID on the spell
           const uuid = spell.compendiumUuid || spell.uuid;
 
+          let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
           const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
-          spell.enrichedName = await TextEditor.enrichHTML(`${iconImg}@UUID[${uuid}]{${spell.name}}`, { async: true });
+          enrichedHTML = enrichedHTML.replace(/<i class="[^"]*"><\/i>/, iconImg);
+
+          spell.enrichedName = enrichedHTML;
           spell.formattedDetails = formatSpellDetails(spell);
         }
       }
