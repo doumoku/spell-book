@@ -28,10 +28,10 @@
 												data-tooltip="{{#if spell.preparation.sourceItem.name}}{{spell.preparation.sourceItem.name}}{{else}}Always Prepared{{/if}}">
 												{{localize 'SPELLBOOK.Preparation.Always'}}
 											</span>
-										{{else if spell.preparation.preparationMode}}
+										{{else if spell.preparation.prepared}}
 											<span class="preparation-mode-tag"
 												data-tooltip="{{#if spell.preparation.sourceItem.name}}{{spell.preparation.sourceItem.name}}{{/if}}">
-												{{spell.preparation.preparationMode}}
+												{{spell.preparation.prepared}}
 											</span>
 										{{/if}}
 									</span>
