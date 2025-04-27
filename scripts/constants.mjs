@@ -55,17 +55,5 @@ export const MODULE = {
   CACHE: {
     spellData: {},
     spellDataTime: {}
-  },
-
-  /**
-   * Global spell cache for storing indexed spell data
-   * @type {Object}
-   */
-  SPELL_CACHE: {
-    initialized: false,
-    byUuid: {},
-    byId: {},
-    byName: {},
-    enrichedIcons: {}
   }
 };

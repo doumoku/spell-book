@@ -138,32 +138,22 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           const uuid = spell.compendiumUuid || spell.uuid || spell?._stats?.compendiumSource;
           if (!uuid) {
             failedUUIDs.push(spell);
-            continue;
           }
 
-          // Use cached enriched icon if available
-          if (MODULE.SPELL_CACHE.enrichedIcons[uuid]) {
-            spell.enrichedIcon = MODULE.SPELL_CACHE.enrichedIcons[uuid];
+          let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
+
+          const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
+          const linkMatch = enrichedHTML.match(/<a[^>]*>(.*?)<\/a>/);
+          let enrichedIcon = '';
+
+          if (linkMatch) {
+            const linkOpenTag = enrichedHTML.match(/<a[^>]*>/)[0];
+            enrichedIcon = `${linkOpenTag}${iconImg}</a>`;
           } else {
-            // Otherwise generate and cache it
-            let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
-
-            const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
-            const linkMatch = enrichedHTML.match(/<a[^>]*>(.*?)<\/a>/);
-            let enrichedIcon = '';
-
-            if (linkMatch) {
-              const linkOpenTag = enrichedHTML.match(/<a[^>]*>/)[0];
-              enrichedIcon = `${linkOpenTag}${iconImg}</a>`;
-            } else {
-              enrichedIcon = `<a class="content-link" data-uuid="${uuid}">${iconImg}</a>`;
-            }
-
-            spell.enrichedIcon = enrichedIcon;
-            // Store for future use
-            MODULE.SPELL_CACHE.enrichedIcons[uuid] = enrichedIcon;
+            enrichedIcon = `<a class="content-link" data-uuid="${uuid}">${iconImg}</a>`;
           }
 
+          spell.enrichedIcon = enrichedIcon;
           spell.formattedDetails = formatSpellDetails(spell);
         }
         if (failedUUIDs.length > 0) {

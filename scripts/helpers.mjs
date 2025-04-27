@@ -281,78 +281,56 @@ export function calculateMaxSpellLevel(actorLevel, spellcasting) {
  * @returns {Promise<Array>} - Array of spell documents
  */
 export async function fetchSpellDocuments(spellUuids, maxSpellLevel) {
+  //TODO: Find a way to perform a 'getIndex' type scenario on spellUUids so we don't need the full document.
   const start = performance.now();
   const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
 
+  const spellItems = [];
+  const errors = [];
+  const promises = [];
+
   timing('Start fetchSpellDocuments');
 
-  // Make sure cache is initialized
-  if (!MODULE.SPELL_CACHE.initialized) {
-    await initializeSpellCache();
-  }
-  timing('Ensured cache is initialized');
-
-  const spellItems = [];
-  const notCached = [];
-
-  // First try to get spells from cache
+  // Create a batch of promises for parallel fetching
   for (const uuid of spellUuids) {
-    // Try direct UUID lookup first
-    let cachedSpell = MODULE.SPELL_CACHE.byUuid[uuid];
-
-    // If not found, try looking up by ID
-    if (!cachedSpell) {
-      const id = getIdFromUuid(uuid);
-      cachedSpell = MODULE.SPELL_CACHE.byId[id];
-      if (cachedSpell) {
-        log(3, `Found spell by ID lookup: ${id} instead of full UUID: ${uuid}`);
-      }
-    }
-
-    if (cachedSpell) {
-      // Check max spell level
-      if (cachedSpell.system?.level <= maxSpellLevel) {
-        spellItems.push({
-          ...cachedSpell,
-          compendiumUuid: uuid // Keep the original UUID for reference
-        });
-      }
-    } else {
-      notCached.push(uuid);
-    }
-  }
-
-  timing(`Retrieved ${spellItems.length} spells from cache (${notCached.length} not found)`);
-
-  // For any spells not in the cache, fall back to direct lookup
-  if (notCached.length > 0) {
-    log(2, `Fetching ${notCached.length} spells not found in cache`);
-
-    const fetchPromises = notCached.map((uuid) => {
-      return fromUuid(uuid)
-        .then((spell) => {
-          if (spell && spell.type === 'spell' && spell.system.level <= maxSpellLevel) {
-            // Add to cache for future use - both by UUID and ID
-            MODULE.SPELL_CACHE.byUuid[uuid] = spell;
-            MODULE.SPELL_CACHE.byId[spell._id] = spell;
-            MODULE.SPELL_CACHE.byName[spell.name.toLowerCase()] = spell;
-
+    const promise = fromUuid(uuid)
+      .then((spell) => {
+        if (spell && spell.type === 'spell') {
+          if (spell.system.level <= maxSpellLevel) {
             spellItems.push({
               ...spell,
               compendiumUuid: uuid
             });
           }
-        })
-        .catch((error) => {
-          log(1, `Error fetching spell ${uuid}:`, error);
-        });
-    });
+        } else if (spell) {
+          errors.push({ uuid, reason: 'Not a valid spell document' });
+        } else {
+          errors.push({ uuid, reason: 'Document not found' });
+        }
+      })
+      .catch((error) => {
+        errors.push({ uuid, reason: error.message || 'Unknown error' });
+      });
 
-    await Promise.allSettled(fetchPromises);
-    timing(`Fetched ${notCached.length} additional spells not in cache`);
+    promises.push(promise);
   }
+  timing('Prepared all spell fetch promises');
 
-  log(3, `Successfully retrieved ${spellItems.length}/${spellUuids.size} spells`);
+  // Wait for all promises to resolve
+  await Promise.allSettled(promises);
+  timing('Completed all spell fetch promises');
+
+  // Log errors in bulk rather than one by one
+  if (errors.length > 0) {
+    log(1, `Failed to fetch ${errors.length} spells:`, errors);
+
+    if (errors.length === spellUuids.size) {
+      log(1, 'All spells failed to load, possible system or compendium issue');
+    }
+  }
+  timing('Logged fetch errors if any');
+
+  log(3, `Successfully fetched ${spellItems.length}/${spellUuids.size} spells`);
   timing('Finished fetchSpellDocuments');
 
   return spellItems;
@@ -455,18 +433,9 @@ export function formatSpellDetails(spell) {
   const components = [];
   const details = [];
 
-  // Handle components with more resilient code that works with indexed data format
-  if (spell.labels?.components) {
-    const comp = spell.labels.components;
-    if (comp.all) {
-      for (const c of comp.all) {
-        components.push(c.abbr);
-      }
-    } else {
-      // Handle simplified component data from index
-      if (comp.v) components.push('V');
-      if (comp.s) components.push('S');
-      if (comp.m) components.push('M');
+  if (spell.labels.components?.all) {
+    for (const c of spell.labels.components.all) {
+      components.push(c.abbr);
     }
   }
 
@@ -479,12 +448,12 @@ export function formatSpellDetails(spell) {
   }
 
   // Add activation
-  if (spell.labels?.activation) {
+  if (spell.labels.activation) {
     details.push(spell.labels.activation);
   }
 
   // Add school
-  if (spell.labels?.school) {
+  if (spell.labels.school) {
     details.push(spell.labels.school);
   }
 
@@ -500,14 +469,14 @@ export function formatSpellDetails(spell) {
 export function extractSpellFilterData(spell) {
   // Extract casting time
   const castingTime = {
-    value: spell.system?.activation?.value || '',
-    type: spell.system?.activation?.type || '',
+    value: spell.system.activation?.value || '',
+    type: spell.system.activation?.type || '',
     label: spell.labels?.activation || ''
   };
 
   // Extract range
   const range = {
-    units: spell.system?.range?.units || '',
+    units: spell.system.range?.units || '',
     label: spell.labels?.range || ''
   };
 
@@ -522,19 +491,14 @@ export function extractSpellFilterData(spell) {
   }
 
   // Check for ritual
-  let isRitual = false;
-  if (spell.labels?.components?.tags) {
-    isRitual = spell.labels.components.tags.includes(game.i18n.localize('DND5E.Item.Property.Ritual'));
-  } else if (spell.labels?.ritual || spell.system?.properties?.includes('ritual')) {
-    isRitual = true;
-  }
+  const isRitual = spell.labels?.components?.tags?.includes(game.i18n.localize('DND5E.Item.Property.Ritual')) || false;
 
   // Check for concentration
-  const concentration = spell.system?.duration?.concentration || false;
+  const concentration = spell.system.duration?.concentration || false;
 
   // Check for saving throws
   let requiresSave = false;
-  if (spell.system?.activities) {
+  if (spell.system.activities) {
     for (const [key, activity] of Object.entries(spell.system.activities)) {
       if (activity.value?.type === 'save') {
         requiresSave = true;
@@ -544,13 +508,13 @@ export function extractSpellFilterData(spell) {
   }
 
   // If no saving throw detected in activities, check description
-  if (!requiresSave && spell.system?.description?.value) {
+  if (!requiresSave && spell.system.description?.value) {
     const saveText = game.i18n.localize('SPELLBOOK.Filters.SavingThrow').toLowerCase();
     requiresSave = spell.system.description.value.toLowerCase().includes(saveText);
   }
 
   // Extract conditions applied by scanning description
-  const description = spell.system?.description?.value || '';
+  const description = spell.system.description?.value || '';
   const conditions = [];
   if (description) {
     // Convert to lowercase for case-insensitive matching
@@ -900,75 +864,4 @@ export function getSpellPreparationStatus(actor, spell) {
   log(3, `========== END SPELL CHECK: ${spell.name} ==========`);
 
   return result;
-}
-
-/**
- * Initialize the global spell cache by fetching all spells from compendiums
- * @returns {Promise<void>}
- */
-export async function initializeSpellCache() {
-  if (MODULE.SPELL_CACHE.initialized) return;
-
-  log(3, 'Initializing global spell cache...');
-  const start = performance.now();
-
-  // Reset the cache structure to include ID-based lookup
-  MODULE.SPELL_CACHE.byUuid = {};
-  MODULE.SPELL_CACHE.byId = {}; // Add this new index
-  MODULE.SPELL_CACHE.byName = {};
-
-  // Get all item packs
-  const itemPacks = Array.from(game.packs).filter((p) => p.documentName === 'Item');
-  let totalSpells = 0;
-  let skippedSpells = 0;
-
-  for (const pack of itemPacks) {
-    try {
-      // Get the index with our specified fields
-      const index = await pack.getIndex({ fields: CONFIG.Item.compendiumIndexFields });
-
-      // Filter for spells
-      const spellEntries = index.filter((e) => e.type === 'spell');
-      log(3, `Processing ${spellEntries.length} spells from ${pack.collection}`);
-
-      for (const spell of spellEntries) {
-        try {
-          // Generate the complete UUID
-          const uuid = `Compendium.${pack.collection}.${spell._id}`;
-
-          // Store by UUID
-          MODULE.SPELL_CACHE.byUuid[uuid] = spell;
-
-          // Store by ID for direct lookups regardless of UUID format
-          MODULE.SPELL_CACHE.byId[spell._id] = spell;
-
-          // Also store by name (lowercase for case-insensitive lookups)
-          const nameLower = spell.name.toLowerCase();
-          MODULE.SPELL_CACHE.byName[nameLower] = spell;
-
-          totalSpells++;
-        } catch (error) {
-          skippedSpells++;
-          log(2, `Error caching spell ${spell.name || spell._id}:`, error);
-        }
-      }
-    } catch (error) {
-      log(1, `Error processing pack ${pack.collection}:`, error);
-    }
-  }
-
-  MODULE.SPELL_CACHE.initialized = true;
-  const elapsed = performance.now() - start;
-  log(1, `Spell cache initialized with ${totalSpells} spells in ${elapsed.toFixed(2)}ms (${skippedSpells} skipped)`);
-}
-
-/**
- * Extract the ID from a UUID
- * @param {string} uuid - The UUID to process
- * @returns {string} - The extracted ID (last segment)
- */
-function getIdFromUuid(uuid) {
-  if (!uuid) return '';
-  const parts = uuid.split('.');
-  return parts[parts.length - 1];
 }
