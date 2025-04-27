@@ -221,6 +221,27 @@
   font-size: 1.2em;
 }
 
+.spell-book .spell-book-loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--color-text-dark-primary);
+}
+
+.spell-book .spell-book-loading i {
+  margin-bottom: 1rem;
+  color: var(--color-border-highlight);
+}
+
+.spell-book .error-message {
+  padding: 1rem;
+  color: var(--color-level-error);
+  font-style: italic;
+  text-align: center;
+}
+
 /* ----------------------------------------- */
 /* Spell List and Items                      */
 /* ----------------------------------------- */

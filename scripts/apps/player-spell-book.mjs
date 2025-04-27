@@ -47,6 +47,24 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   actor = null;
 
+  /**
+   * Loading state for the spell book
+   * @type {boolean}
+   */
+  isLoading = true;
+
+  /**
+   * Error state tracking
+   * @type {boolean}
+   */
+  hasError = false;
+
+  /**
+   * Error message if loading failed
+   * @type {string}
+   */
+  errorMessage = '';
+
   get title() {
     return game.i18n.format('SPELLBOOK.Application.ActorTitle', { name: this.actor.name });
   }
@@ -65,16 +83,39 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /* -------------------------------------------- */
-  /*  Methods                                     */
+  /*  Core Methods                                */
   /* -------------------------------------------- */
 
   /**
    * @override
    */
   async _prepareContext(options) {
-    const start = performance.now();
-    const context = {
+    // Create basic context with loading state
+    const context = this._createBaseContext();
+
+    // Skip detailed preparation if we're still loading
+    if (this.isLoading) {
+      return context;
+    }
+
+    // Add standard information all apps need regardless of errors
+    context.filterDropdowns = this._prepareFilterDropdowns();
+    context.filterCheckboxes = this._prepareFilterCheckboxes();
+
+    return context;
+  }
+
+  /**
+   * Creates the base context object with minimal information
+   * @returns {Object} The base context
+   * @private
+   */
+  _createBaseContext() {
+    return {
       actor: this.actor,
+      isLoading: this.isLoading,
+      hasError: this.hasError,
+      errorMessage: this.errorMessage,
       spellLevels: [],
       className: '',
       filters: this._getFilterState(),
@@ -84,129 +125,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         { type: 'reset', action: 'reset', icon: 'fa-solid fa-undo', label: 'SETTINGS.Reset', cssClass: 'reset-button' }
       ],
       actorId: this.actor.id,
-      TEMPLATES: MODULE.TEMPLATES
+      TEMPLATES: MODULE.TEMPLATES,
+      spellPreparation: { current: 0, maximum: 0 }
     };
-
-    const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
-
-    try {
-      timing('Start _prepareContext');
-
-      const classItem = findSpellcastingClass(this.actor);
-      if (!classItem) {
-        timing('No class item found');
-        return context;
-      }
-
-      const className = classItem.name.toLowerCase();
-      const classUuid = classItem.uuid;
-      context.className = classItem.name;
-      timing('Found class item');
-
-      const spellUuids = await getClassSpellList(className, classUuid);
-      if (!spellUuids || !spellUuids.size) {
-        log(1, 'No spells found for class:', className);
-        timing('No spells found');
-        return context;
-      }
-      timing('Fetched class spell list');
-
-      const actorLevel = this.actor.system.details.level;
-      const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
-      log(3, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
-      timing('Calculated max spell level');
-
-      log(3, `Starting to fetch ${spellUuids.size} spell items`);
-      const spellItems = await this._fetchSpellDataWithCache(spellUuids, maxSpellLevel);
-      log(3, `Successfully fetched ${spellItems.length} spell items`);
-      timing('Fetched spell data with cache');
-
-      const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
-      timing('Organized spells by level');
-
-      this.context = context;
-
-      const sortBy = this._getFilterState().sortBy || 'level';
-      for (const level of spellLevels) {
-        level.spells = this._sortSpells(level.spells, sortBy);
-      }
-      timing('Sorted spells within levels');
-
-      for (const level of spellLevels) {
-        let failedUUIDs = [];
-        for (const spell of level.spells) {
-          const uuid = spell.compendiumUuid || spell.uuid || spell?._stats?.compendiumSource;
-          if (!uuid) {
-            failedUUIDs.push(spell);
-          }
-
-          let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
-
-          const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
-          const linkMatch = enrichedHTML.match(/<a[^>]*>(.*?)<\/a>/);
-          let enrichedIcon = '';
-
-          if (linkMatch) {
-            const linkOpenTag = enrichedHTML.match(/<a[^>]*>/)[0];
-            enrichedIcon = `${linkOpenTag}${iconImg}</a>`;
-          } else {
-            enrichedIcon = `<a class="content-link" data-uuid="${uuid}">${iconImg}</a>`;
-          }
-
-          spell.enrichedIcon = enrichedIcon;
-          spell.formattedDetails = formatSpellDetails(spell);
-        }
-        if (failedUUIDs.length > 0) {
-          log(2, 'Some spells failed UUID check:', failedUUIDs);
-        }
-      }
-      timing('Enriched spells with icons and formatted details');
-
-      context.spellLevels = spellLevels;
-
-      let preparedCount = 0;
-      let maxPrepared = 0;
-
-      if (classItem) {
-        const spellcastingAbility = classItem.system.spellcasting?.ability;
-        if (spellcastingAbility) {
-          const abilityMod = this.actor.system.abilities[spellcastingAbility]?.mod || 0;
-          const classLevel = classItem.system.levels || this.actor.system.details.level;
-          maxPrepared = Math.max(1, classLevel + abilityMod);
-        }
-      }
-
-      for (const level of spellLevels) {
-        for (const spell of level.spells) {
-          if (spell.preparation.prepared && !spell.preparation.alwaysPrepared) {
-            preparedCount++;
-          }
-        }
-      }
-      timing('Calculated prepared spells');
-
-      context.spellPreparation = {
-        current: preparedCount,
-        maximum: maxPrepared
-      };
-
-      context.filterDropdowns = this._prepareFilterDropdowns();
-      context.filterCheckboxes = this._prepareFilterCheckboxes();
-      timing('Prepared filters');
-
-      log(3, 'Final context:', {
-        className: context.className,
-        spellLevelCount: context.spellLevels.length,
-        totalSpells: context.spellLevels.reduce((count, level) => count + level.spells.length, 0),
-        preparation: context.spellPreparation
-      });
-      timing('Finished _prepareContext');
-
-      return context;
-    } catch (error) {
-      log(1, 'Error preparing spell book context:', error);
-      return context;
-    }
   }
 
   /**
@@ -219,13 +140,19 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onRender?.(context, options);
 
     try {
-      // Move footer to the appropriate container
+      // Add loading class if we're in the loading state
+      if (this.isLoading) {
+        this.element.classList.add('loading');
+        // Start loading the data in the background
+        this._loadSpellData();
+        return;
+      } else {
+        this.element.classList.remove('loading');
+      }
+
+      // Only set up UI elements if we're not loading
       this._positionFooter();
-
-      // Set up filter event handlers for immediate response
       this._setupFilterListeners();
-
-      // Set up spell preparation checkbox listeners
       this._setupPreparationListeners();
 
       // Set sidebar state based on user preference
@@ -235,170 +162,189 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         this._positionFooter();
       }
 
-      // Always apply filters to ensure initial state is correct
+      // Apply filters and initialize tracking
       this._applyFilters();
-
-      // Initialize spell preparation tracking state
       this._updateSpellPreparationTracking();
     } catch (error) {
       log(1, 'Error in _onRender:', error);
     }
   }
 
-  /**
-   * Set up event listeners for preparation checkboxes
-   * @private
-   */
-  _setupPreparationListeners() {
-    // Add listeners to preparation checkboxes
-    const prepCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
-    prepCheckboxes.forEach((checkbox) => {
-      checkbox.addEventListener('change', (event) => {
-        // Update the prepared-spell class based on checkbox state
-        const spellItem = event.target.closest('.spell-item');
-        if (spellItem) {
-          if (event.target.checked) {
-            spellItem.classList.add('prepared-spell');
-          } else {
-            spellItem.classList.remove('prepared-spell');
-          }
-        }
-        this._updateSpellPreparationTracking();
-      });
-    });
-  }
+  /* -------------------------------------------- */
+  /*  Data Loading                                */
+  /* -------------------------------------------- */
 
   /**
-   * Update the spell preparation tracking and manage checkbox states
+   * Loads all spell data asynchronously after the initial render
    * @private
    */
-  _updateSpellPreparationTracking() {
-    // TODO: Add special handling for cantrips - they should not count against
-    // prepared spell limits and should have different visual treatment
+  async _loadSpellData(options) {
+    const start = performance.now();
+    const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
 
-    const preparedCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
-    const countDisplay = this.element.querySelector('.spell-prep-tracking');
+    timing('Start _loadSpellData');
 
-    if (!countDisplay) return;
-
-    // Count checked non-disabled checkboxes (excludes "always prepared" spells)
-    let preparedCount = 0;
-    preparedCheckboxes.forEach((checkbox) => {
-      if (checkbox.checked) preparedCount++;
-    });
-
-    // Get the maximum from the context
-    const maxPrepared = this.context?.spellPreparation?.maximum || 0;
-
-    // Update the counter text using the span elements
-    const currentCountEl = countDisplay.querySelector('.current-count');
-    const maxCountEl = countDisplay.querySelector('.max-count');
-
-    if (currentCountEl) currentCountEl.textContent = preparedCount;
-    if (maxCountEl) maxCountEl.textContent = maxPrepared;
-
-    // Add visual indicator when at/over max
-    if (preparedCount >= maxPrepared) {
-      countDisplay.classList.add('at-max');
-    } else {
-      countDisplay.classList.remove('at-max');
-    }
-
-    // Only apply limits if we have a valid maximum (avoid limiting when max is 0)
-    if (maxPrepared > 0) {
-      // Disable unchecked checkboxes when at maximum
-      if (preparedCount >= maxPrepared) {
-        // Add class to form to indicate we're at max spells
-        this.element.classList.add('at-max-spells');
-
-        preparedCheckboxes.forEach((checkbox) => {
-          if (!checkbox.checked) {
-            checkbox.disabled = true;
-            // Add class to parent spell item for styling
-            checkbox.closest('.spell-item')?.classList.add('max-prepared');
-          }
-        });
-      } else {
-        // Remove max spells class
-        this.element.classList.remove('at-max-spells');
-
-        // Re-enable all preparation checkboxes
-        preparedCheckboxes.forEach((checkbox) => {
-          checkbox.disabled = false;
-          checkbox.closest('.spell-item')?.classList.remove('max-prepared');
-        });
-      }
-    }
-  }
-
-  /**
-   * Set up event listeners for all filter elements
-   * @private
-   */
-  _setupFilterListeners() {
-    // Text search (already handled separately, keeping for reference)
-    const searchInput = this.element.querySelector('input[name="filter-name"]');
-    if (searchInput) {
-      searchInput.addEventListener('input', this._onSearchInput.bind(this));
-    }
-
-    // Add listeners to all dropdown selects (both filters and sort)
-    const dropdowns = this.element.querySelectorAll('select[name^="filter-"], select[name="sort-by"]');
-    dropdowns.forEach((dropdown) => {
-      dropdown.addEventListener('change', () => {
-        this._applyFilters();
-
-        // Handle special case for sort-by
-        if (dropdown.name === 'sort-by') {
-          this._applySorting(dropdown.value);
-        }
-      });
-    });
-
-    // Add listeners to checkbox filters
-    const checkboxes = this.element.querySelectorAll('input[type="checkbox"][name^="filter-"]');
-    checkboxes.forEach((checkbox) => {
-      checkbox.addEventListener('change', () => {
-        this._applyFilters();
-      });
-    });
-  }
-
-  /**
-   * Handler for search input to ensure it's properly bound to this instance
-   * @param {Event} event - The input event
-   * @private
-   */
-  _onSearchInput(event) {
-    // Debounce text search for better performance
-    clearTimeout(this._searchTimer);
-    this._searchTimer = setTimeout(() => {
-      this._applyFilters();
-    }, 200); // 200ms debounce
-  }
-
-  /**
-   * Position the footer in the appropriate container based on sidebar state
-   * @private
-   */
-  _positionFooter() {
     try {
-      const footer = this.element.querySelector('footer');
-      if (!footer) return;
-
-      const isSidebarCollapsed = this.element.classList.contains('sidebar-collapsed');
-      const sidebarFooterContainer = this.element.querySelector('.sidebar-footer-container');
-      const collapsedFooter = this.element.querySelector('.collapsed-footer');
-
-      if (isSidebarCollapsed && collapsedFooter) {
-        collapsedFooter.appendChild(footer);
-        collapsedFooter.classList.remove('hidden');
-      } else if (sidebarFooterContainer) {
-        sidebarFooterContainer.appendChild(footer);
-        if (collapsedFooter) collapsedFooter.classList.add('hidden');
+      // Find spellcasting class
+      const classItem = findSpellcastingClass(this.actor);
+      if (!classItem) {
+        timing('No class item found');
+        this._setErrorState(game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name }));
+        return;
       }
+
+      const className = classItem.name.toLowerCase();
+      timing('Found class item');
+
+      // Get spell list UUIDs
+      const spellUuids = await this._getSpellUuids(classItem);
+      if (!spellUuids || !spellUuids.size) {
+        log(1, 'No spells found for class:', className);
+        timing('No spells found');
+        this._setErrorState(game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name }));
+        return;
+      }
+      timing('Fetched class spell list');
+
+      // Fetch and process spell data
+      const actorLevel = this.actor.system.details.level;
+      const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
+      log(3, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
+
+      const spellItems = await this._fetchSpellDataWithCache(spellUuids, maxSpellLevel);
+      timing('Fetched spell data with cache');
+
+      const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
+      timing('Organized spells by level');
+
+      // Sort and enhance spell data
+      this._sortAllSpellLevels(spellLevels);
+      await this._enrichSpellData(spellLevels);
+
+      // Calculate preparation stats
+      const prepStats = this._calculatePreparationStats(spellLevels, classItem);
+
+      // Update context with the loaded data
+      log(1, 'context and options:', options);
+      PlayerSpellBook.context.spellLevels = spellLevels;
+      PlayerSpellBook.context.className = classItem.name;
+      PlayerSpellBook.context.spellPreparation = prepStats;
+
+      timing('Finished _loadSpellData');
     } catch (error) {
-      log(1, 'Error positioning footer:', error);
+      log(1, 'Error loading spell data:', error);
+      this._setErrorState('An error occurred while loading spells.');
+    } finally {
+      // Complete loading and re-render
+      this.isLoading = false;
+      this.render(false);
+    }
+  }
+
+  /**
+   * Get spell UUIDs for the class
+   * @param {Item5e} classItem - The class item
+   * @returns {Promise<Set<string>>} - Set of spell UUIDs
+   * @private
+   */
+  async _getSpellUuids(classItem) {
+    const className = classItem.name.toLowerCase();
+    const classUuid = classItem.uuid;
+    return await getClassSpellList(className, classUuid);
+  }
+
+  /**
+   * Set an error state
+   * @param {string} message - The error message
+   * @private
+   */
+  _setErrorState(message) {
+    this.hasError = true;
+    this.errorMessage = message;
+    this.isLoading = false;
+  }
+
+  /**
+   * Sort spells in all spell levels
+   * @param {Array} spellLevels - Array of spell level data
+   * @private
+   */
+  _sortAllSpellLevels(spellLevels) {
+    const sortBy = this._getFilterState().sortBy || 'level';
+    for (const level of spellLevels) {
+      level.spells = this._sortSpells(level.spells, sortBy);
+    }
+  }
+
+  /**
+   * Calculate preparation statistics for the spell levels
+   * @param {Array} spellLevels - Array of spell level data
+   * @param {Item5e} classItem - The spellcasting class item
+   * @returns {Object} Preparation statistics
+   * @private
+   */
+  _calculatePreparationStats(spellLevels, classItem) {
+    let preparedCount = 0;
+    let maxPrepared = 0;
+
+    if (classItem) {
+      const spellcastingAbility = classItem.system.spellcasting?.ability;
+      if (spellcastingAbility) {
+        const abilityMod = this.actor.system.abilities[spellcastingAbility]?.mod || 0;
+        const classLevel = classItem.system.levels || this.actor.system.details.level;
+        maxPrepared = Math.max(1, classLevel + abilityMod);
+      }
+    }
+
+    for (const level of spellLevels) {
+      for (const spell of level.spells) {
+        if (spell.preparation.prepared && !spell.preparation.alwaysPrepared) {
+          preparedCount++;
+        }
+      }
+    }
+
+    return {
+      current: preparedCount,
+      maximum: maxPrepared
+    };
+  }
+
+  /**
+   * Enrich spell data with icons and formatted details
+   * @param {Array} spellLevels - Array of spell level data
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _enrichSpellData(spellLevels) {
+    for (const level of spellLevels) {
+      let failedUUIDs = [];
+      for (const spell of level.spells) {
+        const uuid = spell.compendiumUuid || spell.uuid || spell?._stats?.compendiumSource;
+        if (!uuid) {
+          failedUUIDs.push(spell);
+          continue;
+        }
+
+        let enrichedHTML = await TextEditor.enrichHTML(`@UUID[${uuid}]{${spell.name}}`, { async: true });
+
+        const iconImg = `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
+        const linkMatch = enrichedHTML.match(/<a[^>]*>(.*?)<\/a>/);
+        let enrichedIcon = '';
+
+        if (linkMatch) {
+          const linkOpenTag = enrichedHTML.match(/<a[^>]*>/)[0];
+          enrichedIcon = `${linkOpenTag}${iconImg}</a>`;
+        } else {
+          enrichedIcon = `<a class="content-link" data-uuid="${uuid}">${iconImg}</a>`;
+        }
+
+        spell.enrichedIcon = enrichedIcon;
+        spell.formattedDetails = formatSpellDetails(spell);
+      }
+      if (failedUUIDs.length > 0) {
+        log(2, 'Some spells failed UUID check:', failedUUIDs);
+      }
     }
   }
 
@@ -444,6 +390,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     return data;
   }
 
+  /* -------------------------------------------- */
+  /*  Filter Management                           */
+  /* -------------------------------------------- */
+
   /**
    * Prepare filter dropdown options
    * @returns {Array} - Array of filter dropdown objects
@@ -457,29 +407,30 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const levelOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
 
     // Add options for each spell level found
-    this.context.spellLevels.forEach((level) => {
-      let levelLabel;
-      if (level.level === '0') {
-        levelLabel = game.i18n.localize('SPELLBOOK.Filters.Cantrip');
-      } else {
-        // Format as 1st, 2nd, 3rd, 4th, etc.
-        const levelNum = parseInt(level.level);
-        let suffix;
+    if (this.context.spellLevels) {
+      this.context.spellLevels.forEach((level) => {
+        let levelLabel;
+        if (level.level === '0') {
+          levelLabel = game.i18n.localize('SPELLBOOK.Filters.Cantrip');
+        } else {
+          // Format as 1st, 2nd, 3rd, 4th, etc.
+          const levelNum = parseInt(level.level);
+          const formatKey =
+            levelNum === 1 ? 'LevelFormat'
+            : levelNum === 2 ? 'LevelFormat2'
+            : levelNum === 3 ? 'LevelFormat3'
+            : 'LevelFormatOther';
 
-        if (levelNum === 1) suffix = 'st';
-        else if (levelNum === 2) suffix = 'nd';
-        else if (levelNum === 3) suffix = 'rd';
-        else suffix = 'th';
+          levelLabel = game.i18n.format(`SPELLBOOK.Filters.${formatKey}`, { level: levelNum });
+        }
 
-        levelLabel = `${levelNum}${suffix} Level`;
-      }
-
-      levelOptions.push({
-        value: level.level,
-        label: levelLabel,
-        selected: filters.level === level.level
+        levelOptions.push({
+          value: level.level,
+          label: levelLabel,
+          selected: filters.level === level.level
+        });
       });
-    });
+    }
 
     dropdowns.push({
       name: 'filter-level',
@@ -698,15 +649,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Handle search input
-   * @param {Event} event - The input event
-   * @private
-   */
-  _onSearchInput(event) {
-    this._applyFilters();
-  }
-
-  /**
    * Apply all current filters to the spell list
    * @private
    */
@@ -906,6 +848,167 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           return a.name.localeCompare(b.name);
       }
     });
+  }
+
+  /* -------------------------------------------- */
+  /*  Event Listeners                             */
+  /* -------------------------------------------- */
+
+  /**
+   * Set up event listeners for preparation checkboxes
+   * @private
+   */
+  _setupPreparationListeners() {
+    // Add listeners to preparation checkboxes
+    const prepCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+    prepCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', (event) => {
+        // Update the prepared-spell class based on checkbox state
+        const spellItem = event.target.closest('.spell-item');
+        if (spellItem) {
+          if (event.target.checked) {
+            spellItem.classList.add('prepared-spell');
+          } else {
+            spellItem.classList.remove('prepared-spell');
+          }
+        }
+        this._updateSpellPreparationTracking();
+      });
+    });
+  }
+
+  /**
+   * Update the spell preparation tracking and manage checkbox states
+   * @private
+   */
+  _updateSpellPreparationTracking() {
+    // TODO: Add special handling for cantrips - they should not count against
+    // prepared spell limits and should have different visual treatment
+
+    const preparedCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+    const countDisplay = this.element.querySelector('.spell-prep-tracking');
+
+    if (!countDisplay) return;
+
+    // Count checked non-disabled checkboxes (excludes "always prepared" spells)
+    let preparedCount = 0;
+    preparedCheckboxes.forEach((checkbox) => {
+      if (checkbox.checked) preparedCount++;
+    });
+
+    // Get the maximum from the context
+    const maxPrepared = this.context?.spellPreparation?.maximum || 0;
+
+    // Update the counter text using the span elements
+    const currentCountEl = countDisplay.querySelector('.current-count');
+    const maxCountEl = countDisplay.querySelector('.max-count');
+
+    if (currentCountEl) currentCountEl.textContent = preparedCount;
+    if (maxCountEl) maxCountEl.textContent = maxPrepared;
+
+    // Add visual indicator when at/over max
+    if (preparedCount >= maxPrepared) {
+      countDisplay.classList.add('at-max');
+    } else {
+      countDisplay.classList.remove('at-max');
+    }
+
+    // Only apply limits if we have a valid maximum (avoid limiting when max is 0)
+    if (maxPrepared > 0) {
+      // Disable unchecked checkboxes when at maximum
+      if (preparedCount >= maxPrepared) {
+        // Add class to form to indicate we're at max spells
+        this.element.classList.add('at-max-spells');
+
+        preparedCheckboxes.forEach((checkbox) => {
+          if (!checkbox.checked) {
+            checkbox.disabled = true;
+            // Add class to parent spell item for styling
+            checkbox.closest('.spell-item')?.classList.add('max-prepared');
+          }
+        });
+      } else {
+        // Remove max spells class
+        this.element.classList.remove('at-max-spells');
+
+        // Re-enable all preparation checkboxes
+        preparedCheckboxes.forEach((checkbox) => {
+          checkbox.disabled = false;
+          checkbox.closest('.spell-item')?.classList.remove('max-prepared');
+        });
+      }
+    }
+  }
+
+  /**
+   * Set up event listeners for all filter elements
+   * @private
+   */
+  _setupFilterListeners() {
+    // Text search (already handled separately, keeping for reference)
+    const searchInput = this.element.querySelector('input[name="filter-name"]');
+    if (searchInput) {
+      searchInput.addEventListener('input', this._onSearchInput.bind(this));
+    }
+
+    // Add listeners to all dropdown selects (both filters and sort)
+    const dropdowns = this.element.querySelectorAll('select[name^="filter-"], select[name="sort-by"]');
+    dropdowns.forEach((dropdown) => {
+      dropdown.addEventListener('change', () => {
+        this._applyFilters();
+
+        // Handle special case for sort-by
+        if (dropdown.name === 'sort-by') {
+          this._applySorting(dropdown.value);
+        }
+      });
+    });
+
+    // Add listeners to checkbox filters
+    const checkboxes = this.element.querySelectorAll('input[type="checkbox"][name^="filter-"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        this._applyFilters();
+      });
+    });
+  }
+
+  /**
+   * Handler for search input to ensure it's properly bound to this instance
+   * @param {Event} event - The input event
+   * @private
+   */
+  _onSearchInput(event) {
+    // Debounce text search for better performance
+    clearTimeout(this._searchTimer);
+    this._searchTimer = setTimeout(() => {
+      this._applyFilters();
+    }, 200); // 200ms debounce
+  }
+
+  /**
+   * Position the footer in the appropriate container based on sidebar state
+   * @private
+   */
+  _positionFooter() {
+    try {
+      const footer = this.element.querySelector('footer');
+      if (!footer) return;
+
+      const isSidebarCollapsed = this.element.classList.contains('sidebar-collapsed');
+      const sidebarFooterContainer = this.element.querySelector('.sidebar-footer-container');
+      const collapsedFooter = this.element.querySelector('.collapsed-footer');
+
+      if (isSidebarCollapsed && collapsedFooter) {
+        collapsedFooter.appendChild(footer);
+        collapsedFooter.classList.remove('hidden');
+      } else if (sidebarFooterContainer) {
+        sidebarFooterContainer.appendChild(footer);
+        if (collapsedFooter) collapsedFooter.classList.add('hidden');
+      }
+    } catch (error) {
+      log(1, 'Error positioning footer:', error);
+    }
   }
 
   /* -------------------------------------------- */
