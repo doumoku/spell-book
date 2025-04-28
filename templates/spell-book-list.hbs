@@ -8,10 +8,14 @@
 		<p class="error-message">{{errorMessage}}</p>
 	{{else}}
 		{{#if spellLevels.length}}
-		{{log spellLevels}}
+			{{log spellLevels}}
 			{{#each spellLevels as |levelData|}}
-				<div class="spell-level">
-					<h3 class="spell-level-heading">{{levelData.levelName}}</h3>
+				<div class="spell-level" data-level="{{levelData.level}}">
+					<h3 class="spell-level-heading" data-action="toggleSpellLevel">
+						<i class="fas fa-caret-down collapse-indicator"></i>
+						{{levelData.levelName}}
+						<span class="spell-count"></span>
+					</h3>
 					<ul class="spell-list">
 						{{#each levelData.spells as |spell|}}
 							<li

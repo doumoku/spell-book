@@ -22,7 +22,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       toggleSidebar: PlayerSpellBook.toggleSidebar,
       filterSpells: PlayerSpellBook.filterSpells,
       sortSpells: PlayerSpellBook.sortSpells,
-      reset: PlayerSpellBook.handleReset
+      reset: PlayerSpellBook.handleReset,
+      toggleSpellLevel: PlayerSpellBook.toggleSpellLevel
     },
     classes: ['spell-book'],
     window: {
@@ -192,6 +193,12 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         this.element.classList.add('sidebar-collapsed');
         this._positionFooter();
       }
+
+      // Apply saved collapsed spell level states
+      this._applyCollapsedLevels();
+
+      // Update spell counts
+      this._updateSpellCounts();
 
       // Apply filters and initialize tracking
       this._applyFilters();
@@ -1003,6 +1010,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           }
         }
         this._updateSpellPreparationTracking();
+        this._updateSpellCounts();
       });
     });
   }
@@ -1154,6 +1162,46 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Apply saved collapsed states after rendering
+   * @private
+   */
+  _applyCollapsedLevels() {
+    const collapsedLevels = game.user.getFlag(MODULE.ID, 'collapsedSpellLevels') || [];
+
+    for (const levelId of collapsedLevels) {
+      const levelContainer = this.element.querySelector(`.spell-level[data-level="${levelId}"]`);
+      if (levelContainer) {
+        levelContainer.classList.add('collapsed');
+      }
+    }
+  }
+
+  /**
+   * Update the spell counts for each level
+   * @private
+   */
+  _updateSpellCounts() {
+    const spellLevels = this.element.querySelectorAll('.spell-level');
+
+    spellLevels.forEach((levelContainer) => {
+      const spellItems = levelContainer.querySelectorAll('.spell-item');
+      const checkboxes = levelContainer.querySelectorAll('input[type="checkbox"]');
+
+      // Count only non-disabled checkboxes
+      const totalAvailable = Array.from(checkboxes).filter((cb) => !cb.disabled).length;
+      const preparedCount = Array.from(checkboxes).filter((cb) => !cb.disabled && cb.checked).length;
+
+      // Update the count display
+      const countDisplay = levelContainer.querySelector('.spell-count');
+      if (countDisplay && totalAvailable > 0) {
+        countDisplay.textContent = `(${preparedCount}/${totalAvailable})`;
+      } else if (countDisplay) {
+        countDisplay.textContent = '';
+      }
+    });
+  }
+
   /* -------------------------------------------- */
   /*  Static Methods                              */
   /* -------------------------------------------- */
@@ -1234,6 +1282,38 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       // Update preparation tracking
       this._updateSpellPreparationTracking();
     }, 0);
+  }
+
+  /**
+   * Handle spell level toggle action
+   * @param {Event} event - The click event
+   * @param {HTMLElement} form - The form element
+   * @static
+   */
+  static toggleSpellLevel(event, form) {
+    // Find the parent spell-level container
+    const levelContainer = form.parentElement;
+
+    if (!levelContainer || !levelContainer.classList.contains('spell-level')) {
+      return;
+    }
+
+    const levelId = levelContainer.dataset.level;
+
+    // Toggle collapsed state
+    levelContainer.classList.toggle('collapsed');
+
+    // Save state to user flags
+    const collapsedLevels = game.user.getFlag(MODULE.ID, 'collapsedSpellLevels') || [];
+    const isCollapsed = levelContainer.classList.contains('collapsed');
+
+    if (isCollapsed && !collapsedLevels.includes(levelId)) {
+      collapsedLevels.push(levelId);
+    } else if (!isCollapsed && collapsedLevels.includes(levelId)) {
+      collapsedLevels.splice(collapsedLevels.indexOf(levelId), 1);
+    }
+
+    game.user.setFlag(MODULE.ID, 'collapsedSpellLevels', collapsedLevels);
   }
 
   /**

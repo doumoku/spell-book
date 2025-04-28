@@ -249,6 +249,7 @@
 /* ----------------------------------------- */
 .spell-book .spell-level {
   margin-bottom: 15px;
+  align-items: center;
 }
 
 .spell-book .spell-level-heading {
@@ -257,6 +258,26 @@
   border-bottom: 1px solid var(--color-border-light);
   color: var(--color-text-light-highlight);
   font-size: 1.2em;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+}
+
+.spell-book .spell-level-heading .spell-count {
+  margin-left: 0.5rem;
+  font-size: 0.8em;
+  opacity: 0.75;
+  font-weight: normal;
+}
+
+.spell-book .spell-level-heading .collapse-indicator {
+  margin-right: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.spell-book .spell-level.collapsed .collapse-indicator {
+  transform: rotate(-90deg);
 }
 
 .spell-book .spell-book-loading {
@@ -281,6 +302,14 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: inherit;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+}
+
+.spell-book .spell-level.collapsed .spell-list {
+  display: none;
+  max-height: 0;
 }
 
 .spell-book .spell-item {
