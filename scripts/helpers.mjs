@@ -414,7 +414,7 @@ export async function organizeSpellsByLevel(spellItems, actor) {
     .sort((a, b) => Number(a[0]) - Number(b[0]))
     .map(([level, spells]) => ({
       level: level,
-      levelName: level === '0' ? game.i18n.localize('SPELLBOOK.SpellLevel.Cantrips') : game.i18n.format('SPELLBOOK.SpellLevel.LevelSpells', { level: level }),
+      levelName: CONFIG.DND5E.spellLevels[level],
       spells: spells
     }));
 

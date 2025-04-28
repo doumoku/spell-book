@@ -53,8 +53,6 @@
   "SPELLBOOK.Sort.ByName": "Name",
   "SPELLBOOK.Sort.ByPrepared": "Prepared",
   "SPELLBOOK.Sort.BySchool": "School",
-  "SPELLBOOK.SpellLevel.Cantrips": "Cantrips",
-  "SPELLBOOK.SpellLevel.LevelSpells": "Level {level} Spells",
   "SPELLBOOK.SpellSource.Granted": "Granted",
   "SPELLBOOK.UI.OpenSpellBook": "Spell Book",
   "SPELLBOOK.UI.ToggleSidebar": "Toggle Sidebar"
