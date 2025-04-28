@@ -1,0 +1,29 @@
+<form class="filter-config-form">
+  <p>{{localize "SPELLBOOK.Settings.FilterInstructions"}}</p>
+  <ul class="filter-config-list">
+    {{#each filterConfig as |filter index|}}
+      <li data-filter-id="{{filter.id}}" data-index="{{index}}">
+        <div class="filter-config-item">
+          <input type="checkbox" name="enabled-{{filter.id}}" {{#if filter.enabled}}checked{{/if}}>
+          <span class="filter-name">{{localize filter.label}}</span>
+          <div class="order-control">
+            <label>{{localize "SPELLBOOK.Settings.FilterOrder"}}</label>
+            <input type="number" name="order-{{filter.id}}" value="{{filter.order}}" class="order-input" min="0">
+          </div>
+        </div>
+      </li>
+    {{/each}}
+  </ul>
+
+  <footer class="filter-config-footer">
+    <div class="footer-buttons">
+      {{#each buttons as |button|}}
+        <button type="{{button.type}}" {{#if button.name}}name="{{button.name}}" {{/if}} class="{{button.cssClass}}"
+          {{#if button.action}}data-action="{{button.action}}" {{/if}} {{#if button.disabled}}disabled{{/if}}>
+          {{#if button.icon}}<i class="{{button.icon}}"></i>{{/if}}
+          {{localize button.label}}
+        </button>
+      {{/each}}
+    </div>
+  </footer>
+</form>

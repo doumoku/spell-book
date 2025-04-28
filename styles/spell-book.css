@@ -672,6 +672,77 @@
 }
 
 /* ----------------------------------------- */
+/* Filter Configuration                      */
+/* ----------------------------------------- */
+.filter-configuration .window-content {
+  padding: 0.5rem;
+}
+
+.filter-config-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.filter-config-form p {
+  margin-bottom: 1rem;
+  color: var(--color-text-dark-secondary);
+  font-style: italic;
+}
+
+.filter-config-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-config-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary);
+  border-radius: 3px;
+  background: #0000000d;
+}
+
+.filter-config-item:hover {
+  background: #0000001a;
+}
+
+.filter-config-item .filter-name {
+  flex: 1;
+  margin-left: 0.5rem;
+}
+
+.filter-config-item .order-control {
+  display: flex;
+  align-items: center;
+}
+
+.filter-config-item .order-control label {
+  margin-right: 0.5rem;
+  font-size: var(--font-size-11);
+}
+
+.filter-config-item .order-input {
+  width: 50px;
+  text-align: center;
+}
+
+.filter-config-footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.filter-config-footer .footer-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ----------------------------------------- */
 /* Utility Classes                           */
 /* ----------------------------------------- */
 .spell-book .property-icon {

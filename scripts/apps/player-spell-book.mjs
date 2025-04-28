@@ -1,6 +1,7 @@
 import { MODULE } from '../constants.mjs';
 import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, formatSpellDetails, getClassSpellList, organizeSpellsByLevel, saveActorPreparedSpells } from '../helpers.mjs';
 import { log } from '../logger.mjs';
+import { PlayerFilterConfiguration } from './player-filter-configuration.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -1376,124 +1377,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {HTMLElement} form - The form element
    * @static
    */
-  static async configureFilters(event, form) {
-    const filterConfig = game.settings.get(MODULE.ID, 'filterConfiguration') || DEFAULT_FILTER_CONFIG;
-
-    // Create a copy of the config for editing
-    const workingConfig = [...filterConfig];
-
-    // Generate content HTML
-    const content = `
-  <form class="filter-config-form">
-    <p>Toggle checkboxes to enable/disable filters and adjust their order.</p>
-    <ul class="filter-config-list">
-      ${workingConfig
-        .map(
-          (filter, index) => `
-        <li data-filter-id="${filter.id}" data-index="${index}">
-          <input type="checkbox" name="enabled-${filter.id}" ${filter.enabled ? 'checked' : ''}>
-          <span class="filter-name">${game.i18n.localize(filter.label)}</span>
-          <input type="number" name="order-${filter.id}" value="${filter.order}" class="order-input">
-        </li>
-      `
-        )
-        .join('')}
-    </ul>
-  </form>
-  `;
-
-    try {
-      // Create the dialog configuration with button callbacks
-      const result = await foundry.applications.api.DialogV2.wait({
-        window: { title: game.i18n.localize('SPELLBOOK.Settings.ConfigureFilters') },
-        content: content,
-        modal: true,
-        buttons: [
-          {
-            label: game.i18n.localize('Save Changes'),
-            icon: 'fas fa-save',
-            action: 'save',
-            callback: async (event, button) => {
-              log(1, 'Save button clicked');
-              try {
-                // Get the form from the button
-                const dialogForm = button.form;
-                if (!dialogForm) {
-                  log(1, 'Could not find dialog form');
-                  return false;
-                }
-
-                // Update the config from form values
-                for (const filter of workingConfig) {
-                  const enabledCheckbox = dialogForm.querySelector(`input[name="enabled-${filter.id}"]`);
-                  const orderInput = dialogForm.querySelector(`input[name="order-${filter.id}"]`);
-
-                  if (enabledCheckbox) filter.enabled = enabledCheckbox.checked;
-                  if (orderInput) filter.order = parseInt(orderInput.value) || filter.order;
-                }
-
-                log(1, 'Saving config:', workingConfig);
-                // Save the updated config
-                await game.settings.set(MODULE.ID, 'filterConfiguration', workingConfig);
-
-                // Find the open app instance and render it
-                const openApp = Object.values(ui.windows).find((w) => w instanceof PlayerSpellBook);
-                if (openApp) {
-                  openApp.render(false);
-                  // Ensure filters are reapplied after rendering
-                  setTimeout(() => {
-                    openApp._applyFilters();
-                  }, 100);
-                }
-
-                return true;
-              } catch (error) {
-                log(1, 'Error saving filter config:', error);
-                return false;
-              }
-            }
-          },
-          {
-            label: game.i18n.localize('Cancel'),
-            icon: 'fas fa-times',
-            action: 'cancel'
-          },
-          {
-            label: game.i18n.localize('Reset to Defaults'),
-            icon: 'fas fa-undo',
-            action: 'reset',
-            callback: async () => {
-              log(1, 'Reset button clicked');
-              try {
-                // Reset to defaults
-                await game.settings.set(MODULE.ID, 'filterConfiguration', DEFAULT_FILTER_CONFIG);
-
-                // Find the open app instance and render it
-                const openApp = Object.values(ui.windows).find((w) => w instanceof PlayerSpellBook);
-                if (openApp) {
-                  openApp.render(false);
-                  // Ensure filters are reapplied after rendering
-                  setTimeout(() => {
-                    openApp._applyFilters();
-                  }, 100);
-                }
-
-                return true;
-              } catch (error) {
-                log(1, 'Error resetting filter config:', error);
-                return false;
-              }
-            }
-          }
-        ]
-      });
-
-      log(1, 'Dialog result:', result);
-    } catch (error) {
-      log(1, 'Error in configureFilters:', error);
-    } finally {
-      this.render(false);
-    }
+  static configureFilters(event, form) {
+    const filterConfig = new PlayerFilterConfiguration(this);
+    filterConfig.render(true);
   }
 
   /**

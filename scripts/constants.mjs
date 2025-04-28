@@ -29,7 +29,8 @@ export const MODULE = {
     SPELL_BOOK_CONTENT: 'modules/spell-book/templates/spell-book.hbs',
     SPELL_BOOK_SIDEBAR: 'modules/spell-book/templates/spell-book-sidebar.hbs',
     SPELL_BOOK_LIST: 'modules/spell-book/templates/spell-book-list.hbs',
-    SPELL_BOOK_FOOTER: 'modules/spell-book/templates/spell-book-footer.hbs'
+    SPELL_BOOK_FOOTER: 'modules/spell-book/templates/spell-book-footer.hbs',
+    FILTER_CONFIG: 'modules/spell-book/templates/player-filter-configuration.hbs'
   },
 
   /**
