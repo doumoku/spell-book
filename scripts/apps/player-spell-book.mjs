@@ -439,24 +439,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     // Add options for each spell level found
     if (this.spellLevels) {
       this.spellLevels.forEach((level) => {
-        let levelLabel;
-        if (level.level === '0') {
-          levelLabel = game.i18n.localize('SPELLBOOK.Filters.Cantrip');
-        } else {
-          // Format as 1st, 2nd, 3rd, 4th, etc.
-          const levelNum = parseInt(level.level);
-          const formatKey =
-            levelNum === 1 ? 'LevelFormat'
-            : levelNum === 2 ? 'LevelFormat2'
-            : levelNum === 3 ? 'LevelFormat3'
-            : 'LevelFormatOther';
-
-          levelLabel = game.i18n.format(`SPELLBOOK.Filters.${formatKey}`, { level: levelNum });
-        }
-
         levelOptions.push({
           value: level.level,
-          label: levelLabel,
+          label: CONFIG.DND5E.spellLevels[level.level],
           selected: filters.level === level.level
         });
       });
@@ -489,27 +474,86 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     });
 
     // Casting Time dropdown
-    const castingTimeOptions = [
-      { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') },
-      { value: 'action:1', label: game.i18n.localize('SPELLBOOK.Filters.Action') },
-      { value: 'bonus:1', label: game.i18n.localize('SPELLBOOK.Filters.BonusAction') },
-      { value: 'reaction:1', label: game.i18n.localize('SPELLBOOK.Filters.Reaction') },
-      { value: 'minute:1', label: game.i18n.localize('SPELLBOOK.Filters.Minute') },
-      { value: 'minute:10', label: game.i18n.localize('SPELLBOOK.Filters.Minutes10') },
-      { value: 'hour:1', label: game.i18n.localize('SPELLBOOK.Filters.Hour') },
-      { value: 'hour:8', label: game.i18n.localize('SPELLBOOK.Filters.Hours8') },
-      { value: 'hour:12', label: game.i18n.localize('SPELLBOOK.Filters.Hours12') },
-      { value: 'hour:24', label: game.i18n.localize('SPELLBOOK.Filters.Day') }
-    ];
+    const castingTimeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    // Get unique activation types from the spells
+    if (this.spellLevels) {
+      const uniqueActivationTypes = new Set();
+
+      // First, collect all unique combinations
+      this.spellLevels.forEach((level) => {
+        level.spells.forEach((spell) => {
+          const activationType = spell.system?.activation?.type;
+          const activationValue = spell.system?.activation?.value || 1; // treat null as 1
+
+          if (activationType) {
+            uniqueActivationTypes.add(`${activationType}:${activationValue}`);
+          }
+        });
+      });
+
+      // Define a priority order for activation types
+      const typeOrder = {
+        action: 1,
+        bonus: 2,
+        reaction: 3,
+        minute: 4,
+        hour: 5,
+        day: 6,
+        legendary: 7,
+        mythic: 8,
+        lair: 9,
+        crew: 10,
+        special: 11,
+        none: 12
+      };
+
+      // Convert to array of [type:value, type, value] for sorting
+      const sortableTypes = Array.from(uniqueActivationTypes).map((combo) => {
+        const [type, value] = combo.split(':');
+        return [combo, type, parseInt(value) || 1];
+      });
+
+      // Sort by type priority then by value
+      sortableTypes.sort((a, b) => {
+        const [, typeA, valueA] = a;
+        const [, typeB, valueB] = b;
+
+        // First compare by type priority
+        const typePriorityA = typeOrder[typeA] || 999;
+        const typePriorityB = typeOrder[typeB] || 999;
+        if (typePriorityA !== typePriorityB) {
+          return typePriorityA - typePriorityB;
+        }
+
+        // Then by value
+        return valueA - valueB;
+      });
+
+      // Create the options in the sorted order
+      sortableTypes.forEach(([combo, type, value]) => {
+        const typeLabel = CONFIG.DND5E.abilityActivationTypes[type] || type;
+
+        let label;
+        if (value === 1) {
+          label = typeLabel;
+        } else {
+          label = `${value} ${typeLabel}${value !== 1 ? 's' : ''}`;
+        }
+
+        castingTimeOptions.push({
+          value: combo,
+          label: label,
+          selected: filters.castingTime === combo
+        });
+      });
+    }
 
     dropdowns.push({
       name: 'filter-casting-time',
       filter: 'castingTime',
       label: game.i18n.localize('SPELLBOOK.Filters.CastingTime'),
-      options: castingTimeOptions.map((option) => ({
-        ...option,
-        selected: filters.castingTime === option.value
-      }))
+      options: castingTimeOptions
     });
 
     // Damage Type dropdown
@@ -729,9 +773,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       for (const item of spellItems) {
         // Extract basic spell metadata
         const nameEl = item.querySelector('.spell-name');
-        const detailsEl = item.querySelector('.spell-details');
         const name = nameEl?.textContent.toLowerCase() || '';
-        const details = detailsEl?.textContent.toLowerCase() || '';
         const isPrepared = item.classList.contains('prepared-spell');
         const level = item.dataset.spellLevel || '';
         const school = item.dataset.spellSchool || '';
@@ -767,7 +809,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         // Casting Time filter
         if (filters.castingTime) {
           const [filterType, filterValue] = filters.castingTime.split(':');
-          if (castingTimeType !== filterType || castingTimeValue !== filterValue) {
+          const itemType = castingTimeType;
+          const itemValue = castingTimeValue === '' || castingTimeValue === null ? '1' : castingTimeValue;
+
+          // Check if types match, and if values match (accounting for null = 1)
+          if (itemType !== filterType || itemValue !== filterValue) {
             visible = false;
           }
         }
@@ -1065,11 +1111,12 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _onSearchInput(event) {
-    // Debounce text search for better performance
-    clearTimeout(this._searchTimer);
-    this._searchTimer = setTimeout(() => {
-      this._applyFilters();
-    }, 200); // 200ms debounce
+    if (!this._debouncedApplyFilters) {
+      this._debouncedApplyFilters = foundry.utils.debounce(() => {
+        this._applyFilters();
+      }, 200);
+    }
+    this._debouncedApplyFilters();
   }
 
   /**
