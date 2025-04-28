@@ -1,4 +1,4 @@
-import { MODULE } from '../constants.mjs';
+import { DEFAULT_FILTER_CONFIG, MODULE } from '../constants.mjs';
 import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, formatSpellDetails, getClassSpellList, organizeSpellsByLevel, saveActorPreparedSpells } from '../helpers.mjs';
 import { log } from '../logger.mjs';
 import { PlayerFilterConfiguration } from './player-filter-configuration.mjs';

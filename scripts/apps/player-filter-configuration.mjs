@@ -12,11 +12,6 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
   static DEFAULT_OPTIONS = {
     id: `filter-config-${MODULE.ID}`,
     tag: 'form',
-    form: {
-      handler: PlayerFilterConfiguration.formHandler,
-      closeOnSubmit: true,
-      submitOnChange: false
-    },
     window: {
       title: 'SPELLBOOK.Settings.ConfigureFilters',
       width: 400,
@@ -25,8 +20,10 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
       minimizable: false
     },
     classes: ['filter-configuration'],
-    actions: {
-      reset: PlayerFilterConfiguration.handleReset
+    form: {
+      handler: PlayerFilterConfiguration.formHandler,
+      closeOnSubmit: true,
+      submitOnChange: false
     },
     position: {
       top: 100
@@ -72,8 +69,34 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
   constructor(parentApp, options = {}) {
     super(options);
     this.parentApp = parentApp;
-    this.config = structuredClone(game.settings.get(MODULE.ID, 'filterConfiguration') || DEFAULT_FILTER_CONFIG);
+
+    // Initialize the configuration
+    this.#initializeConfig();
     this.#dragDrop = this.#createDragDropHandlers();
+  }
+
+  /**
+   * Initialize the filter configuration from settings
+   * @private
+   */
+  #initializeConfig() {
+    try {
+      let config = game.settings.get(MODULE.ID, 'filterConfiguration');
+      log(1, 'Retrieved filter configuration from settings', config);
+
+      // Validate the configuration
+      if (!config || !Array.isArray(config) || config.length === 0) {
+        log(1, 'No valid configuration found, using defaults');
+        config = structuredClone(DEFAULT_FILTER_CONFIG);
+      }
+
+      this.config = structuredClone(config);
+    } catch (error) {
+      log(1, 'Error initializing filter configuration:', error);
+      this.config = structuredClone(DEFAULT_FILTER_CONFIG);
+    }
+
+    log(1, 'Configuration initialized', this.config);
   }
 
   /**
@@ -104,6 +127,14 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @override
    */
   async _prepareContext(options) {
+    // Ensure we have valid configuration data
+    if (!Array.isArray(this.config) || this.config.length === 0) {
+      log(1, 'Invalid configuration in _prepareContext, reinitializing');
+      this.#initializeConfig();
+    }
+
+    log(1, 'Preparing context with configuration', this.config);
+
     return {
       filterConfig: this.config,
       buttons: [
@@ -127,6 +158,25 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    */
   _onRender(context, options) {
     this.#dragDrop.forEach((d) => d.bind(this.element));
+
+    // Add reset button handler
+    const resetBtn = this.element.querySelector('button[data-action="reset"]');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', this._onReset.bind(this));
+    }
+  }
+
+  /**
+   * Handle reset button click
+   * @param {Event} event - The click event
+   * @private
+   */
+  async _onReset(event) {
+    event.preventDefault();
+
+    log(1, 'Reset button clicked, restoring defaults');
+    this.config = structuredClone(DEFAULT_FILTER_CONFIG);
+    this.render(false);
   }
 
   /* -------------------------------------------- */
@@ -165,7 +215,6 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     // Set the data transfer with the filter index
     const filterIndex = li.dataset.index;
 
-    // Important: Set the data transfer properly
     event.dataTransfer.setData(
       'text/plain',
       JSON.stringify({
@@ -184,25 +233,35 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @private
    */
   _onDragOver(event) {
-    // We need to prevent default to allow dropping
     event.preventDefault();
+
+    // Only try to parse data if we're later in the drag process
+    let dragData;
+    try {
+      const dataString = event.dataTransfer.getData('text/plain');
+      if (dataString) {
+        dragData = JSON.parse(dataString);
+      }
+    } catch (error) {
+      // Early drag events might not have data yet, just continue
+    }
 
     const list = this.element.querySelector('.filter-config-list');
     if (!list) return;
 
-    // Find the dragging element
+    // Find the dragging element directly
     const draggingItem = list.querySelector('.dragging');
     if (!draggingItem) return;
 
-    // Get all non-dragging items as potential drop targets
+    // Get all items except the one being dragged
     const items = Array.from(list.querySelectorAll('li:not(.dragging)'));
     if (!items.length) return;
 
-    // Find the item we're dragging over
+    // Find the target item based on mouse position
     const targetItem = this._getDragTarget(event, items);
     if (!targetItem) return;
 
-    // Visual indicator for drop position
+    // Calculate if we should drop before or after the target
     const rect = targetItem.getBoundingClientRect();
     const dropAfter = event.clientY > rect.top + rect.height / 2;
 
@@ -210,7 +269,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     const placeholders = list.querySelectorAll('.drop-placeholder');
     placeholders.forEach((el) => el.remove());
 
-    // Create and insert placeholder
+    // Create a placeholder to show where the item will be dropped
     const placeholder = document.createElement('div');
     placeholder.classList.add('drop-placeholder');
 
@@ -252,29 +311,25 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     event.preventDefault();
 
     try {
-      // Get the dragging element directly from the DOM
-      const list = this.element.querySelector('.filter-config-list');
-      const draggingItem = list.querySelector('.dragging');
-      if (!draggingItem) return;
+      // Get drag data
+      const dataString = event.dataTransfer.getData('text/plain');
+      if (!dataString) return;
 
-      const sourceIndex = parseInt(draggingItem.dataset.index);
+      const data = JSON.parse(dataString);
+      if (!data || data.type !== 'filter-config') return;
+
+      const sourceIndex = parseInt(data.index);
       if (isNaN(sourceIndex)) return;
 
-      // Get all non-dragging items
+      // Find the drop target
+      const list = this.element.querySelector('.filter-config-list');
       const items = Array.from(list.querySelectorAll('li:not(.dragging)'));
 
-      // Find the drop target
       const targetItem = this._getDragTarget(event, items);
-      if (!targetItem) {
-        draggingItem.classList.remove('dragging');
-        return;
-      }
+      if (!targetItem) return;
 
       const targetIndex = parseInt(targetItem.dataset.index);
-      if (isNaN(targetIndex)) {
-        draggingItem.classList.remove('dragging');
-        return;
-      }
+      if (isNaN(targetIndex)) return;
 
       // Determine if dropping before or after target
       const rect = targetItem.getBoundingClientRect();
@@ -290,27 +345,23 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
 
       // Update order numbers
       this.config.forEach((filter, idx) => {
-        filter.order = idx;
+        filter.order = (idx + 1) * 10;
       });
 
-      // Clean up
-      draggingItem.classList.remove('dragging');
-      const placeholders = list.querySelectorAll('.drop-placeholder');
-      placeholders.forEach((el) => el.remove());
-
-      // Re-render the application to reflect changes
+      // Re-render to update the UI
       this.render(false);
 
       log(1, `Reordered filter from position ${sourceIndex} to ${newIndex}`);
       return true;
     } catch (error) {
       log(1, 'Error in drop handler:', error);
-      // Clean up in case of error
+      return false;
+    } finally {
+      // Clean up any visual elements
       const draggingItems = this.element.querySelectorAll('.dragging');
       draggingItems.forEach((el) => el.classList.remove('dragging'));
       const placeholders = this.element.querySelectorAll('.drop-placeholder');
       placeholders.forEach((el) => el.remove());
-      return false;
     }
   }
 
@@ -323,65 +374,75 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @param {Event} event - The form submission event
    * @param {HTMLFormElement} form - The form element
    * @param {FormDataExtended} formData - The processed form data
-   * @returns {Promise<void>}
-   */
-  static async formHandler(event, form, formData) {
-    log(1, 'Processing filter configuration form data');
-
-    try {
-      // Update the config from form values
-      const workingConfig = this.config;
-
-      for (const filter of workingConfig) {
-        const enabledCheckbox = form.querySelector(`input[name="enabled-${filter.id}"]`);
-        // We no longer need to get the order input as it's handled by drag and drop
-        if (enabledCheckbox) filter.enabled = enabledCheckbox.checked;
-      }
-
-      log(1, 'Saving filter configuration:', workingConfig);
-
-      // Save the updated config
-      await game.settings.set(MODULE.ID, 'filterConfiguration', workingConfig);
-
-      // Re-render the parent application if it exists
-      if (this.parentApp && this.parentApp.rendered) {
-        this.parentApp.render(false);
-      }
-
-      return true;
-    } catch (error) {
-      log(1, 'Error saving filter config:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Handle reset button click
-   * @param {Event} event - The click event
-   * @param {HTMLFormElement} form - The form element
+   * @returns {Promise<boolean>}
    * @static
    */
-  static async handleReset(event, form) {
-    log(1, 'Reset button clicked');
+  static async formHandler(event, form, formData) {
+    event.preventDefault();
 
     try {
-      // Reset to defaults
-      await game.settings.set(MODULE.ID, 'filterConfiguration', DEFAULT_FILTER_CONFIG);
+      log(1, 'Processing filter configuration form data', formData.object);
 
-      // Get this instance from the clicked button's parent application
-      this.config = structuredClone(DEFAULT_FILTER_CONFIG);
+      // Get the current configuration from settings
+      let currentConfig;
+      try {
+        currentConfig = game.settings.get(MODULE.ID, 'filterConfiguration');
 
-      // Re-render this application to show the changes
-      this.render(false);
-
-      // Re-render the parent application if needed
-      if (this.parentApp && this.parentApp.rendered) {
-        this.parentApp.render(false);
+        if (!currentConfig || !Array.isArray(currentConfig) || currentConfig.length === 0) {
+          log(1, 'No valid configuration found in settings, using defaults');
+          currentConfig = structuredClone(DEFAULT_FILTER_CONFIG);
+        }
+      } catch (error) {
+        log(1, 'Error retrieving configuration, using defaults:', error);
+        currentConfig = structuredClone(DEFAULT_FILTER_CONFIG);
       }
 
+      // Extract updates from form data
+      const updates = [];
+
+      for (const filter of currentConfig) {
+        // Get enabled state from form data - use the actual boolean value
+        const enabledKey = `enabled-${filter.id}`;
+        const enabled = formData.object[enabledKey] === true;
+
+        log(1, `Filter ${filter.id} enabled: ${enabled}, formData value: ${formData.object[enabledKey]}`);
+
+        // Find the matching item in the DOM to get its current position
+        const item = form.querySelector(`li[data-filter-id="${filter.id}"]`);
+        const index = item ? parseInt(item.dataset.index) : null;
+
+        // Update the filter with form values
+        updates.push({
+          ...filter,
+          enabled: enabled,
+          order: index !== null ? (index + 1) * 10 : filter.order
+        });
+      }
+
+      // Sort by the current DOM order
+      updates.sort((a, b) => a.order - b.order);
+
+      log(1, 'Saving updated configuration:', updates);
+
+      // Save the configuration
+      await game.settings.set(MODULE.ID, 'filterConfiguration', updates);
+
+      // Show success message
+      ui.notifications?.info('Filter configuration saved.');
+
+      if (this.parentApp) {
+        log(1, 'Refreshing parent application:', this.parentApp.constructor.name);
+        this.parentApp.render(false);
+      } else {
+        log(1, 'No parent application reference found');
+      }
+
+      log(1, 'Filter configuration saved successfully');
       return true;
     } catch (error) {
-      log(1, 'Error resetting filter config:', error);
+      log(1, 'Error saving filter configuration:', error);
+      console.error(error);
+      ui.notifications?.error('Failed to save filter configuration.');
       return false;
     }
   }
