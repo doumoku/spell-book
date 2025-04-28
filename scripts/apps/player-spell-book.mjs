@@ -28,12 +28,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     window: {
       icon: 'fas fa-hat-wizard',
       resizable: true,
-      minimizable: true
+      minimizable: true,
+      positioned: true
     },
     position: {
-      height: 'auto',
-      width: 'auto',
-      top: '100'
+      height: '850',
+      width: '550',
+      top: '75'
     }
   };
 

@@ -3,26 +3,32 @@
 /* Variables                                 */
 /* ----------------------------------------- */
 :root {
-  --spell-book-sidebar-width: 215px;
+  --spell-book-sidebar-width: 200px;
 }
 
 /* ----------------------------------------- */
 /* Core Layout                               */
 /* ----------------------------------------- */
 .application.spell-book {
-  min-width: 550px;
   max-width: calc(100vw - 250px);
-  min-height: 400px;
   max-height: calc(100vh - 150px);
 }
 
 .spell-book .window-content {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   transition: all 450ms ease;
+}
+
+.spell-book .window-content > form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
 }
 
 .spell-book .spell-book-container {
@@ -30,7 +36,9 @@
   grid-template-columns: var(--spell-book-sidebar-width) 1fr;
   display: grid;
   position: relative;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow: hidden;
   transition: all 450ms ease;
 }
@@ -88,6 +96,15 @@
 .spell-book .sidebar-collapser i {
   margin-left: 0.375rem;
   font-size: 0.75rem;
+}
+
+.spell-book .spell-book-loading i {
+  margin-bottom: 1rem;
+  color: var(--color-border-highlight);
+}
+
+.spell-book .footer-buttons button i {
+  margin-right: 0.35rem;
 }
 
 .spell-book.sidebar-collapsed .sidebar-collapser i {
@@ -183,15 +200,16 @@
 /* Content Area                              */
 /* ----------------------------------------- */
 .spell-book .spell-book-content {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 100px;
   padding: 0.6rem;
   padding-left: 1.25rem;
-  overflow: hidden auto;
+  overflow: auto;
   transition: all 450ms ease;
 }
 
 .spell-book.sidebar-collapsed .spell-book-content {
-  flex: 1;
+  flex: 1 1 auto;
   height: calc(100% - 100px);
   margin-bottom: 0;
   padding-bottom: 0;
@@ -248,11 +266,6 @@
   height: 200px;
 }
 
-.spell-book .spell-book-loading i {
-  margin-bottom: 1rem;
-  color: var(--color-border-highlight);
-}
-
 .spell-book .error-message {
   padding: 1rem;
   color: var(--color-level-error);
@@ -307,6 +320,13 @@
   filter: grayscale(40%);
 }
 
+.spell-book .spell-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
 .spell-book.at-max-spells .spell-item.max-prepared .spell-name {
   color: var(--color-text-dark-secondary);
   text-decoration: line-through;
@@ -320,13 +340,6 @@
 .spell-prep-tracking.at-max .current-count,
 .spell-prep-tracking.at-max .max-count {
   color: var(--color-level-warning);
-}
-
-.spell-book .spell-name {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  min-width: 0;
 }
 
 .spell-book .spell-icon {
@@ -370,6 +383,26 @@
   white-space: nowrap;
 }
 
+.spell-book .always-prepared-tag {
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  color: #000;
+  font-weight: 600;
+  font-size: 0.75rem;
+  background-color: #3fc6c1;
+}
+
+.spell-book .preparation-mode-tag {
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  color: #000;
+  font-weight: 600;
+  font-size: 0.75rem;
+  background-color: #cea4e5;
+}
+
 .spell-book .spell-item:hover .name-stacked .title {
   text-shadow: 0 0 3px var(--color-shadow-highlight);
 }
@@ -384,18 +417,6 @@
   margin-right: 0.5rem;
   border: none;
   text-decoration: none;
-}
-
-.spell-book .spell-name .content-link {
-  margin: 0;
-  padding: 0;
-  font-weight: normal;
-  background: none;
-  box-shadow: none;
-}
-
-.spell-book .spell-name .content-link i {
-  display: none;
 }
 
 /* ----------------------------------------- */
@@ -462,26 +483,6 @@
   cursor: not-allowed;
 }
 
-.spell-book .always-prepared-tag {
-  margin-left: 0.35rem;
-  padding: 0 0.35rem;
-  border-radius: 3px;
-  color: #000;
-  font-weight: 600;
-  font-size: 0.75rem;
-  background-color: #3fc6c1;
-}
-
-.spell-book .preparation-mode-tag {
-  margin-left: 0.35rem;
-  padding: 0 0.35rem;
-  border-radius: 3px;
-  color: #000;
-  font-weight: 600;
-  font-size: 0.75rem;
-  background-color: #cea4e5;
-}
-
 .spell-book .granted-spell-tag {
   margin-left: 0.35rem;
   padding: 0 0.35rem;
@@ -516,40 +517,12 @@
   padding: 0.5rem;
 }
 
-.spell-book .collapsed-footer .spell-prep-tracking {
-  margin-bottom: 0.25rem;
-  font-size: var(--font-size-14);
-}
-
-.spell-book .collapsed-footer .footer-buttons {
-  gap: 0.5rem;
-  flex-direction: row;
-}
-
-.spell-book .collapsed-footer .footer-buttons button {
-  flex: 0 1 auto;
-  width: auto;
-  min-width: 0;
-  padding: 0.25rem 0.5rem;
-  font-size: var(--font-size-12);
-  white-space: nowrap;
-}
-
 .spell-book .spell-prep-tracking {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
   padding-bottom: 0.25rem;
-}
-
-.spell-book .spell-prep-tracking .max-count {
-  margin-right: 0.25rem;
-}
-
-.spell-book .spell-prep-tracking.at-max {
-  color: var(--color-level-warning);
-  font-weight: bold;
 }
 
 .spell-book .footer-buttons {
@@ -570,8 +543,32 @@
   transition: all 0.4s ease;
 }
 
-.spell-book .footer-buttons button i {
-  margin-right: 0.35rem;
+.spell-book .collapsed-footer .spell-prep-tracking {
+  margin-bottom: 0.25rem;
+  font-size: var(--font-size-14);
+}
+
+.spell-book .collapsed-footer .footer-buttons {
+  gap: 0.5rem;
+  flex-direction: row;
+}
+
+.spell-book .collapsed-footer .footer-buttons button {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-12);
+  white-space: nowrap;
+}
+
+.spell-book .spell-prep-tracking .max-count {
+  margin-right: 0.25rem;
+}
+
+.spell-book .spell-prep-tracking.at-max {
+  color: var(--color-level-warning);
+  font-weight: bold;
 }
 
 /* ----------------------------------------- */
