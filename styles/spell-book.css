@@ -191,10 +191,14 @@
 }
 
 .spell-book .range-filter .range-separator {
+  --icon-fill: var(--color-text-light-6);
+  --icon-size: 16px;
+
+  place-content: center;
+  display: inline-grid;
+  flex: none;
   width: 10%;
-  color: var(--color-text-light-highlight);
-  font-size: var(--font-size-16);
-  text-align: center;
+  height: var(--form-field-height);
 }
 
 /* ----------------------------------------- */

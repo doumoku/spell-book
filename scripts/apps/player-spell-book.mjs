@@ -142,6 +142,20 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _createBaseContext() {
+    // Get filter configuration - needed even during loading state
+    let filterConfig = game.settings.get(MODULE.ID, 'filterConfiguration');
+    if (!Array.isArray(filterConfig) || !filterConfig.length) {
+      filterConfig = DEFAULT_FILTER_CONFIG;
+    }
+
+    // Create empty filters structure to prevent UI issues during loading
+    const emptyFilters = {
+      search: null,
+      dropdowns: [],
+      checkboxes: [],
+      range: null
+    };
+
     return {
       actor: this.actor,
       isLoading: this.isLoading,
@@ -149,7 +163,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       errorMessage: this.errorMessage,
       spellLevels: this.spellLevels || [],
       className: this.className || '',
-      filters: this._getFilterState(),
+      filters: this.isLoading ? emptyFilters : this._getFilterState(),
       spellSchools: CONFIG.DND5E.spellSchools,
       buttons: [
         { type: 'submit', icon: 'fas fa-save', label: 'SETTINGS.Save', cssClass: 'submit-button' },
@@ -171,9 +185,22 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onRender?.(context, options);
 
     try {
+      // Set sidebar state based on user preference immediately
+      const sidebarCollapsed = game.user.getFlag(MODULE.ID, 'sidebarCollapsed');
+      if (sidebarCollapsed) {
+        this.element.classList.add('sidebar-collapsed');
+      }
+
       // Add loading class if we're in the loading state
       if (this.isLoading) {
         this.element.classList.add('loading');
+
+        // Disable filter inputs during loading
+        this._disableFiltersWhileLoading();
+
+        // Position the footer even during loading
+        this._positionFooter();
+
         // Start loading the data in the background
         this._loadSpellData();
         return;
@@ -185,13 +212,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       this._positionFooter();
       this._setupFilterListeners();
       this._setupPreparationListeners();
-
-      // Set sidebar state based on user preference
-      const sidebarCollapsed = game.user.getFlag(MODULE.ID, 'sidebarCollapsed');
-      if (sidebarCollapsed) {
-        this.element.classList.add('sidebar-collapsed');
-        this._positionFooter();
-      }
 
       // Apply saved collapsed spell level states
       this._applyCollapsedLevels();
@@ -205,6 +225,17 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     } catch (error) {
       log(1, 'Error in _onRender:', error);
     }
+  }
+
+  /**
+   * Disable filter inputs while the spell data is loading
+   * @private
+   */
+  _disableFiltersWhileLoading() {
+    const inputs = this.element.querySelectorAll('.spell-filters input, .spell-filters select, .spell-filters button');
+    inputs.forEach((input) => {
+      input.disabled = true;
+    });
   }
 
   /* -------------------------------------------- */
@@ -480,6 +511,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const spellItems = this.element.querySelectorAll('.spell-item');
       let visibleCount = 0;
 
+      // Create a map to track visible spells per level
+      const levelVisibilityMap = new Map();
+
       for (const item of spellItems) {
         // Extract basic spell metadata
         const nameEl = item.querySelector('.spell-name');
@@ -582,7 +616,17 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Update visibility
         item.style.display = visible ? '' : 'none';
-        if (visible) visibleCount++;
+        if (visible) {
+          visibleCount++;
+
+          // Update level visibility tracker
+          if (!levelVisibilityMap.has(level)) {
+            levelVisibilityMap.set(level, { total: 0, visible: 0, prepared: 0 });
+          }
+          const levelStats = levelVisibilityMap.get(level);
+          levelStats.visible++;
+          if (isPrepared) levelStats.prepared++;
+        }
       }
 
       // Show/hide no results message
@@ -591,11 +635,22 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         noResults.style.display = visibleCount > 0 ? 'none' : 'block';
       }
 
-      // Update level container visibility
+      // Update level container visibility and counts
       const levelContainers = this.element.querySelectorAll('.spell-level');
       for (const container of levelContainers) {
-        const visibleSpells = Array.from(container.querySelectorAll('.spell-item')).filter((item) => item.style.display !== 'none').length;
-        container.style.display = visibleSpells > 0 ? '' : 'none';
+        const levelId = container.dataset.level;
+        const levelStats = levelVisibilityMap.get(levelId) || { visible: 0, prepared: 0 };
+
+        // Update visibility of the container
+        container.style.display = levelStats.visible > 0 ? '' : 'none';
+
+        // Update the count display
+        const countDisplay = container.querySelector('.spell-count');
+        if (countDisplay && levelStats.visible > 0) {
+          countDisplay.textContent = `(${levelStats.prepared}/${levelStats.visible})`;
+        } else if (countDisplay) {
+          countDisplay.textContent = '';
+        }
       }
     } catch (error) {
       log(1, 'Error applying filters:', error);
@@ -1383,7 +1438,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 // Find the open app instance and render it
                 const openApp = Object.values(ui.windows).find((w) => w instanceof PlayerSpellBook);
-                if (openApp) openApp.render(false);
+                if (openApp) {
+                  openApp.render(false);
+                  // Ensure filters are reapplied after rendering
+                  setTimeout(() => {
+                    openApp._applyFilters();
+                  }, 100);
+                }
 
                 return true;
               } catch (error) {
@@ -1409,7 +1470,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 // Find the open app instance and render it
                 const openApp = Object.values(ui.windows).find((w) => w instanceof PlayerSpellBook);
-                if (openApp) openApp.render(false);
+                if (openApp) {
+                  openApp.render(false);
+                  // Ensure filters are reapplied after rendering
+                  setTimeout(() => {
+                    openApp._applyFilters();
+                  }, 100);
+                }
 
                 return true;
               } catch (error) {
