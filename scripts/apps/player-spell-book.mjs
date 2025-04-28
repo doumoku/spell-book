@@ -587,13 +587,15 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const conditionOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
 
     // Add options for each condition type
-    Object.entries(CONFIG.DND5E.conditionTypes).forEach(([key, condition]) => {
-      conditionOptions.push({
-        value: key,
-        label: condition.label,
-        selected: filters.condition === key
+    Object.entries(CONFIG.DND5E.conditionTypes)
+      .filter(([key, condition]) => !condition.pseudo) // Skip pseudo conditions
+      .forEach(([key, condition]) => {
+        conditionOptions.push({
+          value: key,
+          label: condition.label,
+          selected: filters.condition === key
+        });
       });
-    });
 
     dropdowns.push({
       name: 'filter-condition',
