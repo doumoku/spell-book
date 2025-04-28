@@ -559,14 +559,22 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     // Damage Type dropdown
     const damageTypeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
 
-    // Add options for each damage type
-    Object.entries(CONFIG.DND5E.damageTypes).forEach(([key, damageType]) => {
-      damageTypeOptions.push({
-        value: key,
-        label: damageType.label,
-        selected: filters.damageType === key
+    // Create a combined damage types object including healing
+    const damageTypesWithHealing = {
+      ...CONFIG.DND5E.damageTypes,
+      healing: { label: game.i18n.localize('DND5E.Healing') }
+    };
+
+    // Add options for each damage type in alphabetical order by label
+    Object.entries(damageTypesWithHealing)
+      .sort((a, b) => a[1].label.localeCompare(b[1].label))
+      .forEach(([key, damageType]) => {
+        damageTypeOptions.push({
+          value: key,
+          label: damageType.label,
+          selected: filters.damageType === key
+        });
       });
-    });
 
     dropdowns.push({
       name: 'filter-damage-type',
