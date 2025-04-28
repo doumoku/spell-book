@@ -678,6 +678,23 @@
   padding: 0.5rem;
 }
 
+.filter-configuration .filter-config-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary);
+  border-radius: 3px;
+  background: #0000000d;
+  cursor: grab;
+}
+
+.filter-configuration .filter-config-item .drag-handle {
+  margin-right: 0.5rem;
+  color: var(--color-text-dark-secondary);
+  cursor: grab;
+}
+
 .filter-config-form {
   display: flex;
   flex-direction: column;
@@ -696,28 +713,29 @@
   list-style: none;
 }
 
-.filter-config-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid var(--color-border-light-tertiary);
-  border-radius: 3px;
-  background: #0000000d;
-}
-
-.filter-config-item:hover {
+.filter-configuration .filter-config-item:hover {
   background: #0000001a;
 }
 
-.filter-config-item .filter-name {
+.filter-configuration .filter-config-item .filter-name {
   flex: 1;
   margin-left: 0.5rem;
 }
 
-.filter-config-item .order-control {
-  display: flex;
-  align-items: center;
+.filter-configuration .filter-item.dragging .filter-config-item {
+  opacity: 0.5;
+  border: 1px dashed var(--color-border-highlight);
+}
+
+.filter-configuration .drop-placeholder {
+  height: 2px;
+  margin: 0.5rem 0;
+  background-color: var(--color-border-highlight);
+}
+
+/* Hide the original number inputs */
+.filter-configuration .order-control {
+  display: none;
 }
 
 .filter-config-item .order-control label {

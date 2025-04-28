@@ -42,6 +42,7 @@
   "SPELLBOOK.Settings.DistanceUnit.Name": "Distance Unit",
   "SPELLBOOK.Settings.EnableRestPrompt.Hint": "Prompt player to update prepared spells after completing a long rest.",
   "SPELLBOOK.Settings.EnableRestPrompt.Name": "Prompt After Long Rest",
+  "SPELLBOOK.Settings.FilterInstructions": "Drag and drop items to change the order of filters. Enable or disable filters using the checkboxes.",
   "SPELLBOOK.Settings.Logger.Choices": {
     "Errors": "Errors",
     "Off": "Off",
