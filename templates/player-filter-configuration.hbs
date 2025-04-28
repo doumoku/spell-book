@@ -2,14 +2,22 @@
 	<p>{{localize "SPELLBOOK.Settings.FilterInstructions"}}</p>
 	<ul class="filter-config-list">
 		{{#each filterConfig as |filter index|}}
-			<li data-filter-id="{{filter.id}}" data-index="{{index}}" class="filter-item">
-				<div class="filter-config-item" draggable="true">
-					<div class="drag-handle"><i class="fas fa-grip-lines"></i></div>
+			<li data-filter-id="{{filter.id}}" data-index="{{index}}"
+				class="filter-item {{#unless filter.sortable}}not-sortable{{/unless}}">
+				<div class="filter-config-item" {{#if filter.sortable}}draggable="true" {{/if}}>
+					<div class="drag-handle">
+						{{#if filter.sortable}}<i class="fas fa-grip-lines"></i>{{else}}<i class="fas fa-lock"></i>{{/if}}
+					</div>
 					<input type="checkbox" name="enabled-{{filter.id}}" {{#if filter.enabled}}checked{{/if}}>
 					<span class="filter-name">{{localize filter.label}}</span>
+					{{#unless filter.sortable}}
+						<span class="fixed-position-note">{{localize "SPELLBOOK.Settings.FixedPosition"}}</span>
+					{{/unless}}
 				</div>
 				<!-- Hidden order field that will be maintained by drag & drop -->
 				<input type="hidden" name="order-{{filter.id}}" value="{{filter.order}}">
+				<!-- Hidden sortable field -->
+				<input type="hidden" name="sortable-{{filter.id}}" value="{{filter.sortable}}">
 			</li>
 		{{/each}}
 	</ul>
@@ -25,4 +33,4 @@
 			{{/each}}
 		</div>
 	</footer>
-</div>
+</form>

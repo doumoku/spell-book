@@ -28,7 +28,12 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     position: {
       top: 100
     },
-    dragDrop: [{ dragSelector: '.filter-config-item', dropSelector: '.filter-config-list' }]
+    dragDrop: [
+      {
+        dragSelector: '.filter-config-item[draggable="true"]',
+        dropSelector: '.filter-config-list'
+      }
+    ]
   };
 
   /** @override */
@@ -88,6 +93,25 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
       if (!config || !Array.isArray(config) || config.length === 0) {
         log(1, 'No valid configuration found, using defaults');
         config = structuredClone(DEFAULT_FILTER_CONFIG);
+      } else {
+        // Ensure all filters have the sortable property
+        config = config.map((filter) => {
+          // If the filter exists in DEFAULT_FILTER_CONFIG, use that sortable value
+          const defaultFilter = DEFAULT_FILTER_CONFIG.find((df) => df.id === filter.id);
+
+          if (defaultFilter) {
+            return {
+              ...filter,
+              sortable: defaultFilter.sortable !== undefined ? defaultFilter.sortable : true
+            };
+          }
+
+          // Otherwise, default to sortable
+          return {
+            ...filter,
+            sortable: filter.sortable !== undefined ? filter.sortable : true
+          };
+        });
       }
 
       this.config = structuredClone(config);
@@ -189,8 +213,12 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @returns {boolean} Whether the user can drag
    * @private
    */
-  _canDragStart(selector) {
-    return true; // Allow dragging the filter items
+  _canDragStart(event, selector) {
+    const element = event?.target?.closest('.filter-config-item');
+    if (!element) return false;
+
+    // Only allow dragging elements that have draggable="true"
+    return element.getAttribute('draggable') === 'true';
   }
 
   /**
@@ -199,7 +227,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @returns {boolean} Whether the user can drop
    * @private
    */
-  _canDragDrop(selector) {
+  _canDragDrop(event, selector) {
     return true; // Allow dropping on the filter list
   }
 
@@ -209,8 +237,9 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @private
    */
   _onDragStart(event) {
+    // Only allow dragging sortable items
     const li = event.currentTarget.closest('li');
-    if (!li) return;
+    if (!li || li.classList.contains('not-sortable')) return false;
 
     // Set the data transfer with the filter index
     const filterIndex = li.dataset.index;
@@ -378,7 +407,9 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @static
    */
   static async formHandler(event, form, formData) {
+    // Important: Prevent the event AND stop propagation
     event.preventDefault();
+    event.stopPropagation();
 
     try {
       log(1, 'Processing filter configuration form data', formData.object);
@@ -397,42 +428,85 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
         currentConfig = structuredClone(DEFAULT_FILTER_CONFIG);
       }
 
-      // Extract updates from form data
-      const updates = [];
+      // Separate sortable and non-sortable filters
+      const sortableFilters = [];
+      const nonSortableFilters = [];
 
       for (const filter of currentConfig) {
-        // Get enabled state from form data - use the actual boolean value
+        // Get enabled state from form data
         const enabledKey = `enabled-${filter.id}`;
         const enabled = formData.object[enabledKey] === true;
 
-        log(1, `Filter ${filter.id} enabled: ${enabled}, formData value: ${formData.object[enabledKey]}`);
+        // Make sure sortable property is preserved
+        const sortable =
+          filter.sortable !== undefined ? filter.sortable
+          : filter.id === 'name' || filter.id === 'prepared' || filter.id === 'ritual' || filter.id === 'sortBy' ? false
+          : true;
 
-        // Find the matching item in the DOM to get its current position
-        const item = form.querySelector(`li[data-filter-id="${filter.id}"]`);
-        const index = item ? parseInt(item.dataset.index) : null;
+        log(1, `Filter ${filter.id} enabled: ${enabled}, sortable: ${sortable}`);
 
-        // Update the filter with form values
-        updates.push({
+        // Create updated filter with enabled state from form
+        const updatedFilter = {
           ...filter,
           enabled: enabled,
-          order: index !== null ? (index + 1) * 10 : filter.order
-        });
+          sortable: sortable
+        };
+
+        // Sort into appropriate category
+        if (sortable) {
+          sortableFilters.push(updatedFilter);
+        } else {
+          nonSortableFilters.push(updatedFilter);
+        }
       }
 
-      // Sort by the current DOM order
-      updates.sort((a, b) => a.order - b.order);
+      // Get order for sortable filters from the DOM
+      const sortableFilterElements = Array.from(form.querySelectorAll('.filter-item:not(.not-sortable)'));
 
-      log(1, 'Saving updated configuration:', updates);
+      // Create a mapping of filter IDs to their positions in the DOM
+      const orderMap = {};
+      sortableFilterElements.forEach((el, idx) => {
+        const filterId = el.dataset.filterId;
+        if (filterId) orderMap[filterId] = idx;
+      });
+
+      // Sort the sortable filters based on their DOM position
+      sortableFilters.sort((a, b) => {
+        const orderA = orderMap[a.id] !== undefined ? orderMap[a.id] : a.order;
+        const orderB = orderMap[b.id] !== undefined ? orderMap[b.id] : b.order;
+        return orderA - orderB;
+      });
+
+      // Update the order values for sortable filters
+      let nextOrder = 20; // Start after search filter
+      sortableFilters.forEach((filter) => {
+        filter.order = nextOrder;
+        nextOrder += 10;
+      });
+
+      // Combine all filters, ensuring non-sortable ones maintain their position
+      const updatedConfig = [
+        // First add non-sortable filters that should be at the top (search)
+        ...nonSortableFilters.filter((f) => f.id === 'name'),
+        // Then add sortable filters in their sorted order
+        ...sortableFilters,
+        // Then add remaining non-sortable filters (checkboxes and sort options)
+        ...nonSortableFilters.filter((f) => f.id !== 'name')
+      ];
+
+      log(1, 'Saving updated configuration:', updatedConfig);
 
       // Save the configuration
-      await game.settings.set(MODULE.ID, 'filterConfiguration', updates);
+      await game.settings.set(MODULE.ID, 'filterConfiguration', updatedConfig);
 
       // Show success message
       ui.notifications?.info('Filter configuration saved.');
 
-      if (this.parentApp) {
-        log(1, 'Refreshing parent application:', this.parentApp.constructor.name);
-        this.parentApp.render(false);
+      // Find the parent application
+      const app = ui.windows[this.id];
+      if (app && app.parentApp) {
+        log(1, 'Refreshing parent application:', app.parentApp.constructor.name);
+        app.parentApp.render(false);
       } else {
         log(1, 'No parent application reference found');
       }

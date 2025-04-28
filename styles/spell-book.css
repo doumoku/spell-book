@@ -753,6 +753,24 @@
   justify-content: space-between;
 }
 
+.application.filter-configuration .filter-item.not-sortable .filter-config-item {
+  background: #00000008;
+  cursor: default;
+  border-style: dashed;
+}
+
+.application.filter-configuration .filter-item.not-sortable .drag-handle {
+  color: var(--color-text-dark-4);
+}
+
+.application.filter-configuration .fixed-position-note {
+  margin-left: auto;
+  margin-right: 0.5rem;
+  font-size: 0.8em;
+  color: var(--color-text-dark-secondary);
+  font-style: italic;
+}
+
 /* ----------------------------------------- */
 /* Utility Classes                           */
 /* ----------------------------------------- */

@@ -1,55 +1,43 @@
 <div class="spell-filters">
-	<!-- Search filter -->
-	{{#if filters.search}}
-		<div class="filter-group">
-			<input type="text" name="{{filters.search.name}}" placeholder="{{filters.search.label}}"
-				value="{{filters.search.value}}" data-filter="{{filters.search.id}}">
-		</div>
-	{{/if}}
+	{{#each filters as |filter|}}
+		{{#if (eq filter.type "search")}}
+			<div class="filter-item filter-search" data-filter-id="{{filter.id}}">
+				<input type="text" name="filter-name" placeholder="{{localize filter.label}}" value="{{../searchText}}">
+			</div>
+		{{/if}}
 
-	<!-- Dropdown filters -->
-	<div class="filter-group">
-		{{#each filters.dropdowns as |dropdown|}}
-			<div class="filter-item">
-				{{#if dropdown.label}}<label>{{dropdown.label}}</label>{{/if}}
-				<select name="{{dropdown.name}}" data-action="filterSpells" data-filter="{{dropdown.id}}">
-					{{#each dropdown.options as |option|}}
-						<option value="{{option.value}}" {{#if option.selected}}selected{{/if}}>
-							{{option.label}}
-						</option>
+		{{#if (eq filter.type "dropdown")}}
+			<div class="filter-item {{#if filter.active}}active{{/if}}" data-filter-id="{{filter.id}}">
+				<label>{{localize filter.label}}</label>
+				<select name="filter-{{filter.id}}">
+					<option value="">{{localize (concat "SPELLBOOK.Filters.All" filter.label)}}</option>
+					{{#each filter.options as |option|}}
+						<option value="{{option.value}}" {{#if option.selected}}selected{{/if}}>{{option.label}}</option>
 					{{/each}}
 				</select>
 			</div>
-		{{/each}}
-	</div>
+		{{/if}}
 
-	<!-- Range filter -->
-	{{#if filters.range}}
-		<div class="filter-item range-filter">
-			<label>{{filters.range.label}} ({{filters.range.unit}})</label>
-			<div class="range-inputs">
-				<input type="number" name="{{filters.range.minName}}" placeholder="{{localize 'SPELLBOOK.Filters.RangeMin'}}"
-					value="{{filters.range.minValue}}" data-action="filterSpells" min="0">
-				<span class="range-separator sep"><dnd5e-icon src="systems/dnd5e/icons/svg/range-connector.svg"></dnd5e-icon></span>
-				<input type="number" name="{{filters.range.maxName}}" placeholder="{{localize 'SPELLBOOK.Filters.RangeMax'}}"
-					value="{{filters.range.maxValue}}" data-action="filterSpells" min="0">
+		{{#if (eq filter.type "range")}}
+			<div class="filter-item range-filter {{#if filter.active}}active{{/if}}" data-filter-id="{{filter.id}}">
+				<label>{{localize filter.label}}</label>
+				<div class="range-inputs">
+					<input type="number" name="filter-range-min" min="0" max="1000"
+						placeholder="{{localize 'SPELLBOOK.Filters.RangeMin'}}" value="{{../rangeMin}}">
+					<div class="range-separator"><i class="fas fa-arrow-right"></i></div>
+					<input type="number" name="filter-range-max" min="0" max="1000"
+						placeholder="{{localize 'SPELLBOOK.Filters.RangeMax'}}" value="{{../rangeMax}}">
+				</div>
 			</div>
-		</div>
-	{{/if}}
+		{{/if}}
 
-	<!-- Checkbox filters -->
-	<div class="filter-toggles">
-		{{#each filters.checkboxes as |checkbox|}}
-			<label>
-				<input type="checkbox" name="{{checkbox.name}}" data-action="filterSpells" data-filter="{{checkbox.id}}"
-					{{#if checkbox.checked}}checked{{/if}}>
-				{{checkbox.label}}
-			</label>
-		{{/each}}
-	</div>
-<div class="filter-settings">
-  <button type="button" class="filter-config-button" data-action="configureFilters">
-    <i class="fas fa-cog"></i> {{localize "SPELLBOOK.Settings.ConfigureFilters"}}
-  </button>
-</div>
+		{{#if (eq filter.type "checkbox")}}
+			<div class="filter-toggles" data-filter-id="{{filter.id}}">
+				<label class="{{#if filter.value}}active{{/if}}">
+					<input type="checkbox" name="filter-{{filter.id}}" {{#if filter.value}}checked{{/if}}>
+					{{localize filter.label}}
+				</label>
+			</div>
+		{{/if}}
+	{{/each}}
 </div>
