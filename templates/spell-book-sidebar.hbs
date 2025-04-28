@@ -1,16 +1,18 @@
 <div class="spell-filters">
-	<!-- Search always stays on top -->
-	<div class="filter-group">
-		<input type="text" name="filter-name" placeholder="{{localize 'SPELLBOOK.Filters.SearchPlaceholder'}}"
-			value="{{filters.name}}" data-filter="name">
-	</div>
+	<!-- Search filter -->
+	{{#if filters.search}}
+		<div class="filter-group">
+			<input type="text" name="{{filters.search.name}}" placeholder="{{filters.search.label}}"
+				value="{{filters.search.value}}" data-filter="{{filters.search.id}}">
+		</div>
+	{{/if}}
 
-	<!-- Dropdowns -->
+	<!-- Dropdown filters -->
 	<div class="filter-group">
-		{{#each filterDropdowns as |dropdown|}}
+		{{#each filters.dropdowns as |dropdown|}}
 			<div class="filter-item">
 				{{#if dropdown.label}}<label>{{dropdown.label}}</label>{{/if}}
-				<select name="{{dropdown.name}}" data-action="filterSpells" data-filter="{{dropdown.filter}}">
+				<select name="{{dropdown.name}}" data-action="filterSpells" data-filter="{{dropdown.id}}">
 					{{#each dropdown.options as |option|}}
 						<option value="{{option.value}}" {{#if option.selected}}selected{{/if}}>
 							{{option.label}}
@@ -20,26 +22,34 @@
 			</div>
 		{{/each}}
 	</div>
-	<!-- Range filter inputs -->
-	<div class="filter-item range-filter">
-		<label>{{localize 'SPELLBOOK.Filters.Range'}} ({{rangeFilter.unit}})</label>
-		<div class="range-inputs">
-			<input type="number" name="filter-min-range" placeholder="{{localize 'SPELLBOOK.Filters.RangeMin'}}"
-				value="{{filters.minRange}}" data-action="filterSpells" min="0">
-			<span class="range-separator">-</span>
-			<input type="number" name="filter-max-range" placeholder="{{localize 'SPELLBOOK.Filters.RangeMax'}}"value="{{filters.maxRange}}"
-				data-action="filterSpells" min="0">
-		</div>
-	</div>
 
-	<!-- Checkboxes -->
+	<!-- Range filter -->
+	{{#if filters.range}}
+		<div class="filter-item range-filter">
+			<label>{{filters.range.label}} ({{filters.range.unit}})</label>
+			<div class="range-inputs">
+				<input type="number" name="{{filters.range.minName}}" placeholder="{{localize 'SPELLBOOK.Filters.RangeMin'}}"
+					value="{{filters.range.minValue}}" data-action="filterSpells" min="0">
+				<span class="range-separator">-</span>
+				<input type="number" name="{{filters.range.maxName}}" placeholder="{{localize 'SPELLBOOK.Filters.RangeMax'}}"
+					value="{{filters.range.maxValue}}" data-action="filterSpells" min="0">
+			</div>
+		</div>
+	{{/if}}
+
+	<!-- Checkbox filters -->
 	<div class="filter-toggles">
-		{{#each filterCheckboxes as |checkbox|}}
+		{{#each filters.checkboxes as |checkbox|}}
 			<label>
-				<input type="checkbox" name="{{checkbox.name}}" data-action="filterSpells" data-filter="{{checkbox.filter}}"
+				<input type="checkbox" name="{{checkbox.name}}" data-action="filterSpells" data-filter="{{checkbox.id}}"
 					{{#if checkbox.checked}}checked{{/if}}>
 				{{checkbox.label}}
 			</label>
 		{{/each}}
 	</div>
+<div class="filter-settings">
+  <button type="button" class="filter-config-button" data-action="configureFilters">
+    <i class="fas fa-cog"></i> {{localize "SPELLBOOK.Settings.ConfigureFilters"}}
+  </button>
+</div>
 </div>

@@ -35,6 +35,7 @@
   "SPELLBOOK.Rest.KeepSpells": "Keep Current Spells",
   "SPELLBOOK.Rest.OpenSpellbook": "Open Spell Book",
   "SPELLBOOK.Rest.UpdateSpells": "{name} has completed a long rest. Would you like to change which spells are prepared?",
+  "SPELLBOOK.Settings.ConfigureFilters": "Configure Filters",
   "SPELLBOOK.Settings.DistanceUnit.Feet": "Feet",
   "SPELLBOOK.Settings.DistanceUnit.Hint": "Choose the unit to display and filter spell ranges",
   "SPELLBOOK.Settings.DistanceUnit.Meters": "Meters",

@@ -1,4 +1,4 @@
-import { MODULE } from './constants.mjs';
+import { DEFAULT_FILTER_CONFIG, MODULE } from './constants.mjs';
 
 export function registerSettings() {
   game.settings.register(MODULE.ID, 'loggingLevel', {
@@ -36,5 +36,14 @@ export function registerSettings() {
       meters: 'SPELLBOOK.Settings.DistanceUnit.Meters'
     },
     default: 'feet'
+  });
+
+  game.settings.register(MODULE.ID, 'filterConfiguration', {
+    name: 'Filter Configuration',
+    hint: 'Configure which filters are enabled and their display order',
+    scope: 'client',
+    config: false,
+    type: Object,
+    default: DEFAULT_FILTER_CONFIG
   });
 }

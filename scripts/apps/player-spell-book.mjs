@@ -23,7 +23,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       filterSpells: PlayerSpellBook.filterSpells,
       sortSpells: PlayerSpellBook.sortSpells,
       reset: PlayerSpellBook.handleReset,
-      toggleSpellLevel: PlayerSpellBook.toggleSpellLevel
+      toggleSpellLevel: PlayerSpellBook.toggleSpellLevel,
+      configureFilters: PlayerSpellBook.configureFilters
     },
     classes: ['spell-book'],
     window: {
@@ -129,10 +130,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     context.className = this.className;
     context.spellPreparation = this.spellPreparation;
 
-    // Add standard information all apps need regardless of errors
-    context.filterDropdowns = this._prepareFilterDropdowns();
-    context.filterCheckboxes = this._prepareFilterCheckboxes();
-    context.rangeFilter = this._prepareRangeFilter();
+    // Prepare the filters using the new unified system
+    context.filters = this._prepareFilters();
 
     return context;
   }
@@ -432,247 +431,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /* -------------------------------------------- */
 
   /**
-   * Prepare filter dropdown options
-   * @returns {Array} - Array of filter dropdown objects
-   * @private
-   */
-  _prepareFilterDropdowns() {
-    const filters = this._getFilterState();
-    const dropdowns = [];
-
-    // Spell Level dropdown
-    const levelOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    // Add options for each spell level found
-    if (this.spellLevels) {
-      this.spellLevels.forEach((level) => {
-        levelOptions.push({
-          value: level.level,
-          label: CONFIG.DND5E.spellLevels[level.level],
-          selected: filters.level === level.level
-        });
-      });
-    }
-
-    dropdowns.push({
-      name: 'filter-level',
-      filter: 'level',
-      label: game.i18n.localize('SPELLBOOK.Filters.Level'),
-      options: levelOptions
-    });
-
-    // School dropdown
-    const schoolOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    // Add options for each spell school
-    Object.entries(CONFIG.DND5E.spellSchools).forEach(([key, school]) => {
-      schoolOptions.push({
-        value: key,
-        label: school.label,
-        selected: filters.school === key
-      });
-    });
-
-    dropdowns.push({
-      name: 'filter-school',
-      filter: 'school',
-      label: game.i18n.localize('SPELLBOOK.Filters.School'),
-      options: schoolOptions
-    });
-
-    // Casting Time dropdown
-    const castingTimeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    // Get unique activation types from the spells
-    if (this.spellLevels) {
-      const uniqueActivationTypes = new Set();
-
-      // First, collect all unique combinations
-      this.spellLevels.forEach((level) => {
-        level.spells.forEach((spell) => {
-          const activationType = spell.system?.activation?.type;
-          const activationValue = spell.system?.activation?.value || 1; // treat null as 1
-
-          if (activationType) {
-            uniqueActivationTypes.add(`${activationType}:${activationValue}`);
-          }
-        });
-      });
-
-      // Define a priority order for activation types
-      const typeOrder = {
-        action: 1,
-        bonus: 2,
-        reaction: 3,
-        minute: 4,
-        hour: 5,
-        day: 6,
-        legendary: 7,
-        mythic: 8,
-        lair: 9,
-        crew: 10,
-        special: 11,
-        none: 12
-      };
-
-      // Convert to array of [type:value, type, value] for sorting
-      const sortableTypes = Array.from(uniqueActivationTypes).map((combo) => {
-        const [type, value] = combo.split(':');
-        return [combo, type, parseInt(value) || 1];
-      });
-
-      // Sort by type priority then by value
-      sortableTypes.sort((a, b) => {
-        const [, typeA, valueA] = a;
-        const [, typeB, valueB] = b;
-
-        // First compare by type priority
-        const typePriorityA = typeOrder[typeA] || 999;
-        const typePriorityB = typeOrder[typeB] || 999;
-        if (typePriorityA !== typePriorityB) {
-          return typePriorityA - typePriorityB;
-        }
-
-        // Then by value
-        return valueA - valueB;
-      });
-
-      // Create the options in the sorted order
-      sortableTypes.forEach(([combo, type, value]) => {
-        const typeLabel = CONFIG.DND5E.abilityActivationTypes[type] || type;
-
-        let label;
-        if (value === 1) {
-          label = typeLabel;
-        } else {
-          label = `${value} ${typeLabel}${value !== 1 ? 's' : ''}`;
-        }
-
-        castingTimeOptions.push({
-          value: combo,
-          label: label,
-          selected: filters.castingTime === combo
-        });
-      });
-    }
-
-    dropdowns.push({
-      name: 'filter-casting-time',
-      filter: 'castingTime',
-      label: game.i18n.localize('SPELLBOOK.Filters.CastingTime'),
-      options: castingTimeOptions
-    });
-
-    // Damage Type dropdown
-    const damageTypeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    // Create a combined damage types object including healing
-    const damageTypesWithHealing = {
-      ...CONFIG.DND5E.damageTypes,
-      healing: { label: game.i18n.localize('DND5E.Healing') }
-    };
-
-    // Add options for each damage type in alphabetical order by label
-    Object.entries(damageTypesWithHealing)
-      .sort((a, b) => a[1].label.localeCompare(b[1].label))
-      .forEach(([key, damageType]) => {
-        damageTypeOptions.push({
-          value: key,
-          label: damageType.label,
-          selected: filters.damageType === key
-        });
-      });
-
-    dropdowns.push({
-      name: 'filter-damage-type',
-      filter: 'damageType',
-      label: game.i18n.localize('SPELLBOOK.Filters.DamageType'),
-      options: damageTypeOptions
-    });
-
-    // Conditions dropdown
-    const conditionOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    // Add options for each condition type
-    Object.entries(CONFIG.DND5E.conditionTypes)
-      .filter(([key, condition]) => !condition.pseudo) // Skip pseudo conditions
-      .forEach(([key, condition]) => {
-        conditionOptions.push({
-          value: key,
-          label: condition.label,
-          selected: filters.condition === key
-        });
-      });
-
-    dropdowns.push({
-      name: 'filter-condition',
-      filter: 'condition',
-      label: game.i18n.localize('SPELLBOOK.Filters.Condition'),
-      options: conditionOptions
-    });
-
-    // Save Required dropdown
-    const saveOptions = [
-      { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') },
-      { value: 'true', label: game.i18n.localize('SPELLBOOK.Filters.True'), selected: filters.requiresSave === 'true' },
-      { value: 'false', label: game.i18n.localize('SPELLBOOK.Filters.False'), selected: filters.requiresSave === 'false' }
-    ];
-
-    dropdowns.push({
-      name: 'filter-requires-save',
-      filter: 'requiresSave',
-      label: game.i18n.localize('SPELLBOOK.Filters.RequiresSave'),
-      options: saveOptions
-    });
-
-    // Concentration dropdown
-    const concentrationOptions = [
-      { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') },
-      { value: 'true', label: game.i18n.localize('SPELLBOOK.Filters.True'), selected: filters.concentration === 'true' },
-      { value: 'false', label: game.i18n.localize('SPELLBOOK.Filters.False'), selected: filters.concentration === 'false' }
-    ];
-
-    dropdowns.push({
-      name: 'filter-concentration',
-      filter: 'concentration',
-      label: game.i18n.localize('SPELLBOOK.Filters.RequiresConcentration'),
-      options: concentrationOptions
-    });
-
-    // Sort dropdown (not a filter, but fits the same UI pattern)
-    const sortOptions = [
-      { value: 'level', label: game.i18n.localize('SPELLBOOK.Sort.ByLevel'), selected: filters.sortBy === 'level' },
-      { value: 'name', label: game.i18n.localize('SPELLBOOK.Sort.ByName'), selected: filters.sortBy === 'name' },
-      { value: 'school', label: game.i18n.localize('SPELLBOOK.Sort.BySchool'), selected: filters.sortBy === 'school' },
-      { value: 'prepared', label: game.i18n.localize('SPELLBOOK.Sort.ByPrepared'), selected: filters.sortBy === 'prepared' }
-    ];
-
-    dropdowns.push({
-      name: 'sort-by',
-      filter: 'sortBy',
-      label: game.i18n.localize('SPELLBOOK.Filters.SortBy'),
-      options: sortOptions
-    });
-
-    return dropdowns;
-  }
-
-  /**
-   * Prepare range filter inputs
-   * @returns {Object} - Range filter inputs configuration
-   * @private
-   */
-  _prepareRangeFilter() {
-    const filters = this._getFilterState();
-
-    return {
-      minRange: filters.minRange || '',
-      maxRange: filters.maxRange || '',
-      unit: game.settings.get(MODULE.ID, 'distanceUnit')
-    };
-  }
-
-  /**
    * Convert a spell range to feet (or meters based on settings)
    * @param {string} units - The range units (feet, miles, etc)
    * @param {number} value - The range value
@@ -708,71 +466,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     return inFeet;
-  }
-
-  /**
-   * Prepare filter checkbox options
-   * @returns {Array} - Array of filter checkbox objects
-   * @private
-   */
-  _prepareFilterCheckboxes() {
-    const filters = this._getFilterState();
-
-    return [
-      {
-        name: 'filter-prepared',
-        filter: 'prepared',
-        label: game.i18n.localize('SPELLBOOK.Filters.PreparedOnly'),
-        checked: filters.prepared
-      },
-      {
-        name: 'filter-ritual',
-        filter: 'ritual',
-        label: game.i18n.localize('SPELLBOOK.Filters.RitualOnly'),
-        checked: filters.ritual
-      }
-    ];
-  }
-
-  /**
-   * Get the current filter state from form inputs
-   * @returns {Object} The current filter state
-   * @private
-   */
-  _getFilterState() {
-    if (!this.element) {
-      return {
-        name: '',
-        level: '',
-        school: '',
-        castingTime: '',
-        minRange: '',
-        maxRange: '',
-        damageType: '',
-        condition: '',
-        requiresSave: '',
-        prepared: false,
-        ritual: false,
-        concentration: '',
-        sortBy: 'level'
-      };
-    }
-
-    return {
-      name: this.element.querySelector('[name="filter-name"]')?.value || '',
-      level: this.element.querySelector('[name="filter-level"]')?.value || '',
-      school: this.element.querySelector('[name="filter-school"]')?.value || '',
-      castingTime: this.element.querySelector('[name="filter-casting-time"]')?.value || '',
-      minRange: this.element.querySelector('[name="filter-min-range"]')?.value || '',
-      maxRange: this.element.querySelector('[name="filter-max-range"]')?.value || '',
-      damageType: this.element.querySelector('[name="filter-damage-type"]')?.value || '',
-      condition: this.element.querySelector('[name="filter-condition"]')?.value || '',
-      requiresSave: this.element.querySelector('[name="filter-requires-save"]')?.value || '',
-      prepared: this.element.querySelector('[name="filter-prepared"]')?.checked || false,
-      ritual: this.element.querySelector('[name="filter-ritual"]')?.checked || false,
-      concentration: this.element.querySelector('[name="filter-concentration"]')?.value || '',
-      sortBy: this.element.querySelector('[name="sort-by"]')?.value || 'level'
-    };
   }
 
   /**
@@ -985,6 +678,312 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           return a.name.localeCompare(b.name);
       }
     });
+  }
+
+  /**
+   * Prepare all filters for display based on configuration
+   * @returns {Object} Organized filters for the template
+   * @private
+   */
+  _prepareFilters() {
+    // Get the filter configuration
+    let filterConfig = game.settings.get(MODULE.ID, 'filterConfiguration');
+    if (!Array.isArray(filterConfig) || !filterConfig.length) {
+      filterConfig = DEFAULT_FILTER_CONFIG;
+    }
+
+    // Sort by order property
+    filterConfig = filterConfig.filter((f) => f.enabled).sort((a, b) => a.order - b.order);
+
+    const filterState = this._getFilterState();
+    const result = {
+      search: null,
+      dropdowns: [],
+      checkboxes: [],
+      range: null
+    };
+
+    // Process each enabled filter
+    for (const filter of filterConfig) {
+      switch (filter.type) {
+        case 'search':
+          result.search = {
+            id: filter.id,
+            name: `filter-${filter.id}`,
+            label: game.i18n.localize(filter.label),
+            value: filterState[filter.id] || ''
+          };
+          break;
+
+        case 'dropdown':
+          result.dropdowns.push({
+            id: filter.id,
+            name: `filter-${filter.id}`,
+            label: game.i18n.localize(filter.label),
+            options: this._getOptionsForFilter(filter.id, filterState)
+          });
+          break;
+
+        case 'checkbox':
+          result.checkboxes.push({
+            id: filter.id,
+            name: `filter-${filter.id}`,
+            label: game.i18n.localize(filter.label),
+            checked: filterState[filter.id] || false
+          });
+          break;
+
+        case 'range':
+          result.range = {
+            id: filter.id,
+            name: `filter-${filter.id}`,
+            label: game.i18n.localize(filter.label),
+            minName: `filter-min-range`,
+            maxName: `filter-max-range`,
+            minValue: filterState.minRange || '',
+            maxValue: filterState.maxRange || '',
+            unit: game.settings.get(MODULE.ID, 'distanceUnit')
+          };
+          break;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get options for a specific dropdown filter
+   * @param {string} filterId - The filter ID
+   * @param {Object} filterState - Current filter state
+   * @returns {Array} Options for the dropdown
+   * @private
+   */
+  _getOptionsForFilter(filterId, filterState) {
+    const options = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
+
+    switch (filterId) {
+      case 'level':
+        // Add options for each spell level found
+        if (this.spellLevels) {
+          this.spellLevels.forEach((level) => {
+            options.push({
+              value: level.level,
+              label: CONFIG.DND5E.spellLevels[level.level],
+              selected: filterState.level === level.level
+            });
+          });
+        }
+        break;
+
+      case 'school':
+        // Add options for each spell school
+        Object.entries(CONFIG.DND5E.spellSchools).forEach(([key, school]) => {
+          options.push({
+            value: key,
+            label: school.label,
+            selected: filterState.school === key
+          });
+        });
+        break;
+
+      // Other cases for different dropdowns
+      case 'castingTime':
+        this._addCastingTimeOptions(options, filterState);
+        break;
+
+      case 'damageType':
+        this._addDamageTypeOptions(options, filterState);
+        break;
+
+      case 'condition':
+        this._addConditionOptions(options, filterState);
+        break;
+
+      case 'requiresSave':
+      case 'concentration':
+        options.push(
+          { value: 'true', label: game.i18n.localize('SPELLBOOK.Filters.True'), selected: filterState[filterId] === 'true' },
+          { value: 'false', label: game.i18n.localize('SPELLBOOK.Filters.False'), selected: filterState[filterId] === 'false' }
+        );
+        break;
+
+      case 'sortBy':
+        options.push(
+          { value: 'level', label: game.i18n.localize('SPELLBOOK.Sort.ByLevel'), selected: filterState.sortBy === 'level' },
+          { value: 'name', label: game.i18n.localize('SPELLBOOK.Sort.ByName'), selected: filterState.sortBy === 'name' },
+          { value: 'school', label: game.i18n.localize('SPELLBOOK.Sort.BySchool'), selected: filterState.sortBy === 'school' },
+          { value: 'prepared', label: game.i18n.localize('SPELLBOOK.Sort.ByPrepared'), selected: filterState.sortBy === 'prepared' }
+        );
+        break;
+    }
+
+    return options;
+  }
+
+  /**
+   * Add casting time options to the dropdown
+   * @param {Array} options - Array to add options to
+   * @param {Object} filterState - Current filter state
+   * @private
+   */
+  _addCastingTimeOptions(options, filterState) {
+    // Get unique activation types from the spells
+    if (this.spellLevels) {
+      const uniqueActivationTypes = new Set();
+
+      // First, collect all unique combinations
+      this.spellLevels.forEach((level) => {
+        level.spells.forEach((spell) => {
+          const activationType = spell.system?.activation?.type;
+          const activationValue = spell.system?.activation?.value || 1; // treat null as 1
+
+          if (activationType) {
+            uniqueActivationTypes.add(`${activationType}:${activationValue}`);
+          }
+        });
+      });
+
+      // Define a priority order for activation types
+      const typeOrder = {
+        action: 1,
+        bonus: 2,
+        reaction: 3,
+        minute: 4,
+        hour: 5,
+        day: 6,
+        legendary: 7,
+        mythic: 8,
+        lair: 9,
+        crew: 10,
+        special: 11,
+        none: 12
+      };
+
+      // Convert to array of [type:value, type, value] for sorting
+      const sortableTypes = Array.from(uniqueActivationTypes).map((combo) => {
+        const [type, value] = combo.split(':');
+        return [combo, type, parseInt(value) || 1];
+      });
+
+      // Sort by type priority then by value
+      sortableTypes.sort((a, b) => {
+        const [, typeA, valueA] = a;
+        const [, typeB, valueB] = b;
+
+        // First compare by type priority
+        const typePriorityA = typeOrder[typeA] || 999;
+        const typePriorityB = typeOrder[typeB] || 999;
+        if (typePriorityA !== typePriorityB) {
+          return typePriorityA - typePriorityB;
+        }
+
+        // Then by value
+        return valueA - valueB;
+      });
+
+      // Create the options in the sorted order
+      sortableTypes.forEach(([combo, type, value]) => {
+        const typeLabel = CONFIG.DND5E.abilityActivationTypes[type] || type;
+
+        let label;
+        if (value === 1) {
+          label = typeLabel;
+        } else {
+          label = `${value} ${typeLabel}${value !== 1 ? 's' : ''}`;
+        }
+
+        options.push({
+          value: combo,
+          label: label,
+          selected: filterState.castingTime === combo
+        });
+      });
+    }
+  }
+
+  /**
+   * Add damage type options to the dropdown
+   * @param {Array} options - Array to add options to
+   * @param {Object} filterState - Current filter state
+   * @private
+   */
+  _addDamageTypeOptions(options, filterState) {
+    // Create a combined damage types object including healing
+    const damageTypesWithHealing = {
+      ...CONFIG.DND5E.damageTypes,
+      healing: { label: game.i18n.localize('DND5E.Healing') }
+    };
+
+    // Add options for each damage type in alphabetical order by label
+    Object.entries(damageTypesWithHealing)
+      .sort((a, b) => a[1].label.localeCompare(b[1].label))
+      .forEach(([key, damageType]) => {
+        options.push({
+          value: key,
+          label: damageType.label,
+          selected: filterState.damageType === key
+        });
+      });
+  }
+
+  /**
+   * Add condition options to the dropdown
+   * @param {Array} options - Array to add options to
+   * @param {Object} filterState - Current filter state
+   * @private
+   */
+  _addConditionOptions(options, filterState) {
+    // Add options for each condition type
+    Object.entries(CONFIG.DND5E.conditionTypes)
+      .filter(([key, condition]) => !condition.pseudo) // Skip pseudo conditions
+      .forEach(([key, condition]) => {
+        options.push({
+          value: key,
+          label: condition.label,
+          selected: filterState.condition === key
+        });
+      });
+  }
+
+  /**
+   * Get the current filter state from form inputs or defaults
+   * @returns {Object} The current filter state
+   * @private
+   */
+  _getFilterState() {
+    if (!this.element) {
+      return {
+        name: '',
+        level: '',
+        school: '',
+        castingTime: '',
+        minRange: '',
+        maxRange: '',
+        damageType: '',
+        condition: '',
+        requiresSave: '',
+        prepared: false,
+        ritual: false,
+        concentration: '',
+        sortBy: 'level'
+      };
+    }
+
+    return {
+      name: this.element.querySelector('[name="filter-name"]')?.value || '',
+      level: this.element.querySelector('[name="filter-level"]')?.value || '',
+      school: this.element.querySelector('[name="filter-school"]')?.value || '',
+      castingTime: this.element.querySelector('[name="filter-castingTime"]')?.value || '',
+      minRange: this.element.querySelector('[name="filter-min-range"]')?.value || '',
+      maxRange: this.element.querySelector('[name="filter-max-range"]')?.value || '',
+      damageType: this.element.querySelector('[name="filter-damageType"]')?.value || '',
+      condition: this.element.querySelector('[name="filter-condition"]')?.value || '',
+      requiresSave: this.element.querySelector('[name="filter-requiresSave"]')?.value || '',
+      prepared: this.element.querySelector('[name="filter-prepared"]')?.checked || false,
+      ritual: this.element.querySelector('[name="filter-ritual"]')?.checked || false,
+      concentration: this.element.querySelector('[name="filter-concentration"]')?.value || '',
+      sortBy: this.element.querySelector('[name="sort-by"]')?.value || 'level'
+    };
   }
 
   /* -------------------------------------------- */
@@ -1314,6 +1313,120 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     game.user.setFlag(MODULE.ID, 'collapsedSpellLevels', collapsedLevels);
+  }
+
+  /**
+   * Show dialog to configure filters
+   * @param {Event} event - The triggering event
+   * @param {HTMLElement} form - The form element
+   * @static
+   */
+  static async configureFilters(event, form) {
+    const filterConfig = game.settings.get(MODULE.ID, 'filterConfiguration') || DEFAULT_FILTER_CONFIG;
+
+    // Create a copy of the config for editing
+    const workingConfig = [...filterConfig];
+
+    // Generate content HTML
+    const content = `
+  <form class="filter-config-form">
+    <p>Toggle checkboxes to enable/disable filters and adjust their order.</p>
+    <ul class="filter-config-list">
+      ${workingConfig
+        .map(
+          (filter, index) => `
+        <li data-filter-id="${filter.id}" data-index="${index}">
+          <input type="checkbox" name="enabled-${filter.id}" ${filter.enabled ? 'checked' : ''}>
+          <span class="filter-name">${game.i18n.localize(filter.label)}</span>
+          <input type="number" name="order-${filter.id}" value="${filter.order}" class="order-input">
+        </li>
+      `
+        )
+        .join('')}
+    </ul>
+  </form>
+  `;
+
+    try {
+      // Create the dialog configuration with button callbacks
+      const result = await foundry.applications.api.DialogV2.wait({
+        window: { title: game.i18n.localize('SPELLBOOK.Settings.ConfigureFilters') },
+        content: content,
+        modal: true,
+        buttons: [
+          {
+            label: game.i18n.localize('Save Changes'),
+            icon: 'fas fa-save',
+            action: 'save',
+            callback: async (event, button) => {
+              log(1, 'Save button clicked');
+              try {
+                // Get the form from the button
+                const dialogForm = button.form;
+                if (!dialogForm) {
+                  log(1, 'Could not find dialog form');
+                  return false;
+                }
+
+                // Update the config from form values
+                for (const filter of workingConfig) {
+                  const enabledCheckbox = dialogForm.querySelector(`input[name="enabled-${filter.id}"]`);
+                  const orderInput = dialogForm.querySelector(`input[name="order-${filter.id}"]`);
+
+                  if (enabledCheckbox) filter.enabled = enabledCheckbox.checked;
+                  if (orderInput) filter.order = parseInt(orderInput.value) || filter.order;
+                }
+
+                log(1, 'Saving config:', workingConfig);
+                // Save the updated config
+                await game.settings.set(MODULE.ID, 'filterConfiguration', workingConfig);
+
+                // Find the open app instance and render it
+                const openApp = Object.values(ui.windows).find((w) => w instanceof PlayerSpellBook);
+                if (openApp) openApp.render(false);
+
+                return true;
+              } catch (error) {
+                log(1, 'Error saving filter config:', error);
+                return false;
+              }
+            }
+          },
+          {
+            label: game.i18n.localize('Cancel'),
+            icon: 'fas fa-times',
+            action: 'cancel'
+          },
+          {
+            label: game.i18n.localize('Reset to Defaults'),
+            icon: 'fas fa-undo',
+            action: 'reset',
+            callback: async () => {
+              log(1, 'Reset button clicked');
+              try {
+                // Reset to defaults
+                await game.settings.set(MODULE.ID, 'filterConfiguration', DEFAULT_FILTER_CONFIG);
+
+                // Find the open app instance and render it
+                const openApp = Object.values(ui.windows).find((w) => w instanceof PlayerSpellBook);
+                if (openApp) openApp.render(false);
+
+                return true;
+              } catch (error) {
+                log(1, 'Error resetting filter config:', error);
+                return false;
+              }
+            }
+          }
+        ]
+      });
+
+      log(1, 'Dialog result:', result);
+    } catch (error) {
+      log(1, 'Error in configureFilters:', error);
+    } finally {
+      this.render(false);
+    }
   }
 
   /**

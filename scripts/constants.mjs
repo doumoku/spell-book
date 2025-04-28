@@ -57,3 +57,94 @@ export const MODULE = {
     spellDataTime: {}
   }
 };
+
+/**
+ * Default filter configuration
+ * @type {Array}
+ */
+export const DEFAULT_FILTER_CONFIG = [
+  {
+    id: 'name',
+    type: 'search',
+    enabled: true,
+    order: 10,
+    label: 'SPELLBOOK.Filters.SearchPlaceholder'
+  },
+  {
+    id: 'level',
+    type: 'dropdown',
+    enabled: true,
+    order: 20,
+    label: 'SPELLBOOK.Filters.Level'
+  },
+  {
+    id: 'school',
+    type: 'dropdown',
+    enabled: true,
+    order: 30,
+    label: 'SPELLBOOK.Filters.School'
+  },
+  {
+    id: 'castingTime',
+    type: 'dropdown',
+    enabled: true,
+    order: 40,
+    label: 'SPELLBOOK.Filters.CastingTime'
+  },
+  {
+    id: 'range',
+    type: 'range',
+    enabled: true,
+    order: 50,
+    label: 'SPELLBOOK.Filters.Range'
+  },
+  {
+    id: 'damageType',
+    type: 'dropdown',
+    enabled: true,
+    order: 60,
+    label: 'SPELLBOOK.Filters.DamageType'
+  },
+  {
+    id: 'condition',
+    type: 'dropdown',
+    enabled: true,
+    order: 70,
+    label: 'SPELLBOOK.Filters.Condition'
+  },
+  {
+    id: 'requiresSave',
+    type: 'dropdown',
+    enabled: true,
+    order: 80,
+    label: 'SPELLBOOK.Filters.RequiresSave'
+  },
+  {
+    id: 'concentration',
+    type: 'dropdown',
+    enabled: true,
+    order: 90,
+    label: 'SPELLBOOK.Filters.RequiresConcentration'
+  },
+  {
+    id: 'prepared',
+    type: 'checkbox',
+    enabled: true,
+    order: 100,
+    label: 'SPELLBOOK.Filters.PreparedOnly'
+  },
+  {
+    id: 'ritual',
+    type: 'checkbox',
+    enabled: true,
+    order: 110,
+    label: 'SPELLBOOK.Filters.RitualOnly'
+  },
+  {
+    id: 'sortBy',
+    type: 'dropdown',
+    enabled: true,
+    order: 120,
+    label: 'SPELLBOOK.Filters.SortBy'
+  }
+];
