@@ -58,5 +58,7 @@
   "SPELLBOOK.Sort.BySchool": "School",
   "SPELLBOOK.SpellSource.Granted": "Granted",
   "SPELLBOOK.UI.OpenSpellBook": "Spell Book",
-  "SPELLBOOK.UI.ToggleSidebar": "Toggle Sidebar"
+  "SPELLBOOK.UI.ToggleSidebar": "Toggle Sidebar",
+  "SPELLBOOK.UI.Save": "Save",
+  "SPELLBOOK.UI.Reset": "Reset"
 }

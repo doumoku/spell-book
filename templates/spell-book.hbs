@@ -1,7 +1,12 @@
 <div class="spell-book-container">
   <!-- Sidebar section with the toggle button embedded -->
   <div class="sidebar card">
-    <!-- Move the toggle button inside the sidebar div -->
+    <!-- Filter Configuration Button -->
+    <button type="button" class="filter-config-button unbutton interface-only" data-action="configureFilters"
+      data-tooltip="{{localize 'SPELLBOOK.Settings.ConfigureFilters'}}" aria-label="Configure Filters">
+      <i class="fas fa-cog"></i>
+    </button>
+    <!-- Collapser Button -->
     <button type="button" class="sidebar-collapser collapser vertical unbutton interface-only"
       data-action="toggleSidebar" data-tooltip="{{localize 'SPELLBOOK.UI.ToggleSidebar'}}" aria-label="Toggle Sidebar">
       <i class="fas fa-caret-left"></i>

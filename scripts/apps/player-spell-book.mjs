@@ -167,8 +167,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       filters: this.isLoading ? emptyFilters : this._getFilterState(),
       spellSchools: CONFIG.DND5E.spellSchools,
       buttons: [
-        { type: 'submit', icon: 'fas fa-save', label: 'SETTINGS.Save', cssClass: 'submit-button' },
-        { type: 'reset', action: 'reset', icon: 'fas fa-undo', label: 'SETTINGS.Reset', cssClass: 'reset-button' }
+        { type: 'submit', icon: 'fas fa-save', label: 'SPELLBOOK.UI.Save', cssClass: 'submit-button' },
+        { type: 'reset', action: 'reset', icon: 'fas fa-undo', label: 'SPELLBOOK.UI.Reset', cssClass: 'reset-button' }
       ],
       actorId: this.actor.id,
       TEMPLATES: MODULE.TEMPLATES,
