@@ -628,7 +628,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     dropdowns.push({
       name: 'filter-concentration',
       filter: 'concentration',
-      label: game.i18n.localize('SPELLBOOK.Filters.Concentration'),
+      label: game.i18n.localize('SPELLBOOK.Filters.RequiresConcentration'),
       options: concentrationOptions
     });
 
