@@ -1,5 +1,6 @@
 {
   "SPELLBOOK.Application.ActorTitle": "{name}'s Spell Book",
+  "SPELLBOOK.Application.Loading": "Loading spells...",
   "SPELLBOOK.Errors.NoSpellsFound": "No spells found for {actor}'s class.",
   "SPELLBOOK.Filters.Action": "1 Action",
   "SPELLBOOK.Filters.All": "All",

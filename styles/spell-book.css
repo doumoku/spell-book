@@ -1,3 +1,4 @@
+/* stylelint-disable comment-empty-line-before */
 /* ----------------------------------------- */
 /* Variables                                 */
 /* ----------------------------------------- */
@@ -25,7 +26,7 @@
 }
 
 .spell-book .spell-book-container {
-  gap: 12px;
+  gap: 0.75rem;
   grid-template-columns: var(--spell-book-sidebar-width) 1fr;
   display: grid;
   position: relative;
@@ -52,7 +53,7 @@
   border-right: 1px solid var(--color-border-light);
   overflow-x: visible;
   background: #1b1d24e6;
-  box-shadow: 0 0 6px var(--color-shadow-dark);
+  box-shadow: 0 0 0.375rem var(--color-shadow-dark);
   transition: margin-left 450ms ease;
   transform: translateZ(0);
 }
@@ -79,14 +80,14 @@
   outline: none;
   cursor: pointer;
   background: #1b1d24e6;
-  box-shadow: 0 0 6px var(--color-shadow-dark);
+  box-shadow: 0 0 0.375rem var(--color-shadow-dark);
   transition: all 250ms ease;
   transform: translateZ(-1px);
 }
 
 .spell-book .sidebar-collapser i {
-  margin-left: 6px;
-  font-size: 12px;
+  margin-left: 0.375rem;
+  font-size: 0.75rem;
 }
 
 .spell-book.sidebar-collapsed .sidebar-collapser i {
@@ -105,7 +106,7 @@
   display: flex;
   flex-direction: column;
   padding: 0.5rem;
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: #00000008;
 }
 
 .spell-book input[name='filter-name'] {
@@ -161,10 +162,9 @@
 /* ----------------------------------------- */
 .spell-book .spell-book-content {
   flex: 1;
-  padding: 10px;
-  padding-left: 20px;
-  overflow-x: hidden;
-  overflow-y: auto;
+  padding: 0.6rem;
+  padding-left: 1.25rem;
+  overflow: hidden auto;
   transition: all 450ms ease;
 }
 
@@ -177,7 +177,7 @@
 }
 
 .spell-book .spell-book-footer {
-  padding: 10px;
+  padding: 0.6rem;
   border-top: 1px solid var(--color-border-light);
   text-align: center;
 }
@@ -188,10 +188,7 @@
 
 .spell-book.loading .spell-book-content::after {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: 0;
   pointer-events: none;
   content: '';
 }
@@ -214,8 +211,8 @@
 }
 
 .spell-book .spell-level-heading {
-  margin-bottom: 8px;
-  padding-bottom: 5px;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--color-border-light);
   color: var(--color-text-light-highlight);
   font-size: 1.2em;
@@ -227,7 +224,6 @@
   justify-content: center;
   align-items: center;
   height: 200px;
-  color: var(--color-text-dark-primary);
 }
 
 .spell-book .spell-book-loading i {
@@ -257,11 +253,11 @@
   align-items: center;
   min-height: 40px;
   margin-bottom: 2px;
-  padding: 4px 6px;
+  padding: 0.25rem 0.375rem;
   border-bottom: 1px solid #c9c7b82a;
   border-radius: 3px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.05);
+  background: #0000000d;
 }
 
 .spell-book .spell-header {
@@ -271,15 +267,15 @@
 }
 
 .spell-book .spell-item.owned-spell {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: #00000005;
 }
 
 .spell-book .spell-item.prepared-spell {
-  background-color: rgba(0, 128, 0, 0.1);
+  background-color: #0080001a;
 }
 
 .spell-book .spell-item:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: #0000001a;
 }
 
 .spell-book.at-max-spells .spell-item.max-prepared {
@@ -317,10 +313,10 @@
   width: 36px;
   height: 36px;
   border: 2px solid var(--dnd5e-color-gold);
-  border-radius: 4px;
+  border-radius: 0.25rem;
   vertical-align: middle;
   background-color: var(--dnd5e-color-light-gray);
-  box-shadow: 0 0 4px var(--dnd5e-shadow-45);
+  box-shadow: 0 0 0.25rem var(--dnd5e-shadow-45);
 }
 
 .spell-book .name-stacked {
@@ -328,7 +324,7 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  margin-left: 8px;
+  margin-left: 0.5rem;
 }
 
 .spell-book .name-stacked .title {
@@ -363,7 +359,7 @@
 
 .spell-book .spell-name a {
   display: inline-flex;
-  margin-right: 8px;
+  margin-right: 0.5rem;
   border: none;
   text-decoration: none;
 }
@@ -385,7 +381,7 @@
 /* ----------------------------------------- */
 .spell-book .spell-details {
   width: 100%;
-  margin-top: 4px;
+  margin-top: 0.25rem;
   margin-left: 40px;
   color: #bababa;
   font-style: italic;
@@ -394,16 +390,18 @@
 
 .spell-book .spell-details .tags {
   --icon-fill: var(--dnd5e-color-black);
+
   gap: 0.25rem;
   display: flex;
   align-items: center;
-  padding-right: 1px;
+  padding-right: 0.1rem;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .spell-book .spell-details dnd5e-icon {
   --icon-size: 1em;
+
   display: inline-flex;
   position: relative;
   top: -0.05em;
@@ -428,8 +426,8 @@
 /* ----------------------------------------- */
 .spell-book .spell-preparation {
   flex: 0 0 auto;
-  width: 20px;
-  margin-left: 8px;
+  width: 1.25rem;
+  margin-left: 0.5rem;
 }
 
 .spell-book .spell-preparation input[type='checkbox'] {
@@ -443,30 +441,30 @@
 }
 
 .spell-book .always-prepared-tag {
-  margin-left: 5px;
-  padding: 0 5px;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
   border-radius: 3px;
-  color: black;
+  color: #000;
   font-weight: 600;
   font-size: 0.75rem;
   background-color: #3fc6c1;
 }
 
 .spell-book .preparation-mode-tag {
-  margin-left: 5px;
-  padding: 0 5px;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
   border-radius: 3px;
-  color: black;
+  color: #000;
   font-weight: 600;
   font-size: 0.75rem;
   background-color: #cea4e5;
 }
 
 .spell-book .granted-spell-tag {
-  margin-left: 5px;
-  padding: 0 5px;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
   border-radius: 3px;
-  color: black;
+  color: #000;
   font-weight: 600;
   font-size: 0.75rem;
   background-color: #f59f70;
@@ -482,7 +480,7 @@
   bottom: 0;
   left: 0;
   height: auto;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -2px 0.6rem #0000001a;
 }
 
 .spell-book .collapsed-footer.hidden {
@@ -493,16 +491,16 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 8px;
+  padding: 0.5rem;
 }
 
 .spell-book .collapsed-footer .spell-prep-tracking {
-  margin-bottom: 4px;
+  margin-bottom: 0.25rem;
   font-size: var(--font-size-14);
 }
 
 .spell-book .collapsed-footer .footer-buttons {
-  gap: 8px;
+  gap: 0.5rem;
   flex-direction: row;
 }
 
@@ -510,7 +508,7 @@
   flex: 0 1 auto;
   width: auto;
   min-width: 0;
-  padding: 4px 8px;
+  padding: 0.25rem 0.5rem;
   font-size: var(--font-size-12);
   white-space: nowrap;
 }
@@ -520,11 +518,11 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  padding-bottom: 4px;
+  padding-bottom: 0.25rem;
 }
 
 .spell-book .spell-prep-tracking .max-count {
-  margin-right: 4px;
+  margin-right: 0.25rem;
 }
 
 .spell-book .spell-prep-tracking.at-max {
@@ -533,12 +531,12 @@
 }
 
 .spell-book .footer-buttons {
-  gap: 8px;
+  gap: 0.5rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  margin: 8px;
+  margin: 0.5rem;
 }
 
 .spell-book .footer-buttons button {
@@ -546,12 +544,12 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  padding: 8px;
+  padding: 0.5rem;
   transition: all 0.4s ease;
 }
 
 .spell-book .footer-buttons button i {
-  margin-right: 5px;
+  margin-right: 0.35rem;
 }
 
 /* ----------------------------------------- */
@@ -569,7 +567,7 @@
   width: 100%;
   height: 100%;
   color: var(--dnd5e-color-gold) !important;
-  text-shadow: 0 0 8px var(--color-shadow-primary);
+  text-shadow: 0 0 0.5rem var(--color-shadow-primary);
   cursor: pointer;
 }
 
@@ -581,10 +579,10 @@
 }
 
 .spell-book .save-spells {
-  padding: 5px 15px;
+  padding: 0.35rem 9.4rem;
   border: none;
   border-radius: 3px;
-  color: black;
+  color: #000;
   cursor: pointer;
   background: var(--dnd5e-color-gold);
 }
@@ -636,10 +634,11 @@
 /* ----------------------------------------- */
 /* Media Queries                             */
 /* ----------------------------------------- */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   :root {
     --spell-book-sidebar-width: 150px;
   }
+
   .spell-book .spell-book-container {
     flex-direction: column;
   }
@@ -665,13 +664,13 @@
   }
 }
 
-@media (max-width: 750px) {
+@media (width <= 750px) {
   .spell-book .spell-details {
     max-width: 40%;
   }
 }
 
-@media (max-width: 650px) {
+@media (width <= 650px) {
   .spell-book .spell-details {
     flex: 1;
     max-width: 30%;
@@ -682,7 +681,7 @@
   }
 }
 
-@media (max-width: 550px) {
+@media (width <= 550px) {
   .spell-book .spell-details {
     flex: 0.5;
     max-width: 25%;

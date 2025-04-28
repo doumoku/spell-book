@@ -65,6 +65,24 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   errorMessage = '';
 
+  /**
+   * Spell levels data
+   * @type {Array}
+   */
+  spellLevels = [];
+
+  /**
+   * Class name for spellcasting
+   * @type {string}
+   */
+  className = '';
+
+  /**
+   * Spell preparation statistics
+   * @type {Object}
+   */
+  spellPreparation = { current: 0, maximum: 0 };
+
   get title() {
     return game.i18n.format('SPELLBOOK.Application.ActorTitle', { name: this.actor.name });
   }
@@ -98,6 +116,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       return context;
     }
 
+    // Add spell data to context
+    context.spellLevels = this.spellLevels;
+    context.className = this.className;
+    context.spellPreparation = this.spellPreparation;
+
     // Add standard information all apps need regardless of errors
     context.filterDropdowns = this._prepareFilterDropdowns();
     context.filterCheckboxes = this._prepareFilterCheckboxes();
@@ -116,8 +139,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       isLoading: this.isLoading,
       hasError: this.hasError,
       errorMessage: this.errorMessage,
-      spellLevels: [],
-      className: '',
+      spellLevels: this.spellLevels || [],
+      className: this.className || '',
       filters: this._getFilterState(),
       spellSchools: CONFIG.DND5E.spellSchools,
       buttons: [
@@ -126,7 +149,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       ],
       actorId: this.actor.id,
       TEMPLATES: MODULE.TEMPLATES,
-      spellPreparation: { current: 0, maximum: 0 }
+      spellPreparation: this.spellPreparation || { current: 0, maximum: 0 }
     };
   }
 
@@ -178,7 +201,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * Loads all spell data asynchronously after the initial render
    * @private
    */
-  async _loadSpellData(options) {
+  async _loadSpellData() {
     const start = performance.now();
     const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
 
@@ -225,10 +248,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const prepStats = this._calculatePreparationStats(spellLevels, classItem);
 
       // Update context with the loaded data
-      log(1, 'context and options:', options);
-      PlayerSpellBook.context.spellLevels = spellLevels;
-      PlayerSpellBook.context.className = classItem.name;
-      PlayerSpellBook.context.spellPreparation = prepStats;
+      this.spellLevels = spellLevels;
+      this.className = classItem.name;
+      this.spellPreparation = prepStats;
 
       timing('Finished _loadSpellData');
     } catch (error) {
@@ -407,8 +429,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const levelOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
 
     // Add options for each spell level found
-    if (this.context.spellLevels) {
-      this.context.spellLevels.forEach((level) => {
+    if (this.spellLevels) {
+      this.spellLevels.forEach((level) => {
         let levelLabel;
         if (level.level === '0') {
           levelLabel = game.i18n.localize('SPELLBOOK.Filters.Cantrip');
@@ -897,7 +919,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     });
 
     // Get the maximum from the context
-    const maxPrepared = this.context?.spellPreparation?.maximum || 0;
+    const maxPrepared = this?.spellPreparation?.maximum || 0;
 
     // Update the counter text using the span elements
     const currentCountEl = countDisplay.querySelector('.current-count');
