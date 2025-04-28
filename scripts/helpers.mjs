@@ -630,8 +630,9 @@ export function getSpellPreparationStatus(actor, spell) {
     log(3, 'This is already an actor spell, using directly');
     const actorSpell = spell;
 
-    const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
+    const preparationMode = actorSpell.system.preparation?.mode;
     const alwaysPrepared = preparationMode === 'always';
+    const localizedPreparationMode = getLocalizedPreparationMode(preparationMode);
 
     // Check for cached activity to determine if this is granted from an item
     const cachedFor = actorSpell.flags?.dnd5e?.cachedFor;
@@ -683,6 +684,7 @@ export function getSpellPreparationStatus(actor, spell) {
       prepared: isGranted || actorSpell.system.preparation?.prepared || alwaysPrepared,
       isOwned: true,
       preparationMode: preparationMode,
+      localizedPreparationMode: localizedPreparationMode,
       disabled: isGranted || alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
       alwaysPrepared: alwaysPrepared,
       sourceItem: sourceItem,
@@ -721,6 +723,7 @@ export function getSpellPreparationStatus(actor, spell) {
 
   const preparationMode = actorSpell.system.preparation?.mode || 'prepared';
   const alwaysPrepared = preparationMode === 'always';
+  const localizedPreparationMode = getLocalizedPreparationMode(preparationMode);
 
   // Determine source item
   let sourceItem = null;
@@ -854,6 +857,7 @@ export function getSpellPreparationStatus(actor, spell) {
     prepared: grantedSpell || actorSpell.system.preparation?.prepared || alwaysPrepared,
     isOwned: true,
     preparationMode: preparationMode,
+    localizedPreparationMode: localizedPreparationMode,
     disabled: grantedSpell || alwaysPrepared || ['innate', 'pact', 'atwill', 'ritual'].includes(preparationMode),
     alwaysPrepared: alwaysPrepared,
     sourceItem: sourceItem,
@@ -864,4 +868,21 @@ export function getSpellPreparationStatus(actor, spell) {
   log(3, `========== END SPELL CHECK: ${spell.name} ==========`);
 
   return result;
+}
+
+/**
+ * Get localized preparation mode text
+ * @param {string} mode - The preparation mode
+ * @returns {string} - Localized preparation mode text
+ */
+export function getLocalizedPreparationMode(mode) {
+  if (!mode) return '';
+
+  // Check if this mode exists in the system configuration
+  if (CONFIG.DND5E.spellPreparationModes[mode]?.label) {
+    return CONFIG.DND5E.spellPreparationModes[mode].label;
+  }
+
+  // Fallback: capitalize first letter if not found in config
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
 }

@@ -27,7 +27,6 @@
 								<div class="spell-name">
 									{{{spell.enrichedIcon}}}
 									<div class="name-stacked">
-										{{log spell}}
 										<span class="title">{{spell.name}}
 											{{#if spell.preparation.isGranted}}
 												<span class="granted-spell-tag"
@@ -42,7 +41,7 @@
 											{{else if spell.preparation.preparationMode}}
 												<span class="preparation-mode-tag"
 													data-tooltip="{{#if spell.preparation.sourceItem.name}}{{spell.preparation.sourceItem.name}}{{/if}}">
-													{{spell.preparation.preparationMode}}
+													{{spell.preparation.localizedPreparationMode}}
 												</span>
 											{{/if}}
 										</span>
