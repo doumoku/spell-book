@@ -738,7 +738,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Prepare all filters for display based on configuration
-   * @returns {Object} Organized filters for the template
+   * @returns {Array} Array of organized filters for the template
    * @private
    */
   _prepareFilters() {
@@ -748,63 +748,46 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       filterConfig = DEFAULT_FILTER_CONFIG;
     }
 
-    // Sort by order property
-    filterConfig = filterConfig.filter((f) => f.enabled).sort((a, b) => a.order - b.order);
+    // Sort by order property and filter for enabled only
+    const sortedFilters = filterConfig.filter((f) => f.enabled).sort((a, b) => a.order - b.order);
 
+    // Get current filter state
     const filterState = this._getFilterState();
-    const result = {
-      search: null,
-      dropdowns: [],
-      checkboxes: [],
-      range: null
-    };
 
-    // Process each enabled filter
-    for (const filter of filterConfig) {
+    // Process each filter to add template-specific properties
+    return sortedFilters.map((filter) => {
+      const result = {
+        id: filter.id,
+        type: filter.type,
+        name: `filter-${filter.id}`,
+        label: game.i18n.localize(filter.label)
+      };
+
+      // Add type-specific properties
       switch (filter.type) {
         case 'search':
-          result.search = {
-            id: filter.id,
-            name: `filter-${filter.id}`,
-            label: game.i18n.localize(filter.label),
-            value: filterState[filter.id] || ''
-          };
+          result.value = filterState[filter.id] || '';
           break;
 
         case 'dropdown':
-          result.dropdowns.push({
-            id: filter.id,
-            name: `filter-${filter.id}`,
-            label: game.i18n.localize(filter.label),
-            options: this._getOptionsForFilter(filter.id, filterState)
-          });
+          result.options = this._getOptionsForFilter(filter.id, filterState);
           break;
 
         case 'checkbox':
-          result.checkboxes.push({
-            id: filter.id,
-            name: `filter-${filter.id}`,
-            label: game.i18n.localize(filter.label),
-            checked: filterState[filter.id] || false
-          });
+          result.checked = filterState[filter.id] || false;
           break;
 
         case 'range':
-          result.range = {
-            id: filter.id,
-            name: `filter-${filter.id}`,
-            label: game.i18n.localize(filter.label),
-            minName: `filter-min-range`,
-            maxName: `filter-max-range`,
-            minValue: filterState.minRange || '',
-            maxValue: filterState.maxRange || '',
-            unit: game.settings.get(MODULE.ID, 'distanceUnit')
-          };
+          result.minName = `filter-min-range`;
+          result.maxName = `filter-max-range`;
+          result.minValue = filterState.minRange || '';
+          result.maxValue = filterState.maxRange || '';
+          result.unit = game.settings.get(MODULE.ID, 'distanceUnit');
           break;
       }
-    }
 
-    return result;
+      return result;
+    });
   }
 
   /**

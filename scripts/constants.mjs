@@ -137,10 +137,18 @@ export const DEFAULT_FILTER_CONFIG = [
     sortable: true
   },
   {
+    id: 'sortBy',
+    type: 'dropdown',
+    enabled: true,
+    order: 1000,
+    label: 'SPELLBOOK.Filters.SortBy',
+    sortable: false // Keep sort option at the bottom
+  },
+  {
     id: 'prepared',
     type: 'checkbox',
     enabled: true,
-    order: 100,
+    order: 2000,
     label: 'SPELLBOOK.Filters.PreparedOnly',
     sortable: false // Keep checkboxes at the bottom
   },
@@ -148,16 +156,8 @@ export const DEFAULT_FILTER_CONFIG = [
     id: 'ritual',
     type: 'checkbox',
     enabled: true,
-    order: 110,
+    order: 3000,
     label: 'SPELLBOOK.Filters.RitualOnly',
     sortable: false // Keep checkboxes at the bottom
-  },
-  {
-    id: 'sortBy',
-    type: 'dropdown',
-    enabled: true,
-    order: 120,
-    label: 'SPELLBOOK.Filters.SortBy',
-    sortable: false // Keep sort option at the bottom
   }
 ];

@@ -14,10 +14,10 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     tag: 'form',
     window: {
       title: 'SPELLBOOK.Settings.ConfigureFilters',
-      width: 400,
+      width: 'auto',
       height: 'auto',
-      resizable: true,
-      minimizable: false
+      resizable: false,
+      minimizable: true
     },
     classes: ['filter-configuration'],
     form: {
@@ -92,7 +92,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
       // Validate the configuration
       if (!config || !Array.isArray(config) || config.length === 0) {
         log(1, 'No valid configuration found, using defaults');
-        config = structuredClone(DEFAULT_FILTER_CONFIG);
+        config = foundry.utils.deepClone(DEFAULT_FILTER_CONFIG);
       } else {
         // Ensure all filters have the sortable property
         config = config.map((filter) => {
@@ -114,10 +114,10 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
         });
       }
 
-      this.config = structuredClone(config);
+      this.config = foundry.utils.deepClone(config);
     } catch (error) {
       log(1, 'Error initializing filter configuration:', error);
-      this.config = structuredClone(DEFAULT_FILTER_CONFIG);
+      this.config = foundry.utils.deepClone(DEFAULT_FILTER_CONFIG);
     }
 
     log(1, 'Configuration initialized', this.config);
@@ -199,7 +199,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     event.preventDefault();
 
     log(1, 'Reset button clicked, restoring defaults');
-    this.config = structuredClone(DEFAULT_FILTER_CONFIG);
+    this.config = foundry.utils.deepClone(DEFAULT_FILTER_CONFIG);
     this.render(false);
   }
 
@@ -421,11 +421,11 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
 
         if (!currentConfig || !Array.isArray(currentConfig) || currentConfig.length === 0) {
           log(1, 'No valid configuration found in settings, using defaults');
-          currentConfig = structuredClone(DEFAULT_FILTER_CONFIG);
+          currentConfig = foundry.utils.deepClone(DEFAULT_FILTER_CONFIG);
         }
       } catch (error) {
         log(1, 'Error retrieving configuration, using defaults:', error);
-        currentConfig = structuredClone(DEFAULT_FILTER_CONFIG);
+        currentConfig = foundry.utils.deepClone(DEFAULT_FILTER_CONFIG);
       }
 
       // Separate sortable and non-sortable filters
@@ -503,10 +503,9 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
       ui.notifications?.info('Filter configuration saved.');
 
       // Find the parent application
-      const app = ui.windows[this.id];
-      if (app && app.parentApp) {
-        log(1, 'Refreshing parent application:', app.parentApp.constructor.name);
-        app.parentApp.render(false);
+      if (this.parentApp) {
+        log(1, 'Refreshing parent application:', this.parentApp.constructor.name);
+        this.parentApp.render(false);
       } else {
         log(1, 'No parent application reference found');
       }
