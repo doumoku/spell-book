@@ -130,6 +130,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     // Add standard information all apps need regardless of errors
     context.filterDropdowns = this._prepareFilterDropdowns();
     context.filterCheckboxes = this._prepareFilterCheckboxes();
+    context.rangeFilter = this._prepareRangeFilter();
 
     return context;
   }
@@ -510,25 +511,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       }))
     });
 
-    // Range dropdown
-    const rangeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    // Add options for each distance unit
-    Object.entries(CONFIG.DND5E.distanceUnits).forEach(([key, label]) => {
-      rangeOptions.push({
-        value: key,
-        label: label,
-        selected: filters.range === key
-      });
-    });
-
-    dropdowns.push({
-      name: 'filter-range',
-      filter: 'range',
-      label: game.i18n.localize('SPELLBOOK.Filters.Range'),
-      options: rangeOptions
-    });
-
     // Damage Type dropdown
     const damageTypeOptions = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
 
@@ -614,6 +596,59 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Prepare range filter inputs
+   * @returns {Object} - Range filter inputs configuration
+   * @private
+   */
+  _prepareRangeFilter() {
+    const filters = this._getFilterState();
+
+    return {
+      minRange: filters.minRange || '',
+      maxRange: filters.maxRange || '',
+      unit: game.settings.get(MODULE.ID, 'distanceUnit')
+    };
+  }
+
+  /**
+   * Convert a spell range to feet (or meters based on settings)
+   * @param {string} units - The range units (feet, miles, etc)
+   * @param {number} value - The range value
+   * @returns {number} - The converted range value
+   * @private
+   */
+  _convertRangeToStandardUnit(units, value) {
+    if (!units || !value) return 0;
+
+    const targetUnit = game.settings.get(MODULE.ID, 'distanceUnit');
+    let inFeet = 0;
+
+    // Convert to feet first
+    switch (units) {
+      case 'ft':
+        inFeet = value;
+        break;
+      case 'mi':
+        inFeet = value * 5280;
+        break;
+      case 'spec':
+        // Special range like "Self" or "Touch" - treat as 0
+        inFeet = 0;
+        break;
+      default:
+        // Default to the raw value if unknown unit
+        inFeet = value;
+    }
+
+    // Convert from feet to meters if needed
+    if (targetUnit === 'meters') {
+      return Math.round(inFeet * 0.3048);
+    }
+
+    return inFeet;
+  }
+
+  /**
    * Prepare filter checkbox options
    * @returns {Array} - Array of filter checkbox objects
    * @private
@@ -649,7 +684,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         level: '',
         school: '',
         castingTime: '',
-        range: '',
+        minRange: '',
+        maxRange: '',
         damageType: '',
         condition: '',
         requiresSave: '',
@@ -665,7 +701,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       level: this.element.querySelector('[name="filter-level"]')?.value || '',
       school: this.element.querySelector('[name="filter-school"]')?.value || '',
       castingTime: this.element.querySelector('[name="filter-casting-time"]')?.value || '',
-      range: this.element.querySelector('[name="filter-range"]')?.value || '',
+      minRange: this.element.querySelector('[name="filter-min-range"]')?.value || '',
+      maxRange: this.element.querySelector('[name="filter-max-range"]')?.value || '',
       damageType: this.element.querySelector('[name="filter-damage-type"]')?.value || '',
       condition: this.element.querySelector('[name="filter-condition"]')?.value || '',
       requiresSave: this.element.querySelector('[name="filter-requires-save"]')?.value || '',
@@ -735,8 +772,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Range filter
-        if (filters.range && rangeUnits !== filters.range) {
-          visible = false;
+        if ((filters.minRange || filters.maxRange) && rangeUnits) {
+          const rangeValue = parseInt(item.dataset.rangeValue || '0', 10);
+          const convertedRange = this._convertRangeToStandardUnit(rangeUnits, rangeValue);
+
+          const minRange = filters.minRange ? parseInt(filters.minRange, 10) : 0;
+          const maxRange = filters.maxRange ? parseInt(filters.maxRange, 10) : Infinity;
+
+          if (convertedRange < minRange || convertedRange > maxRange) {
+            visible = false;
+          }
         }
 
         // Damage Type filter
@@ -997,6 +1042,18 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     checkboxes.forEach((checkbox) => {
       checkbox.addEventListener('change', () => {
         this._applyFilters();
+      });
+    });
+
+    // Add listeners to range input filters
+    const rangeInputs = this.element.querySelectorAll('input[type="number"][name^="filter-"]');
+    rangeInputs.forEach((input) => {
+      input.addEventListener('input', () => {
+        // Debounce filter application similar to search input
+        clearTimeout(this._rangeTimer);
+        this._rangeTimer = setTimeout(() => {
+          this._applyFilters();
+        }, 200); // 200ms debounce
       });
     });
   }

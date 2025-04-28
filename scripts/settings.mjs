@@ -24,4 +24,17 @@ export function registerSettings() {
     type: Boolean,
     default: true
   });
+
+  game.settings.register(MODULE.ID, 'distanceUnit', {
+    name: 'SPELLBOOK.Settings.DistanceUnit.Name',
+    hint: 'SPELLBOOK.Settings.DistanceUnit.Hint',
+    scope: 'client',
+    config: true,
+    type: String,
+    choices: {
+      feet: 'SPELLBOOK.Settings.DistanceUnit.Feet',
+      meters: 'SPELLBOOK.Settings.DistanceUnit.Meters'
+    },
+    default: 'feet'
+  });
 }

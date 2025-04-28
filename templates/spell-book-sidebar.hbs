@@ -20,6 +20,17 @@
 			</div>
 		{{/each}}
 	</div>
+	<!-- Range filter inputs -->
+	<div class="filter-item range-filter">
+		<label>{{localize 'SPELLBOOK.Filters.Range'}} ({{rangeFilter.unit}})</label>
+		<div class="range-inputs">
+			<input type="number" name="filter-min-range" placeholder="{{localize 'SPELLBOOK.Filters.RangeMin'}}"
+				value="{{filters.minRange}}" data-action="filterSpells" min="0">
+			<span class="range-separator">-</span>
+			<input type="number" name="filter-max-range" placeholder="{{localize 'SPELLBOOK.Filters.RangeMax'}}"value="{{filters.maxRange}}"
+				data-action="filterSpells" min="0">
+		</div>
+	</div>
 
 	<!-- Checkboxes -->
 	<div class="filter-toggles">

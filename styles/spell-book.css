@@ -157,6 +157,28 @@
   box-shadow: 0 0 3px var(--color-shadow-highlight);
 }
 
+.spell-book .range-filter .range-inputs {
+  gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.spell-book .range-filter input[type='number'] {
+  box-sizing: border-box;
+  width: 45%;
+  padding: 0.25rem;
+  font-size: var(--font-size-11);
+  text-align: center;
+}
+
+.spell-book .range-filter .range-separator {
+  width: 10%;
+  color: var(--color-text-light-highlight);
+  font-size: var(--font-size-16);
+  text-align: center;
+}
+
 /* ----------------------------------------- */
 /* Content Area                              */
 /* ----------------------------------------- */
@@ -187,8 +209,8 @@
 }
 
 .spell-book.loading .spell-book-content::after {
-  position: absolute;
   inset: 0;
+  position: absolute;
   pointer-events: none;
   content: '';
 }
