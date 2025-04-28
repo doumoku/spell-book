@@ -21,13 +21,19 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     actions: {
       toggleSidebar: PlayerSpellBook.toggleSidebar,
       filterSpells: PlayerSpellBook.filterSpells,
-      sortSpells: PlayerSpellBook.sortSpells
+      sortSpells: PlayerSpellBook.sortSpells,
+      reset: PlayerSpellBook.handleReset
     },
     classes: ['spell-book'],
     window: {
-      icon: 'fa-solid fa-hat-wizard',
+      icon: 'fas fa-hat-wizard',
       resizable: true,
       minimizable: true
+    },
+    position: {
+      height: 'auto',
+      width: 'auto',
+      top: '100'
     }
   };
 
@@ -144,8 +150,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       filters: this._getFilterState(),
       spellSchools: CONFIG.DND5E.spellSchools,
       buttons: [
-        { type: 'submit', icon: 'fa-solid fa-save', label: 'SETTINGS.Save', cssClass: 'submit-button' },
-        { type: 'reset', action: 'reset', icon: 'fa-solid fa-undo', label: 'SETTINGS.Reset', cssClass: 'reset-button' }
+        { type: 'submit', icon: 'fas fa-save', label: 'SETTINGS.Save', cssClass: 'submit-button' },
+        { type: 'reset', action: 'reset', icon: 'fas fa-undo', label: 'SETTINGS.Reset', cssClass: 'reset-button' }
       ],
       actorId: this.actor.id,
       TEMPLATES: MODULE.TEMPLATES,
@@ -1085,6 +1091,34 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     log(3, 'sortSpells action triggered');
     const sortBy = event.target.value;
     this._applySorting(sortBy);
+  }
+
+  /**
+   * Handle form reset action
+   * @param {Event} event - The reset event
+   * @param {HTMLElement} form - The form element
+   * @static
+   */
+  static handleReset(event, form) {
+    log(3, 'handleReset action triggered');
+
+    // Give the browser time to reset the form elements
+    setTimeout(() => {
+      // Update all spell items to match their checkbox state
+      const spellItems = this.element.querySelectorAll('.spell-item');
+      spellItems.forEach((item) => {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox && !checkbox.checked) {
+          item.classList.remove('prepared-spell');
+        }
+      });
+
+      // Reapply filters to ensure consistency
+      this._applyFilters();
+
+      // Update preparation tracking
+      this._updateSpellPreparationTracking();
+    }, 0);
   }
 
   /**
