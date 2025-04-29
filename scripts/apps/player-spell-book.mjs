@@ -1,10 +1,15 @@
 import { DEFAULT_FILTER_CONFIG, MODULE } from '../constants.mjs';
 import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, formatSpellDetails, getClassSpellList, organizeSpellsByLevel, saveActorPreparedSpells } from '../helpers.mjs';
+import { convertRangeToStandardUnit, getDefaultFilterState, getOptionsForFilter } from '../helpers/filters.mjs';
 import { log } from '../logger.mjs';
 import { PlayerFilterConfiguration } from './player-filter-configuration.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+/**
+ * Application for viewing and preparing spells for D&D 5e characters
+ * Allows filtering, sorting, and selecting which spells to prepare
+ */
 export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /* -------------------------------------------- */
   /*  Static Properties                           */
@@ -93,6 +98,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   spellPreparation = { current: 0, maximum: 0 };
 
+  /**
+   * Window title getter
+   * @type {string}
+   */
   get title() {
     return game.i18n.format('SPELLBOOK.Application.ActorTitle', { name: this.actor.name });
   }
@@ -179,11 +188,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Sets up the form after rendering
    * @param {object} context - The render context
-   * @param {object} options - Render options
+   * @param {object} _options - Render options
    * @override
    */
-  _onRender(context, options) {
-    super._onRender?.(context, options);
+  _onRender(context, _options) {
+    super._onRender?.(context, _options);
 
     try {
       // Set sidebar state based on user preference immediately
@@ -249,33 +258,29 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _loadSpellData() {
     const start = performance.now();
-    const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
+    const timing = (label) => log(3, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
 
     timing('Start _loadSpellData');
 
     try {
-      // Find spellcasting class
-      const classItem = findSpellcastingClass(this.actor);
-      if (!classItem) {
-        timing('No class item found');
-        this._setErrorState(game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name }));
-        return;
-      }
+      // Step 1: Find spellcasting class
+      const classItem = await this._loadSpellcastingClass();
+      if (!classItem) return; // Error already set
 
       const className = classItem.name.toLowerCase();
       timing('Found class item');
 
-      // Get spell list UUIDs
+      // Step 2: Get spell list
       const spellUuids = await this._getSpellUuids(classItem);
       if (!spellUuids || !spellUuids.size) {
-        log(1, 'No spells found for class:', className);
+        log(2, 'No spells found for class:', className);
         timing('No spells found');
         this._setErrorState(game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name }));
         return;
       }
       timing('Fetched class spell list');
 
-      // Fetch and process spell data
+      // Step 3: Get max spell level and fetch spell data
       const actorLevel = this.actor.system.details.level;
       const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
       log(3, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
@@ -283,21 +288,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const spellItems = await this._fetchSpellDataWithCache(spellUuids, maxSpellLevel);
       timing('Fetched spell data with cache');
 
-      const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
-      timing('Organized spells by level');
-
-      // Sort and enhance spell data
-      this._sortAllSpellLevels(spellLevels);
-      await this._enrichSpellData(spellLevels);
-
-      // Calculate preparation stats
-      const prepStats = this._calculatePreparationStats(spellLevels, classItem);
-
-      // Update context with the loaded data
-      this.spellLevels = spellLevels;
-      this.className = classItem.name;
-      this.spellPreparation = prepStats;
-
+      // Step 4: Organize and enrich spell data
+      await this._processSpellData(spellItems, classItem);
       timing('Finished _loadSpellData');
     } catch (error) {
       log(1, 'Error loading spell data:', error);
@@ -310,12 +302,53 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Loads the spellcasting class for the actor
+   * @returns {Promise<Item5e|null>} The spellcasting class item or null if not found
+   * @private
+   */
+  async _loadSpellcastingClass() {
+    const classItem = findSpellcastingClass(this.actor);
+    if (!classItem) {
+      this._setErrorState(game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name }));
+      return null;
+    }
+    return classItem;
+  }
+
+  /**
+   * Process spell data by organizing, sorting, and enriching
+   * @param {Array} spellItems - The spell items to process
+   * @param {Item5e} classItem - The spellcasting class
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _processSpellData(spellItems, classItem) {
+    // Step 1: Organize spells by level
+    const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
+
+    // Step 2: Sort spells within each level
+    this._sortAllSpellLevels(spellLevels);
+
+    // Step 3: Enrich spell data with icons and details
+    await this._enrichSpellData(spellLevels);
+
+    // Step 4: Calculate preparation stats
+    const prepStats = this._calculatePreparationStats(spellLevels, classItem);
+
+    // Update context with the loaded data
+    this.spellLevels = spellLevels;
+    this.className = classItem.name;
+    this.spellPreparation = prepStats;
+  }
+
+  /**
    * Get spell UUIDs for the class
    * @param {Item5e} classItem - The class item
-   * @returns {Promise<Set<string>>} - Set of spell UUIDs
+   * @returns {Promise<Set<string>>} - Set of spell UUIDs or null
    * @private
    */
   async _getSpellUuids(classItem) {
+    log(3, `Getting spell list for ${classItem.name}`);
     const className = classItem.name.toLowerCase();
     const classUuid = classItem.uuid;
     return await getClassSpellList(className, classUuid);
@@ -425,7 +458,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _fetchSpellDataWithCache(spellUuids, maxSpellLevel) {
     const start = performance.now();
-    const timing = (label) => log(1, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
+    const timing = (label) => log(3, `${label}: ${(performance.now() - start).toFixed(2)}ms`);
 
     // Create a cache key based on actor ID and spell list
     const cacheKey = `${this.actor.id}-${maxSpellLevel}`;
@@ -463,51 +496,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /* -------------------------------------------- */
 
   /**
-   * Convert a spell range to feet (or meters based on settings)
-   * @param {string} units - The range units (feet, miles, etc)
-   * @param {number} value - The range value
-   * @returns {number} - The converted range value
-   * @private
-   */
-  _convertRangeToStandardUnit(units, value) {
-    if (!units || !value) return 0;
-
-    const targetUnit = game.settings.get(MODULE.ID, 'distanceUnit');
-    let inFeet = 0;
-
-    // Convert to feet first
-    switch (units) {
-      case 'ft':
-        inFeet = value;
-        break;
-      case 'mi':
-        inFeet = value * 5280;
-        break;
-      case 'spec':
-        // Special range like "Self" or "Touch" - treat as 0
-        inFeet = 0;
-        break;
-      default:
-        // Default to the raw value if unknown unit
-        inFeet = value;
-    }
-
-    // Convert from feet to meters if needed
-    if (targetUnit === 'meters') {
-      return Math.round(inFeet * 0.3048);
-    }
-
-    return inFeet;
-  }
-
-  /**
    * Apply all current filters to the spell list
    * @private
    */
   _applyFilters() {
     try {
       const filters = this._getFilterState();
-      log(3, 'Applying filters:', filters);
+      log(3, 'Applying filters');
 
       const spellItems = this.element.querySelectorAll('.spell-item');
       let visibleCount = 0;
@@ -566,7 +561,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         // Range filter
         if ((filters.minRange || filters.maxRange) && rangeUnits) {
           const rangeValue = parseInt(item.dataset.rangeValue || '0', 10);
-          const convertedRange = this._convertRangeToStandardUnit(rangeUnits, rangeValue);
+          const convertedRange = convertRangeToStandardUnit(rangeUnits, rangeValue);
 
           const minRange = filters.minRange ? parseInt(filters.minRange, 10) : 0;
           const maxRange = filters.maxRange ? parseInt(filters.maxRange, 10) : Infinity;
@@ -637,22 +632,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       }
 
       // Update level container visibility and counts
-      const levelContainers = this.element.querySelectorAll('.spell-level');
-      for (const container of levelContainers) {
-        const levelId = container.dataset.level;
-        const levelStats = levelVisibilityMap.get(levelId) || { visible: 0, prepared: 0 };
-
-        // Update visibility of the container
-        container.style.display = levelStats.visible > 0 ? '' : 'none';
-
-        // Update the count display
-        const countDisplay = container.querySelector('.spell-count');
-        if (countDisplay && levelStats.visible > 0) {
-          countDisplay.textContent = `(${levelStats.prepared}/${levelStats.visible})`;
-        } else if (countDisplay) {
-          countDisplay.textContent = '';
-        }
-      }
+      this._updateLevelContainers(levelVisibilityMap);
     } catch (error) {
       log(1, 'Error applying filters:', error);
     }
@@ -770,7 +750,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           break;
 
         case 'dropdown':
-          result.options = this._getOptionsForFilter(filter.id, filterState);
+          result.options = getOptionsForFilter(filter.id, filterState, this.spellLevels);
           break;
 
         case 'checkbox':
@@ -788,75 +768,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       return result;
     });
-  }
-
-  /**
-   * Get options for a specific dropdown filter
-   * @param {string} filterId - The filter ID
-   * @param {Object} filterState - Current filter state
-   * @returns {Array} Options for the dropdown
-   * @private
-   */
-  _getOptionsForFilter(filterId, filterState) {
-    const options = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
-
-    switch (filterId) {
-      case 'level':
-        // Add options for each spell level found
-        if (this.spellLevels) {
-          this.spellLevels.forEach((level) => {
-            options.push({
-              value: level.level,
-              label: CONFIG.DND5E.spellLevels[level.level],
-              selected: filterState.level === level.level
-            });
-          });
-        }
-        break;
-
-      case 'school':
-        // Add options for each spell school
-        Object.entries(CONFIG.DND5E.spellSchools).forEach(([key, school]) => {
-          options.push({
-            value: key,
-            label: school.label,
-            selected: filterState.school === key
-          });
-        });
-        break;
-
-      // Other cases for different dropdowns
-      case 'castingTime':
-        this._addCastingTimeOptions(options, filterState);
-        break;
-
-      case 'damageType':
-        this._addDamageTypeOptions(options, filterState);
-        break;
-
-      case 'condition':
-        this._addConditionOptions(options, filterState);
-        break;
-
-      case 'requiresSave':
-      case 'concentration':
-        options.push(
-          { value: 'true', label: game.i18n.localize('SPELLBOOK.Filters.True'), selected: filterState[filterId] === 'true' },
-          { value: 'false', label: game.i18n.localize('SPELLBOOK.Filters.False'), selected: filterState[filterId] === 'false' }
-        );
-        break;
-
-      case 'sortBy':
-        options.push(
-          { value: 'level', label: game.i18n.localize('SPELLBOOK.Sort.ByLevel'), selected: filterState.sortBy === 'level' },
-          { value: 'name', label: game.i18n.localize('SPELLBOOK.Sort.ByName'), selected: filterState.sortBy === 'name' },
-          { value: 'school', label: game.i18n.localize('SPELLBOOK.Sort.BySchool'), selected: filterState.sortBy === 'school' },
-          { value: 'prepared', label: game.i18n.localize('SPELLBOOK.Sort.ByPrepared'), selected: filterState.sortBy === 'prepared' }
-        );
-        break;
-    }
-
-    return options;
   }
 
   /**
@@ -991,21 +902,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _getFilterState() {
     if (!this.element) {
-      return {
-        name: '',
-        level: '',
-        school: '',
-        castingTime: '',
-        minRange: '',
-        maxRange: '',
-        damageType: '',
-        condition: '',
-        requiresSave: '',
-        prepared: false,
-        ritual: false,
-        concentration: '',
-        sortBy: 'level'
-      };
+      return getDefaultFilterState();
     }
 
     return {
@@ -1058,9 +955,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _updateSpellPreparationTracking() {
-    // TODO: Add special handling for cantrips - they should not count against
-    // prepared spell limits and should have different visual treatment
-
     const preparedCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
     const countDisplay = this.element.querySelector('.spell-prep-tracking');
 
@@ -1115,7 +1009,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
   }
-
   /**
    * Set up event listeners for all filter elements
    * @private
@@ -1163,10 +1056,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Handler for search input to ensure it's properly bound to this instance
-   * @param {Event} event - The input event
+   * @param {Event} _event - The input event
    * @private
    */
-  _onSearchInput(event) {
+  _onSearchInput(_event) {
     if (!this._debouncedApplyFilters) {
       this._debouncedApplyFilters = foundry.utils.debounce(() => {
         this._applyFilters();
@@ -1240,6 +1133,30 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     });
   }
 
+  /**
+   * Update visibility of spell level containers based on filtered content
+   * @param {Map} levelVisibilityMap - Map of level IDs to visibility stats
+   * @private
+   */
+  _updateLevelContainers(levelVisibilityMap) {
+    const levelContainers = this.element.querySelectorAll('.spell-level');
+    for (const container of levelContainers) {
+      const levelId = container.dataset.level;
+      const levelStats = levelVisibilityMap.get(levelId) || { visible: 0, prepared: 0 };
+
+      // Update visibility of the container
+      container.style.display = levelStats.visible > 0 ? '' : 'none';
+
+      // Update the count display
+      const countDisplay = container.querySelector('.spell-count');
+      if (countDisplay && levelStats.visible > 0) {
+        countDisplay.textContent = `(${levelStats.prepared}/${levelStats.visible})`;
+      } else if (countDisplay) {
+        countDisplay.textContent = '';
+      }
+    }
+  }
+
   /* -------------------------------------------- */
   /*  Static Methods                              */
   /* -------------------------------------------- */
@@ -1247,11 +1164,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Handle sidebar toggle action
    * @param {Event} event - The click event
-   * @param {HTMLElement} form - The form element
+   * @param {HTMLElement} _form - The form element
    * @static
    */
-  static toggleSidebar(event, form) {
-    log(1, 'toggleSidebar action triggered');
+  static toggleSidebar(event, _form) {
+    log(3, 'toggleSidebar action triggered');
 
     const isCollapsing = !this.element.classList.contains('sidebar-collapsed');
     this.element.classList.toggle('sidebar-collapsed');
@@ -1273,11 +1190,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Handle filter changes
-   * @param {Event} event - The change event
-   * @param {HTMLElement} form - The form element
+   * @param {Event} _event - The change event
+   * @param {HTMLElement} _form - The form element
    * @static
    */
-  static filterSpells(event, form) {
+  static filterSpells(_event, _form) {
     log(3, 'filterSpells action triggered');
     this._applyFilters();
   }
@@ -1285,10 +1202,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   /**
    * Handle sorting selection
    * @param {Event} event - The change event
-   * @param {HTMLElement} form - The form element
+   * @param {HTMLElement} _form - The form element
    * @static
    */
-  static sortSpells(event, form) {
+  static sortSpells(event, _form) {
     log(3, 'sortSpells action triggered');
     const sortBy = event.target.value;
     this._applySorting(sortBy);
@@ -1296,11 +1213,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Handle form reset action
-   * @param {Event} event - The reset event
-   * @param {HTMLElement} form - The form element
+   * @param {Event} _event - The reset event
+   * @param {HTMLElement} _form - The form element
    * @static
    */
-  static handleReset(event, form) {
+  static handleReset(_event, _form) {
     log(3, 'handleReset action triggered');
 
     // Give the browser time to reset the form elements
@@ -1324,11 +1241,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Handle spell level toggle action
-   * @param {Event} event - The click event
+   * @param {Event} _event - The click event
    * @param {HTMLElement} form - The form element
    * @static
    */
-  static toggleSpellLevel(event, form) {
+  static toggleSpellLevel(_event, form) {
     // Find the parent spell-level container
     const levelContainer = form.parentElement;
 
@@ -1356,24 +1273,24 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Show dialog to configure filters
-   * @param {Event} event - The triggering event
-   * @param {HTMLElement} form - The form element
+   * @param {Event} _event - The triggering event
+   * @param {HTMLElement} _form - The form element
    * @static
    */
-  static configureFilters(event, form) {
+  static configureFilters(_event, _form) {
     const filterConfig = new PlayerFilterConfiguration(this);
     filterConfig.render(true);
   }
 
   /**
    * Handle form submission to save prepared spells
-   * @param {Event} event - The form submission event
+   * @param {Event} _event - The form submission event
    * @param {HTMLFormElement} form - The form element
    * @param {FormDataExtended} formData - The processed form data
    * @returns {Promise<Actor|null>} - The updated actor or null if failed
    */
-  static async formHandler(event, form, formData) {
-    log(1, 'FormData Collected:', { form: form, formData: formData.object });
+  static async formHandler(_event, form, formData) {
+    log(3, 'Processing form submission', { formData: formData.object });
     try {
       const actor = this.actor;
       if (!actor) {
@@ -1383,9 +1300,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Extract prepared spells from form data - this contains the checked boxes
       const spellPreparationData = formData.object.spellPreparation || {};
-
-      // Debug the collected form data to see what's coming in
-      log(3, 'Spell preparation data from form:', spellPreparationData);
 
       // Gather all spell information from the form
       const spellData = {};
@@ -1401,13 +1315,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         // Look directly at the checkbox's checked state as a fallback
         const isPrepared = checkbox.disabled ? wasPrepared : !!spellPreparationData[uuid] || checkbox.checked;
 
-        log(3, `Processing spell ${name} (${uuid}):`, {
-          wasPrepared,
-          isPrepared,
-          isDisabled: checkbox.disabled,
-          formValue: spellPreparationData[uuid],
-          checkedState: checkbox.checked
-        });
+        log(3, `Processing spell ${name} preparation status`);
 
         spellData[uuid] = {
           name,
