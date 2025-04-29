@@ -1,3 +1,4 @@
+/* stylelint-disable no-descending-specificity */
 /* stylelint-disable comment-empty-line-before */
 /* ----------------------------------------- */
 /* Variables                                 */
@@ -558,8 +559,8 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  padding-bottom: 0.25rem;
   padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
 }
 
 .spell-book .spell-prep-tracking .max-count {
@@ -707,36 +708,48 @@
 /* ----------------------------------------- */
 /* Filter Configuration                      */
 /* ----------------------------------------- */
-.application.filter-configuration .window-content {
-  padding: 0.5rem;
+
+.filter-configuration {
+  min-width: 0;
+  max-width: fit-content;
 }
 
-.application.filter-configuration .filter-config-form {
+.filter-configuration .filter-config-form {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  width: auto;
+  min-width: 100px;
+  max-width: 450px;
+  height: auto;
 }
 
-.application.filter-configuration .filter-config-form p {
+.filter-configuration .filter-config-form p {
+  min-width: 100px;
+  max-width: 450px;
   margin-bottom: 1rem;
-  color: var(--color-text-dark-secondary);
-  font-style: italic;
 }
 
-.application.filter-configuration .filter-config-list {
+.filter-configuration .filter-config-list {
+  width: 100%;
+  min-width: 100px;
+  max-width: 450px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.application.filter-configuration .filter-item {
+.filter-configuration .filter-item {
+  width: 100%;
+  min-width: 100px;
+  max-width: 450px;
   margin-bottom: 0.5rem;
   padding: 0;
 }
 
-.application.filter-configuration .filter-config-item {
+.filter-configuration .filter-config-item {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 0.5rem;
   border: 1px solid var(--color-border-light-tertiary);
   border-radius: 3px;
@@ -744,64 +757,73 @@
   background: #0000000d;
 }
 
-.application.filter-configuration .filter-config-item:hover {
+.filter-configuration .filter-config-item:hover {
   background: #0000001a;
 }
 
-.application.filter-configuration .filter-config-item .drag-handle {
+.filter-configuration .filter-config-item .drag-handle {
+  flex: 0 0 auto;
   margin-right: 0.5rem;
-  color: var(--color-text-dark-secondary);
   cursor: grab;
 }
 
-.application.filter-configuration .filter-config-item .filter-name {
+.filter-configuration .filter-config-item .filter-name {
   flex: 1;
   margin-left: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.application.filter-configuration .filter-item.dragging .filter-config-item {
+.filter-configuration .filter-item.dragging .filter-config-item {
   opacity: 0.5;
   border: 1px dashed var(--color-border-highlight);
 }
 
-.application.filter-configuration .drop-placeholder {
+.filter-configuration .drop-placeholder {
   height: 2px;
   margin: 0.5rem 0;
   background-color: var(--color-border-highlight);
 }
 
 /* Hide the original number inputs */
-.application.filter-configuration .order-control {
+.filter-configuration .order-control {
   display: none;
 }
 
-.application.filter-configuration .filter-config-footer {
+.filter-configuration .filter-config-footer {
+  width: 100%;
   margin-top: auto;
   padding-top: 0.75rem;
   border-top: 1px solid var(--color-border-light);
 }
 
-.application.filter-configuration .filter-config-footer .footer-buttons {
+.filter-configuration .filter-config-footer .footer-buttons {
   display: flex;
   justify-content: space-between;
+  width: 100%;
 }
 
-.application.filter-configuration .filter-item.not-sortable .filter-config-item {
+.filter-configuration .filter-item.not-sortable .filter-config-item {
   border-style: dashed;
   cursor: default;
   background: #00000008;
 }
 
-.application.filter-configuration .filter-item.not-sortable .drag-handle {
+.filter-configuration .filter-item.not-sortable .drag-handle {
   color: var(--color-text-dark-4);
 }
 
-.application.filter-configuration .fixed-position-note {
+.filter-configuration .fixed-position-note {
+  flex: 0 0 auto;
   margin-right: 0.5rem;
   margin-left: auto;
-  color: var(--color-text-dark-secondary);
-  font-style: italic;
   font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.filter-configuration input[type='checkbox'] {
+  flex: 0 0 auto;
 }
 
 /* ----------------------------------------- */

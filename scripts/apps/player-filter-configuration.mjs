@@ -14,8 +14,8 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     tag: 'form',
     window: {
       title: 'SPELLBOOK.Settings.ConfigureFilters',
-      width: 'auto',
-      height: 'auto',
+      width: '',
+      height: '',
       resizable: false,
       minimizable: true
     },
