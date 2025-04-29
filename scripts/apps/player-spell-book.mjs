@@ -531,6 +531,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         const requiresSave = item.dataset.requiresSave === 'true';
         const conditions = (item.dataset.conditions || '').split(',');
 
+        // Check if this is a granted or always prepared spell
+        const isGranted = !!item.querySelector('.granted-spell-tag');
+        const isAlwaysPrepared = !!item.querySelector('.always-prepared-tag');
+        const isCountable = !isGranted && !isAlwaysPrepared;
+
         // Check all filter conditions
         let visible = true;
 
@@ -620,10 +625,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
           // Update level visibility tracker
           if (!levelVisibilityMap.has(level)) {
-            levelVisibilityMap.set(level, { total: 0, visible: 0, prepared: 0 });
+            levelVisibilityMap.set(level, { total: 0, visible: 0, prepared: 0, countable: 0, countablePrepared: 0 });
           }
           const levelStats = levelVisibilityMap.get(level);
           levelStats.visible++;
+
+          if (isCountable) {
+            levelStats.countable++;
+            if (isPrepared) levelStats.countablePrepared++;
+          }
+
           if (isPrepared) levelStats.prepared++;
         }
       }
@@ -993,11 +1004,14 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
     spellLevels.forEach((levelContainer) => {
       const spellItems = levelContainer.querySelectorAll('.spell-item');
-      const checkboxes = levelContainer.querySelectorAll('input[type="checkbox"]');
 
-      // Count only non-disabled checkboxes
-      const totalAvailable = Array.from(checkboxes).filter((cb) => !cb.disabled).length;
-      const preparedCount = Array.from(checkboxes).filter((cb) => !cb.disabled && cb.checked).length;
+      // Count only spells that are not granted or always prepared
+      const countableSpells = Array.from(spellItems).filter((item) => !item.querySelector('.granted-spell-tag') && !item.querySelector('.always-prepared-tag'));
+
+      // Count prepared spells among the countable ones
+      const preparedCount = countableSpells.filter((item) => item.classList.contains('prepared-spell')).length;
+
+      const totalAvailable = countableSpells.length;
 
       // Update the count display
       const countDisplay = levelContainer.querySelector('.spell-count');
@@ -1018,15 +1032,15 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const levelContainers = this.element.querySelectorAll('.spell-level');
     for (const container of levelContainers) {
       const levelId = container.dataset.level;
-      const levelStats = levelVisibilityMap.get(levelId) || { visible: 0, prepared: 0 };
+      const levelStats = levelVisibilityMap.get(levelId) || { visible: 0, prepared: 0, countable: 0, countablePrepared: 0 };
 
       // Update visibility of the container
       container.style.display = levelStats.visible > 0 ? '' : 'none';
 
-      // Update the count display
+      // Update the count display - use countable numbers instead of all visible
       const countDisplay = container.querySelector('.spell-count');
-      if (countDisplay && levelStats.visible > 0) {
-        countDisplay.textContent = `(${levelStats.prepared}/${levelStats.visible})`;
+      if (countDisplay && levelStats.countable > 0) {
+        countDisplay.textContent = `(${levelStats.countablePrepared}/${levelStats.countable})`;
       } else if (countDisplay) {
         countDisplay.textContent = '';
       }

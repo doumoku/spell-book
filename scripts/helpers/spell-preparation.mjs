@@ -147,7 +147,7 @@ function getOwnedSpellPreparationStatus(actor, spell) {
   const sourceInfo = determineSpellSource(actor, spell);
 
   // Check if this is a granted spell
-  const isGranted = !!sourceInfo && (spell.flags?.dnd5e?.cachedFor || spell.flags?.dnd5e?.advancementOrigin);
+  const isGranted = !!sourceInfo && spell.flags?.dnd5e?.cachedFor;
 
   // Final preparation status
   return {
