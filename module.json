@@ -54,6 +54,7 @@
       "name": "custom-spell-lists",
       "label": "Custom Spell Lists",
       "type": "JournalEntry",
+      "path": "storage/custom-spell-lists",
       "ownership": {
         "PLAYER": "OBSERVER",
         "ASSISTANT": "OWNER"
@@ -69,6 +70,5 @@
   ],
   "styles": ["styles/spell-book.css"],
   "url": "https://github.com/Sayshal/spell-book",
-  "hasStorage": true,
-  "persistentStorage": true
+  "hasStorage": true
 }
