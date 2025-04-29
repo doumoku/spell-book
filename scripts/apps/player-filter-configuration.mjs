@@ -177,8 +177,8 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     return {
       filterConfig: this.config,
       buttons: [
-        { type: 'submit', icon: 'fas fa-save', label: 'SETTINGS.Save' },
-        { type: 'button', action: 'reset', icon: 'fas fa-undo', label: 'SETTINGS.Reset' }
+        { type: 'submit', icon: 'fas fa-save', label: 'SPELLBOOK.UI.Save' },
+        { type: 'button', action: 'reset', icon: 'fas fa-undo', label: 'SPELLBOOK.UI.Reset' }
       ]
     };
   }
