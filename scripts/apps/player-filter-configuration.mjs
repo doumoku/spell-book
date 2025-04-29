@@ -150,12 +150,22 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
   /**
    * @override
    */
-  async _prepareContext(options) {
+  _prepareContext(options) {
     // Ensure we have valid configuration data
     if (!Array.isArray(this.config) || this.config.length === 0) {
       log(1, 'Invalid configuration in _prepareContext, reinitializing');
       this.#initializeConfig();
     }
+
+    // Ensure sortable property is properly set for each filter
+    this.config = this.config.map((filter) => {
+      // Make sure filter has a proper sortable boolean value
+      const sortable = !(filter.id === 'name' || filter.id === 'prepared' || filter.id === 'ritual' || filter.id === 'sortBy');
+      return {
+        ...filter,
+        sortable: filter.sortable !== undefined ? filter.sortable : sortable
+      };
+    });
 
     log(1, 'Preparing context with configuration', this.config);
 

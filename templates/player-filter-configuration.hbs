@@ -2,9 +2,10 @@
 	<p>{{localize "SPELLBOOK.Settings.FilterInstructions"}}</p>
 	<ul class="filter-config-list">
 		{{#each filterConfig as |filter index|}}
+		{{log filter}}
 			<li data-filter-id="{{filter.id}}" data-index="{{index}}"
 				class="filter-item {{#unless filter.sortable}}not-sortable{{/unless}}">
-				<div class="filter-config-item" {{#if filter.sortable}}draggable="true" {{/if}}>
+				<div class="filter-config-item" draggable="{{#if filter.sortable}}true{{else}}false{{/if}}">
 					<div class="drag-handle">
 						{{#if filter.sortable}}<i class="fas fa-grip-lines"></i>{{else}}<i class="fas fa-lock"></i>{{/if}}
 					</div>
@@ -33,4 +34,4 @@
 			{{/each}}
 		</div>
 	</footer>
-</form>
+</div>
