@@ -59,7 +59,7 @@
   flex-direction: column;
   width: var(--spell-book-sidebar-width);
   margin-left: 0;
-  padding: 0.75rem;
+  padding: 0.5rem 1rem;
   border-right: 1px solid var(--color-border-light);
   overflow-x: visible;
   background: #1b1d24e6;
@@ -149,8 +149,8 @@
   gap: 0.2rem;
   display: flex;
   flex-direction: column;
-  background-color: #00000008;
   border-bottom: 1px solid var(--color-border-light-tertiary);
+  background-color: #00000008;
 }
 
 .spell-book input[name='filter-name'] {
@@ -247,13 +247,6 @@
   margin-bottom: 0;
   padding-bottom: 0;
   overflow-y: auto;
-}
-
-.spell-book .sidebar-footer-container {
-  margin-top: auto;
-  padding: 0.5rem;
-  text-align: center;
-  width: 100%;
 }
 
 .spell-book.loading .spell-book-content {
@@ -559,6 +552,60 @@
 /* ----------------------------------------- */
 /* Footer Components                         */
 /* ----------------------------------------- */
+/* Common footer styles */
+.spell-book .spell-prep-tracking {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.spell-book .spell-prep-tracking .max-count {
+  margin-right: 0.25rem;
+}
+
+.spell-book .spell-prep-tracking.at-max {
+  color: var(--color-level-warning);
+  font-weight: bold;
+}
+
+.spell-book .footer-buttons {
+  gap: 0.5rem;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.spell-book .footer-buttons button {
+  display: flex;
+  flex: 0 1 auto;
+  justify-content: center;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  padding: 0.25rem 1rem;
+  font-size: var(--font-size-12);
+  white-space: nowrap;
+  transition: all 0.4s ease;
+}
+
+/* Sidebar footer specific styles */
+.spell-book .sidebar-footer-container {
+  width: 100%;
+  margin-top: auto;
+  padding-bottom: 0.5rem;
+  text-align: center;
+}
+
+.spell-book .sidebar-footer-container .footer-buttons {
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Collapsed footer specific styles */
 .spell-book .collapsed-footer {
   z-index: 10;
   position: absolute;
@@ -577,23 +624,8 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  margin-bottom: 0.5rem;
   padding: 0.5rem;
-}
-
-.spell-book .spell-prep-tracking {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  padding-bottom: 0.25rem;
-}
-
-.spell-book .footer-buttons {
-  gap: 0.5rem;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: stretch;
 }
 
 .spell-book .collapsed-footer .spell-prep-tracking {
@@ -602,30 +634,7 @@
 }
 
 .spell-book .collapsed-footer .footer-buttons {
-  gap: 0.5rem;
-  flex-direction: row;
-}
-
-.spell-book .footer-buttons button {
-  display: flex;
-  flex: 0 1 auto;
   justify-content: center;
-  align-items: center;
-  width: auto;
-  min-width: 0;
-  padding: 0.25rem 0.75rem;
-  font-size: var(--font-size-12);
-  white-space: nowrap;
-  transition: all 0.4s ease;
-}
-
-.spell-book .spell-prep-tracking .max-count {
-  margin-right: 0.25rem;
-}
-
-.spell-book .spell-prep-tracking.at-max {
-  color: var(--color-level-warning);
-  font-weight: bold;
 }
 
 /* ----------------------------------------- */
