@@ -123,7 +123,13 @@ export const MODULE = {
      * Timestamp of when spell data was cached
      * @type {Object}
      */
-    spellDataTime: {}
+    spellDataTime: {},
+
+    /**
+     * Fully processed spell data ready for display
+     * @type {Object}
+     */
+    processedData: {}
   }
 };
 

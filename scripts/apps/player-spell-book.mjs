@@ -266,6 +266,27 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     timing('Start _loadSpellData');
 
     try {
+      // Check for preloaded data first
+      if (MODULE.CACHE.processedData && MODULE.CACHE.processedData[this.actor.id]) {
+        const cachedData = MODULE.CACHE.processedData[this.actor.id];
+        const cacheAge = Date.now() - cachedData.timestamp;
+
+        // Use cache if it's less than 5 minutes old
+        if (cacheAge < 300000) {
+          log(3, `Using preloaded data for ${this.actor.name} (age: ${(cacheAge / 1000).toFixed(1)}s)`);
+
+          // Apply cached data directly
+          this.spellLevels = cachedData.spellLevels;
+          this.className = cachedData.className;
+          this.spellPreparation = cachedData.spellPreparation;
+
+          // Complete loading and return early
+          this.isLoading = false;
+          this.render(false);
+          return;
+        }
+      }
+
       // Step 1: Find spellcasting class
       const classItem = await this._loadSpellcastingClass();
       if (!classItem) return; // Error already set

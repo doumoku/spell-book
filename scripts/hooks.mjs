@@ -4,6 +4,8 @@
  */
 
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
+import { MODULE } from './constants.mjs';
+import * as actorSpellUtils from './helpers/actor-spells.mjs';
 import * as discoveryUtils from './helpers/spell-discovery.mjs';
 import { registerDnD5eIntegration } from './integrations/dnd5e.mjs';
 import { log } from './logger.mjs';
@@ -19,6 +21,9 @@ export function registerHooks() {
 
     // Set up character sheet integration
     Hooks.on('renderActorSheet5e', addSpellbookButton);
+
+    // Add preloading hook
+    Hooks.on('renderActorSheet5e', preloadSpellData);
   } catch (error) {
     log(1, 'Error registering hooks:', error);
   }
@@ -86,4 +91,108 @@ function createSpellBookButton(actor) {
   });
 
   return button;
+}
+
+/**
+ * Preloads spell data when a character sheet is opened
+ * @param {ActorSheet5e} app - The rendered actor sheet
+ * @param {HTMLElement} html - The HTML of the actor sheet
+ * @param {Object} data - The data used to render the sheet
+ */
+function preloadSpellData(app, html, data) {
+  try {
+    // Only preload for characters that can cast spells
+    if (!discoveryUtils.canCastSpells(data.actor)) return;
+
+    // Create a cache key for this actor
+    const actor = data.actor;
+    const cacheKey = `${actor.id}-preload`;
+
+    // Skip if we've recently preloaded this actor's data
+    if (MODULE.CACHE.spellDataTime[cacheKey] && Date.now() - MODULE.CACHE.spellDataTime[cacheKey] < 300000) {
+      log(3, `Using existing preloaded data for ${actor.name}`);
+      return;
+    }
+
+    // Set a flag to indicate preloading is in progress
+    MODULE.CACHE.spellDataTime[cacheKey] = Date.now();
+
+    // Preload in the background
+    setTimeout(async () => {
+      log(3, `Preloading spell data for ${actor.name}`);
+
+      // Find spellcasting class
+      const classItem = discoveryUtils.findSpellcastingClass(actor);
+      if (!classItem) return;
+
+      // Get spell list
+      const className = classItem.name.toLowerCase();
+      const classUuid = classItem.uuid;
+      const spellUuids = await discoveryUtils.getClassSpellList(className, classUuid);
+      if (!spellUuids || !spellUuids.size) return;
+
+      // Calculate max spell level
+      const actorLevel = actor.system.details.level;
+      const maxSpellLevel = discoveryUtils.calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
+
+      // Fetch spell data
+      const spellItems = await actorSpellUtils.fetchSpellDocuments(spellUuids, maxSpellLevel);
+
+      // Organize spells by level
+      const spellLevels = await actorSpellUtils.organizeSpellsByLevel(spellItems, actor);
+
+      // Calculate preparation statistics
+      const prepStats = calculatePreparationStats(spellLevels, classItem);
+
+      // Store the processed data in the cache
+      MODULE.CACHE.spellData[`${actor.id}-${maxSpellLevel}`] = spellItems;
+      MODULE.CACHE.spellDataTime[`${actor.id}-${maxSpellLevel}`] = Date.now();
+
+      // Store the processed spellLevels and other context data
+      MODULE.CACHE.processedData = MODULE.CACHE.processedData || {};
+      MODULE.CACHE.processedData[actor.id] = {
+        spellLevels,
+        className: classItem.name,
+        spellPreparation: prepStats,
+        timestamp: Date.now()
+      };
+
+      log(3, `Preloading complete for ${actor.name}`);
+    }, 500); // Slight delay to not interfere with sheet rendering
+  } catch (error) {
+    log(1, 'Error preloading spell data:', error);
+  }
+}
+
+/**
+ * Calculate preparation statistics for the spell levels
+ * @param {Array} spellLevels - Array of spell level data
+ * @param {Item5e} classItem - The spellcasting class item
+ * @returns {Object} Preparation statistics
+ */
+function calculatePreparationStats(spellLevels, classItem) {
+  let preparedCount = 0;
+  let maxPrepared = 0;
+
+  if (classItem) {
+    const spellcastingAbility = classItem.system.spellcasting?.ability;
+    if (spellcastingAbility) {
+      const abilityMod = classItem.parent.system.abilities[spellcastingAbility]?.mod || 0;
+      const classLevel = classItem.system.levels || classItem.parent.system.details.level;
+      maxPrepared = Math.max(1, classLevel + abilityMod);
+    }
+  }
+
+  for (const level of spellLevels) {
+    for (const spell of level.spells) {
+      if (spell.preparation.prepared && !spell.preparation.alwaysPrepared) {
+        preparedCount++;
+      }
+    }
+  }
+
+  return {
+    current: preparedCount,
+    maximum: maxPrepared
+  };
 }
