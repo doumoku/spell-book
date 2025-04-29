@@ -30,7 +30,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     },
     dragDrop: [
       {
-        dragSelector: '.filter-config-item[draggable="true"]',
+        dragSelector: '.filter-config-item',
         dropSelector: '.filter-config-list'
       }
     ]
@@ -191,7 +191,18 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @override
    */
   _onRender(context, options) {
+    // First set draggable attributes programmatically
+    const items = this.element.querySelectorAll('.filter-config-item');
+    items.forEach((item) => {
+      const li = item.closest('li');
+      const isSortable = !li.classList.contains('not-sortable');
+      item.setAttribute('draggable', isSortable ? 'true' : 'false');
+      log(1, `Setting draggable=${isSortable ? 'true' : 'false'} for ${li.dataset.filterId}`);
+    });
+
+    // Now bind the drag handlers
     this.#dragDrop.forEach((d) => d.bind(this.element));
+    log(1, 'Bound dragDrop handlers to element');
 
     // Add reset button handler
     const resetBtn = this.element.querySelector('button[data-action="reset"]');
@@ -219,16 +230,13 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
 
   /**
    * Define whether a user is able to begin a dragstart workflow
+   * @param {DragEvent} event - The drag event
    * @param {string} selector - The selector being dragged
    * @returns {boolean} Whether the user can drag
    * @private
    */
   _canDragStart(event, selector) {
-    const element = event?.target?.closest('.filter-config-item');
-    if (!element) return false;
-
-    // Only allow dragging elements that have draggable="true"
-    return element.getAttribute('draggable') === 'true';
+    return true;
   }
 
   /**
@@ -238,6 +246,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @private
    */
   _canDragDrop(event, selector) {
+    log(1, 'canDragDrop?', { event, selector });
     return true; // Allow dropping on the filter list
   }
 
@@ -247,12 +256,12 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @private
    */
   _onDragStart(event) {
-    // Only allow dragging sortable items
     const li = event.currentTarget.closest('li');
     if (!li || li.classList.contains('not-sortable')) return false;
 
     // Set the data transfer with the filter index
     const filterIndex = li.dataset.index;
+    log(1, 'onDragStart triggered', { filterIndex, li });
 
     event.dataTransfer.setData(
       'text/plain',
@@ -271,7 +280,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @param {DragEvent} event - The drag event
    * @private
    */
-  _onDragOver(event) {
+  _onDragOver(event, selector) {
     event.preventDefault();
 
     // Only try to parse data if we're later in the drag process
@@ -317,6 +326,8 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
     } else {
       targetItem.before(placeholder);
     }
+
+    log(1, 'onDragOver', { event, selector, dragData, list, draggingItem, items, targetItem, rect, dropAfter, placeholders, placeholder });
   }
 
   /**
@@ -327,6 +338,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
    * @private
    */
   _getDragTarget(event, items) {
+    log(1, 'onDragTarget', { event, items });
     return (
       items.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
@@ -391,6 +403,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
       this.render(false);
 
       log(1, `Reordered filter from position ${sourceIndex} to ${newIndex}`);
+      log(1, 'onDrop', { event, dataString, data, sourceIndex, list, items, targetItem, targetIndex, rect, dropAfter });
       return true;
     } catch (error) {
       log(1, 'Error in drop handler:', error);
