@@ -1,6 +1,9 @@
 import { DEFAULT_FILTER_CONFIG, MODULE } from '../constants.mjs';
-import { calculateMaxSpellLevel, fetchSpellDocuments, findSpellcastingClass, formatSpellDetails, getClassSpellList, organizeSpellsByLevel, saveActorPreparedSpells } from '../helpers.mjs';
-import { convertRangeToStandardUnit, getDefaultFilterState, getOptionsForFilter } from '../helpers/filters.mjs';
+import * as actorSpellUtils from '../helpers/actor-spells.mjs';
+import * as filterUtils from '../helpers/filters.mjs';
+import * as discoveryUtils from '../helpers/spell-discovery.mjs';
+import * as formattingUtils from '../helpers/spell-formatting.mjs';
+import * as preparationUtils from '../helpers/spell-preparation.mjs';
 import { log } from '../logger.mjs';
 import { PlayerFilterConfiguration } from './player-filter-configuration.mjs';
 
@@ -282,7 +285,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Step 3: Get max spell level and fetch spell data
       const actorLevel = this.actor.system.details.level;
-      const maxSpellLevel = calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
+      const maxSpellLevel = discoveryUtils.calculateMaxSpellLevel(actorLevel, classItem.system.spellcasting);
       log(3, `Max spell level for level ${actorLevel}: ${maxSpellLevel}`);
 
       const spellItems = await this._fetchSpellDataWithCache(spellUuids, maxSpellLevel);
@@ -307,7 +310,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   async _loadSpellcastingClass() {
-    const classItem = findSpellcastingClass(this.actor);
+    const classItem = discoveryUtils.findSpellcastingClass(this.actor);
     if (!classItem) {
       this._setErrorState(game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name }));
       return null;
@@ -324,7 +327,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _processSpellData(spellItems, classItem) {
     // Step 1: Organize spells by level
-    const spellLevels = await organizeSpellsByLevel(spellItems, this.actor);
+    const spellLevels = await actorSpellUtils.organizeSpellsByLevel(spellItems, this.actor);
 
     // Step 2: Sort spells within each level
     this._sortAllSpellLevels(spellLevels);
@@ -351,7 +354,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     log(3, `Getting spell list for ${classItem.name}`);
     const className = classItem.name.toLowerCase();
     const classUuid = classItem.uuid;
-    return await getClassSpellList(className, classUuid);
+    return await discoveryUtils.getClassSpellList(className, classUuid);
   }
 
   /**
@@ -441,7 +444,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         spell.enrichedIcon = enrichedIcon;
-        spell.formattedDetails = formatSpellDetails(spell);
+        spell.formattedDetails = formattingUtils.formatSpellDetails(spell);
       }
       if (failedUUIDs.length > 0) {
         log(2, 'Some spells failed UUID check:', failedUUIDs);
@@ -480,7 +483,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     log(3, `Fetching fresh spell data for ${this.actor.name}`);
     timing('Starting fetch of fresh spell data');
 
-    const data = await fetchSpellDocuments(spellUuids, maxSpellLevel);
+    const data = await actorSpellUtils.fetchSpellDocuments(spellUuids, maxSpellLevel);
     timing('Fetched fresh spell data');
 
     // Cache the results
@@ -561,7 +564,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         // Range filter
         if ((filters.minRange || filters.maxRange) && rangeUnits) {
           const rangeValue = parseInt(item.dataset.rangeValue || '0', 10);
-          const convertedRange = convertRangeToStandardUnit(rangeUnits, rangeValue);
+          const convertedRange = filterUtils.convertRangeToStandardUnit(rangeUnits, rangeValue);
 
           const minRange = filters.minRange ? parseInt(filters.minRange, 10) : 0;
           const maxRange = filters.maxRange ? parseInt(filters.maxRange, 10) : Infinity;
@@ -709,8 +712,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
 
         case 'level':
         default:
-          // Level sorting is handled by organizeSpellsByLevel,
-          // so we just sort by name within each level
           return a.name.localeCompare(b.name);
       }
     });
@@ -750,7 +751,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           break;
 
         case 'dropdown':
-          result.options = getOptionsForFilter(filter.id, filterState, this.spellLevels);
+          result.options = filterUtils.getOptionsForFilter(filter.id, filterState, this.spellLevels);
           break;
 
         case 'checkbox':
@@ -771,138 +772,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Add casting time options to the dropdown
-   * @param {Array} options - Array to add options to
-   * @param {Object} filterState - Current filter state
-   * @private
-   */
-  _addCastingTimeOptions(options, filterState) {
-    // Get unique activation types from the spells
-    if (this.spellLevels) {
-      const uniqueActivationTypes = new Set();
-
-      // First, collect all unique combinations
-      this.spellLevels.forEach((level) => {
-        level.spells.forEach((spell) => {
-          const activationType = spell.system?.activation?.type;
-          const activationValue = spell.system?.activation?.value || 1; // treat null as 1
-
-          if (activationType) {
-            uniqueActivationTypes.add(`${activationType}:${activationValue}`);
-          }
-        });
-      });
-
-      // Define a priority order for activation types
-      const typeOrder = {
-        action: 1,
-        bonus: 2,
-        reaction: 3,
-        minute: 4,
-        hour: 5,
-        day: 6,
-        legendary: 7,
-        mythic: 8,
-        lair: 9,
-        crew: 10,
-        special: 11,
-        none: 12
-      };
-
-      // Convert to array of [type:value, type, value] for sorting
-      const sortableTypes = Array.from(uniqueActivationTypes).map((combo) => {
-        const [type, value] = combo.split(':');
-        return [combo, type, parseInt(value) || 1];
-      });
-
-      // Sort by type priority then by value
-      sortableTypes.sort((a, b) => {
-        const [, typeA, valueA] = a;
-        const [, typeB, valueB] = b;
-
-        // First compare by type priority
-        const typePriorityA = typeOrder[typeA] || 999;
-        const typePriorityB = typeOrder[typeB] || 999;
-        if (typePriorityA !== typePriorityB) {
-          return typePriorityA - typePriorityB;
-        }
-
-        // Then by value
-        return valueA - valueB;
-      });
-
-      // Create the options in the sorted order
-      sortableTypes.forEach(([combo, type, value]) => {
-        const typeLabel = CONFIG.DND5E.abilityActivationTypes[type] || type;
-
-        let label;
-        if (value === 1) {
-          label = typeLabel;
-        } else {
-          label = `${value} ${typeLabel}${value !== 1 ? 's' : ''}`;
-        }
-
-        options.push({
-          value: combo,
-          label: label,
-          selected: filterState.castingTime === combo
-        });
-      });
-    }
-  }
-
-  /**
-   * Add damage type options to the dropdown
-   * @param {Array} options - Array to add options to
-   * @param {Object} filterState - Current filter state
-   * @private
-   */
-  _addDamageTypeOptions(options, filterState) {
-    // Create a combined damage types object including healing
-    const damageTypesWithHealing = {
-      ...CONFIG.DND5E.damageTypes,
-      healing: { label: game.i18n.localize('DND5E.Healing') }
-    };
-
-    // Add options for each damage type in alphabetical order by label
-    Object.entries(damageTypesWithHealing)
-      .sort((a, b) => a[1].label.localeCompare(b[1].label))
-      .forEach(([key, damageType]) => {
-        options.push({
-          value: key,
-          label: damageType.label,
-          selected: filterState.damageType === key
-        });
-      });
-  }
-
-  /**
-   * Add condition options to the dropdown
-   * @param {Array} options - Array to add options to
-   * @param {Object} filterState - Current filter state
-   * @private
-   */
-  _addConditionOptions(options, filterState) {
-    // Add options for each condition type
-    Object.entries(CONFIG.DND5E.conditionTypes)
-      .filter(([key, condition]) => !condition.pseudo) // Skip pseudo conditions
-      .forEach(([key, condition]) => {
-        options.push({
-          value: key,
-          label: condition.label,
-          selected: filterState.condition === key
-        });
-      });
-  }
-
-  /**
    * Get the current filter state from form inputs or defaults
    * @returns {Object} The current filter state
    * @private
    */
   _getFilterState() {
     if (!this.element) {
-      return getDefaultFilterState();
+      return filterUtils.getDefaultFilterState();
     }
 
     return {
@@ -1327,7 +1203,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       }
 
       // Save the processed spell data to actor
-      await saveActorPreparedSpells(actor, spellData);
+      await preparationUtils.saveActorPreparedSpells(actor, spellData);
 
       ui.notifications.info(game.i18n.format('SPELLBOOK.Notifications.SpellsUpdated', { name: actor.name }));
 

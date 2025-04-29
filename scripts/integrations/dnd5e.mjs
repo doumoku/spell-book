@@ -5,7 +5,7 @@
  */
 
 import { MODULE, SETTINGS_KEYS } from '../constants.mjs';
-import { canCastSpells } from '../helpers.mjs';
+import * as discoveryUtils from '../helpers/spell-discovery.mjs';
 import { log } from '../logger.mjs';
 
 /**
@@ -27,7 +27,7 @@ export function registerDnD5eIntegration() {
 function onRestCompleted(actor, restData) {
   try {
     // Only proceed if this is a long rest and the actor can cast spells
-    if (!restData.longRest || !canCastSpells(actor)) return;
+    if (!restData.longRest || !discoveryUtils.canCastSpells(actor)) return;
 
     // Check if auto-prompt is enabled in settings
     if (!game.settings.get(MODULE.ID, SETTINGS_KEYS.ENABLE_REST_PROMPT)) return;

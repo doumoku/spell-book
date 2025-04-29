@@ -6,7 +6,7 @@
 
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { MODULE } from './constants.mjs';
-import { discoverSpellcastingClasses } from './helpers.mjs';
+import * as discoveryUtils from './helpers/spell-discovery.mjs';
 import { registerHooks } from './hooks.mjs';
 import { initializeLogger, log } from './logger.mjs';
 import { registerSettings } from './settings.mjs';
@@ -52,7 +52,7 @@ Hooks.once('init', async function () {
 Hooks.once('ready', async function () {
   try {
     // Initialize spell data
-    await discoverSpellcastingClasses();
+    await discoveryUtils.discoverSpellcastingClasses();
     log(3, 'Spell classes discovery complete');
   } catch (error) {
     log(1, 'Error during module ready hook:', error);

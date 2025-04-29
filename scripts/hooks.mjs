@@ -4,7 +4,7 @@
  */
 
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
-import { canCastSpells } from './helpers.mjs';
+import * as discoveryUtils from './helpers/spell-discovery.mjs';
 import { registerDnD5eIntegration } from './integrations/dnd5e.mjs';
 import { log } from './logger.mjs';
 
@@ -33,7 +33,7 @@ export function registerHooks() {
 function addSpellbookButton(app, html, data) {
   try {
     // Only add button for characters that can cast spells
-    if (!canCastSpells(data.actor)) return;
+    if (!discoveryUtils.canCastSpells(data.actor)) return;
 
     // Only target the spells tab
     const spellsTab = html.find('.tab.spells');

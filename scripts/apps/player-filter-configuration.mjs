@@ -422,13 +422,13 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
       log(3, 'Processing filter configuration form data', formData.object);
 
       // Get the current configuration
-      const currentConfig = this.#getValidConfiguration();
+      const currentConfig = PlayerFilterConfiguration.#getValidConfiguration();
 
       // Process filters into sortable/non-sortable groups
-      const { sortableFilters, nonSortableFilters } = this.#processSortableFilters(currentConfig, formData.object);
+      const { sortableFilters, nonSortableFilters } = PlayerFilterConfiguration.#processSortableFilters(currentConfig, formData.object);
 
       // Update filter ordering
-      const sortedFilters = this.#updateFilterOrder(sortableFilters, form);
+      const sortedFilters = PlayerFilterConfiguration.#updateFilterOrder(sortableFilters, form);
 
       // Combine all filters, ensuring non-sortable ones maintain their position
       const updatedConfig = [
