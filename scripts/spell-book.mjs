@@ -4,41 +4,24 @@
  * @module spell-book
  */
 
+import { GMSpellListManager } from './apps/gm-spell-list-manager.mjs';
 import { PlayerSpellBook } from './apps/player-spell-book.mjs';
 import { MODULE } from './constants.mjs';
-import * as discoveryUtils from './helpers/spell-discovery.mjs';
+import { registerHandlebarsHelpers } from './helpers/handlebars-helpers.mjs';
 import { registerHooks } from './hooks.mjs';
 import { initializeLogger, log } from './logger.mjs';
 import { registerSettings } from './settings.mjs';
 
-/**
- * Initialize module during Foundry's init hook
- */
+// Main initialization hook
 Hooks.once('init', async function () {
   try {
     log(3, `Initializing ${MODULE.NAME} module`);
 
-    // Extend compendium indexes with needed fields
-    CONFIG.JournalEntry.compendiumIndexFields = ['_id', 'name', 'pages', 'type', 'uuid'];
-    CONFIG.Item.compendiumIndexFields = ['system.spellcasting.progression', 'system.spellcasting.preparation.mode'];
-
-    // Register module hooks
-    registerHooks();
-
-    // Register module settings
-    registerSettings();
-
-    // Initialize the logger with settings
-    initializeLogger();
-
-    // Expose the PlayerSpellBook class for other modules
-    MODULE.PlayerSpellBook = PlayerSpellBook;
-
-    // Register module API
-    game.modules.get(MODULE.ID).api = {
-      PlayerSpellBook,
-      openSpellBookForActor: (actor) => new PlayerSpellBook(actor).render(true)
-    };
+    // Initialize module components
+    initializeFoundryConfiguration();
+    await initializeModuleComponents();
+    registerHandlebarsHelpers();
+    registerModuleAPI();
 
     log(3, 'Module initialization complete');
   } catch (error) {
@@ -47,14 +30,69 @@ Hooks.once('init', async function () {
 });
 
 /**
- * Finalize setup during Foundry's ready hook
+ * Configure Foundry for module needs
  */
-Hooks.once('ready', async function () {
+function initializeFoundryConfiguration() {
   try {
-    // Initialize spell data
-    await discoveryUtils.discoverSpellcastingClasses();
-    log(3, 'Spell classes discovery complete');
+    // Extend compendium indexes with needed fields
+    CONFIG.JournalEntry.compendiumIndexFields = ['_id', 'name', 'pages', 'type', 'uuid'];
+    CONFIG.Item.compendiumIndexFields = ['system.spellcasting.progression', 'system.spellcasting.preparation.mode'];
+
+    log(3, 'Foundry configuration extended');
   } catch (error) {
-    log(1, 'Error during module ready hook:', error);
+    log(1, 'Error configuring Foundry:', error);
   }
-});
+}
+
+/**
+ * Initialize module components
+ */
+async function initializeModuleComponents() {
+  try {
+    // Register module settings
+    registerSettings();
+
+    // Initialize the logger with settings
+    initializeLogger();
+
+    // Register module hooks
+    await registerHooks();
+
+    log(3, 'Module components initialized');
+  } catch (error) {
+    log(1, 'Error initializing module components:', error);
+  }
+}
+
+/**
+ * Register the module API in the global scope
+ */
+function registerModuleAPI() {
+  try {
+    const api = {
+      apps: {
+        PlayerSpellBook,
+        GMSpellListManager
+      },
+      openSpellBookForActor: (actor) => {
+        if (!actor) {
+          throw new Error('No actor provided');
+        }
+        const spellBook = new PlayerSpellBook(actor);
+        spellBook.render(true);
+        return spellBook;
+      },
+      openSpellListManager: () => {
+        const manager = new GMSpellListManager();
+        manager.render(true);
+        return manager;
+      }
+    };
+
+    globalThis.SPELLBOOK = api;
+
+    log(3, 'Module API registered');
+  } catch (error) {
+    log(1, 'Error registering module API:', error);
+  }
+}

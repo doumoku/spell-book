@@ -3,165 +3,100 @@
  * @module spell-book/constants
  */
 
+//-----------------------------------------------------------------------------
+// CORE MODULE IDENTIFICATION
+//-----------------------------------------------------------------------------
+
 /**
  * Core module identification and configuration constants
  * @type {Object}
  */
 export const MODULE = {
-  /**
-   * Unique identifier for the module
-   * @type {string}
-   * @example 'spell-book'
-   */
   ID: 'spell-book',
-
-  /**
-   * Display name of the module
-   * @type {string}
-   * @example 'Spell Book'
-   */
   NAME: 'Spell Book',
+  LOG_LEVEL: 0
+};
 
-  /**
-   * Flags used for data storage and state tracking
-   * @type {Object}
-   */
-  FLAGS: {
-    /**
-     * Flag name for storing prepared spells on an actor
-     * @type {string}
-     */
-    PREPARED_SPELLS: 'preparedSpells',
+//-----------------------------------------------------------------------------
+// FLAGS
+//-----------------------------------------------------------------------------
 
-    /**
-     * Flag name for storing collapsed spell levels in UI
-     * @type {string}
-     */
-    COLLAPSED_LEVELS: 'collapsedSpellLevels',
+/**
+ * Flags used for data storage and state tracking
+ * @type {Object}
+ */
+export const FLAGS = {
+  PREPARED_SPELLS: 'preparedSpells',
+  COLLAPSED_LEVELS: 'collapsedSpellLevels',
+  SIDEBAR_COLLAPSED: 'sidebarCollapsed',
+  GM_COLLAPSED_LEVELS: 'gmCollapsedSpellLevels'
+};
 
-    /**
-     * Flag name for sidebar collapsed state
-     * @type {string}
-     */
-    SIDEBAR_COLLAPSED: 'sidebarCollapsed'
+//-----------------------------------------------------------------------------
+// TEMPLATE PATHS
+//-----------------------------------------------------------------------------
+
+/**
+ * Handlebars template paths used by the module
+ * @type {Object}
+ */
+export const TEMPLATES = {
+  PLAYER: {
+    MAIN: 'modules/spell-book/templates/player/spell-book.hbs',
+    SIDEBAR: 'modules/spell-book/templates/player/sidebar.hbs',
+    SPELL_LIST: 'modules/spell-book/templates/player/spell-list.hbs',
+    FOOTER: 'modules/spell-book/templates/player/footer.hbs'
   },
 
-  /**
-   * Handlebars template paths used by the module
-   * @type {Object}
-   */
-  TEMPLATES: {
-    /**
-     * Main spell book content template
-     * @type {string}
-     */
-    SPELL_BOOK_CONTENT: 'modules/spell-book/templates/spell-book.hbs',
-
-    /**
-     * Sidebar template for filters
-     * @type {string}
-     */
-    SPELL_BOOK_SIDEBAR: 'modules/spell-book/templates/spell-book-sidebar.hbs',
-
-    /**
-     * Spell list template
-     * @type {string}
-     */
-    SPELL_BOOK_LIST: 'modules/spell-book/templates/spell-book-list.hbs',
-
-    /**
-     * Footer template with action buttons
-     * @type {string}
-     */
-    SPELL_BOOK_FOOTER: 'modules/spell-book/templates/spell-book-footer.hbs',
-
-    /**
-     * Filter configuration template
-     * @type {string}
-     */
-    FILTER_CONFIG: 'modules/spell-book/templates/player-filter-configuration.hbs'
+  GM: {
+    MAIN: 'modules/spell-book/templates/gm/manager.hbs',
+    SPELL_LISTS: 'modules/spell-book/templates/gm/spell-lists.hbs',
+    LIST_CONTENT: 'modules/spell-book/templates/gm/list-content.hbs',
+    AVAILABLE_SPELLS: 'modules/spell-book/templates/gm/available-spells.hbs',
+    FOOTER: 'modules/spell-book/templates/gm/footer.hbs'
   },
 
-  /**
-   * Logging level for the module
-   * 0 = none, 1 = errors, 2 = warnings, 3 = verbose
-   * @type {number}
-   */
-  LOG_LEVEL: 0,
-
-  /**
-   * Collections of spellcasting classes categorized by type
-   * Populated during initialization
-   * @type {Object}
-   */
-  SPELLCASTING_CLASSES: {
-    /**
-     * Classes with "known" spell progression
-     * @type {Array}
-     */
-    KNOWN: [],
-
-    /**
-     * Classes with "pact" spell progression
-     * @type {Array}
-     */
-    PACT: []
+  COMPONENTS: {
+    LOADING: 'modules/spell-book/templates/components/loading-spinner.hbs',
+    ERROR: 'modules/spell-book/templates/components/error-message.hbs',
+    EMPTY: 'modules/spell-book/templates/components/empty-state.hbs',
+    SPELL_LEVEL: 'modules/spell-book/templates/components/spell-level.hbs',
+    SPELL_ITEM: 'modules/spell-book/templates/components/spell-item.hbs',
+    FILTERS: {
+      SEARCH: 'modules/spell-book/templates/components/filter-fields/search.hbs',
+      DROPDOWN: 'modules/spell-book/templates/components/filter-fields/dropdown.hbs',
+      RANGE: 'modules/spell-book/templates/components/filter-fields/range.hbs',
+      CHECKBOX: 'modules/spell-book/templates/components/filter-fields/checkbox.hbs'
+    }
   },
 
-  /**
-   * Cache for storing frequently accessed data
-   * @type {Object}
-   */
-  CACHE: {
-    /**
-     * Cached spell data by actor/level
-     * @type {Object}
-     */
-    spellData: {},
-
-    /**
-     * Timestamp of when spell data was cached
-     * @type {Object}
-     */
-    spellDataTime: {},
-
-    /**
-     * Fully processed spell data ready for display
-     * @type {Object}
-     */
-    processedData: {}
+  DIALOGS: {
+    FILTER_CONFIG: 'modules/spell-book/templates/dialogs/filter-configuration.hbs',
+    CREATE_SPELL_LIST: 'modules/spell-book/templates/dialogs/create-spell-list.hbs',
+    MANAGER_DOCUMENTATION: 'modules/spell-book/templates/dialogs/spell-list-manager-documentation.hbs'
   }
 };
+
+//-----------------------------------------------------------------------------
+// SETTINGS
+//-----------------------------------------------------------------------------
 
 /**
  * Settings keys used by the module
  * @type {Object}
  */
-export const SETTINGS_KEYS = {
-  /**
-   * Logging level setting key
-   * @type {string}
-   */
+export const SETTINGS = {
   LOGGING_LEVEL: 'loggingLevel',
-
-  /**
-   * Rest prompt setting key
-   * @type {string}
-   */
   ENABLE_REST_PROMPT: 'enableRestPrompt',
-
-  /**
-   * Distance unit setting key
-   * @type {string}
-   */
   DISTANCE_UNIT: 'distanceUnit',
-
-  /**
-   * Filter configuration setting key
-   * @type {string}
-   */
-  FILTER_CONFIGURATION: 'filterConfiguration'
+  FILTER_CONFIGURATION: 'filterConfiguration',
+  CUSTOM_SPELL_MAPPINGS: 'customSpellListMappings',
+  OPEN_SPELL_MANAGER: 'openSpellListManager'
 };
+
+//-----------------------------------------------------------------------------
+// FILTER CONFIGURATION
+//-----------------------------------------------------------------------------
 
 /**
  * Filter types used in configuration
@@ -197,7 +132,7 @@ export const DEFAULT_FILTER_CONFIG = [
     enabled: true,
     order: 10,
     label: 'SPELLBOOK.Filters.SearchPlaceholder',
-    sortable: false // Keep search at the top
+    sortable: false
   },
   {
     id: 'level',
@@ -269,7 +204,7 @@ export const DEFAULT_FILTER_CONFIG = [
     enabled: true,
     order: 1000,
     label: 'SPELLBOOK.Filters.SortBy',
-    sortable: false // Keep sort option at the bottom
+    sortable: false
   },
   {
     id: 'prepared',
@@ -277,7 +212,7 @@ export const DEFAULT_FILTER_CONFIG = [
     enabled: true,
     order: 2000,
     label: 'SPELLBOOK.Filters.PreparedOnly',
-    sortable: false // Keep checkboxes at the bottom
+    sortable: false
   },
   {
     id: 'ritual',
@@ -285,18 +220,6 @@ export const DEFAULT_FILTER_CONFIG = [
     enabled: true,
     order: 3000,
     label: 'SPELLBOOK.Filters.RitualOnly',
-    sortable: false // Keep checkboxes at the bottom
+    sortable: false
   }
 ];
-
-/**
- * Cache settings
- * @type {Object}
- */
-export const CACHE_CONFIG = {
-  /**
-   * How long to keep cached data in milliseconds (5 minutes)
-   * @type {number}
-   */
-  TTL: 5 * 60 * 1000
-};

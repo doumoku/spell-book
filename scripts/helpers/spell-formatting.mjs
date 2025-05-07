@@ -6,35 +6,65 @@
 
 /**
  * Format spell details for display
- * @param {Object} spell - The spell object with labels
+ * @param {Object} spell - The spell object
  * @returns {string} - Formatted spell details string
  */
 export function formatSpellDetails(spell) {
   const components = [];
   const details = [];
 
+  // Handle components
   if (spell.labels?.components?.all) {
     for (const c of spell.labels.components.all) {
       components.push(c.abbr);
     }
+  } else if (spell.system?.properties?.length) {
+    const componentMap = {
+      vocal: 'V',
+      somatic: 'S',
+      material: 'M',
+      concentration: 'C',
+      ritual: 'R'
+    };
+
+    for (const prop of spell.system.properties) {
+      if (componentMap[prop]) {
+        components.push(componentMap[prop]);
+      }
+    }
   }
 
-  // Format components with commas between them
+  // Format components
   const componentsStr = components.length > 0 ? components.join(', ') : '';
-
-  // Add components if there are any
   if (componentsStr) {
     details.push(componentsStr);
   }
 
-  // Add activation
+  // Handle activation
   if (spell.labels?.activation) {
     details.push(spell.labels.activation);
+  } else if (spell.system?.activation?.type) {
+    const activationType = spell.system.activation.type;
+    const activationValue = spell.system.activation.value || 1;
+    const typeLabel = CONFIG.DND5E.abilityActivationTypes[activationType];
+
+    // Format activation string
+    let activationStr;
+    if (activationValue === 1 || activationValue === null) {
+      activationStr = typeLabel;
+    } else {
+      activationStr = `${activationValue} ${typeLabel}s`;
+    }
+
+    details.push(activationStr);
   }
 
-  // Add school
+  // Handle school
   if (spell.labels?.school) {
     details.push(spell.labels.school);
+  } else if (spell.system?.school) {
+    const schoolLabel = CONFIG.DND5E.spellSchools[spell.system.school].label;
+    details.push(schoolLabel);
   }
 
   // Join with bullet points
@@ -49,12 +79,12 @@ export function formatSpellDetails(spell) {
 export function getLocalizedPreparationMode(mode) {
   if (!mode) return '';
 
-  // Check if this mode exists in the system configuration
+  // Use system configuration if available
   if (CONFIG.DND5E.spellPreparationModes[mode]?.label) {
     return CONFIG.DND5E.spellPreparationModes[mode].label;
   }
 
-  // Fallback: capitalize first letter if not found in config
+  // Fallback: capitalize first letter
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
@@ -79,6 +109,8 @@ export function extractSpellFilterData(spell) {
 
   // Extract damage types
   const damageTypes = [];
+
+  // Extract from labels if available
   if (spell.labels?.damages?.length) {
     for (const damage of spell.labels.damages) {
       if (damage.damageType && !damageTypes.includes(damage.damageType)) {
@@ -87,16 +119,47 @@ export function extractSpellFilterData(spell) {
     }
   }
 
+  // Extract from system.activities damage parts
+  if (spell.system?.activities) {
+    for (const [_key, activity] of Object.entries(spell.system.activities)) {
+      if (activity.damage?.parts?.length) {
+        for (const part of activity.damage.parts) {
+          // Check for types array (new structure)
+          if (part.types && Array.isArray(part.types) && part.types.length) {
+            for (const type of part.types) {
+              if (!damageTypes.includes(type)) {
+                damageTypes.push(type);
+              }
+            }
+          }
+          // Check for traditional damage type
+          else if (part[1] && !damageTypes.includes(part[1])) {
+            damageTypes.push(part[1]);
+          }
+        }
+      }
+    }
+  }
+
   // Check for ritual
-  const isRitual = spell.labels?.components?.tags?.includes(game.i18n.localize('DND5E.Item.Property.Ritual')) || false;
+  const isRitual = Boolean(
+    spell.labels?.components?.tags?.includes(game.i18n.localize('DND5E.Item.Property.Ritual')) ||
+      (spell.system.properties && Array.isArray(spell.system.properties) && spell.system.properties.includes('ritual')) ||
+      spell.system.components?.ritual ||
+      false
+  );
 
   // Check for concentration
-  const concentration = spell.system.duration?.concentration || false;
+  let concentration = spell.system.duration?.concentration || false;
+  // Also check if it's in properties array
+  if (!concentration && spell.system.properties && Array.isArray(spell.system.properties)) {
+    concentration = spell.system.properties.includes('concentration');
+  }
 
   // Check for saving throws
-  let requiresSave = checkSpellRequiresSave(spell);
+  const requiresSave = checkSpellRequiresSave(spell);
 
-  // Extract conditions applied by scanning description
+  // Extract conditions
   const conditions = extractSpellConditions(spell);
 
   return {
@@ -114,10 +177,9 @@ export function extractSpellFilterData(spell) {
  * Check if a spell requires a saving throw
  * @param {Object} spell - The spell document
  * @returns {boolean} - Whether the spell requires a save
- * @private
  */
 function checkSpellRequiresSave(spell) {
-  // First check activities
+  // Check activities
   if (spell.system.activities) {
     for (const [_key, activity] of Object.entries(spell.system.activities)) {
       if (activity.value?.type === 'save') {
@@ -126,7 +188,7 @@ function checkSpellRequiresSave(spell) {
     }
   }
 
-  // If no saving throw detected in activities, check description
+  // Check description for saving throw text
   if (spell.system.description?.value) {
     const saveText = game.i18n.localize('SPELLBOOK.Filters.SavingThrow').toLowerCase();
     if (spell.system.description.value.toLowerCase().includes(saveText)) {
@@ -141,14 +203,12 @@ function checkSpellRequiresSave(spell) {
  * Extract conditions that might be applied by a spell
  * @param {Object} spell - The spell document
  * @returns {string[]} - Array of condition keys
- * @private
  */
 function extractSpellConditions(spell) {
   const conditions = [];
   const description = spell.system.description?.value || '';
 
   if (description) {
-    // Convert to lowercase for case-insensitive matching
     const lowerDesc = description.toLowerCase();
 
     // Check for each condition
@@ -160,4 +220,44 @@ function extractSpellConditions(spell) {
   }
 
   return conditions;
+}
+
+/**
+ * Create a spell icon link
+ * @param {Object} spell - The spell data object
+ * @returns {string} - HTML string with icon link
+ */
+export function createSpellIconLink(spell) {
+  // Get the uuid
+  const uuid = spell.compendiumUuid || spell.uuid || spell?._stats?.compendiumSource;
+  if (!uuid) {
+    // Fallback for spells without UUID
+    return `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
+  }
+
+  try {
+    const parsed = foundry.utils.parseUuid(uuid);
+
+    // Extract components
+    const itemId = parsed.id || '';
+    const entityType = parsed.type || 'Item';
+    let packId = '';
+
+    if (parsed.collection) {
+      packId = parsed.collection.collection || '';
+    }
+
+    // Create HTML directly
+    return `<a class="content-link" draggable="true" data-link=""
+      data-uuid="${uuid}" data-id="${itemId}" data-type="${entityType}"
+      data-pack="${packId}" data-tooltip="${spell.name}">
+      <img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">
+    </a>`
+      .replace(/\s+/g, ' ')
+      .trim();
+  } catch (error) {
+    console.error(`Error creating spell icon link for ${spell.name}:`, error);
+    // Fallback
+    return `<img src="${spell.img}" class="spell-icon" alt="${spell.name} icon">`;
+  }
 }
