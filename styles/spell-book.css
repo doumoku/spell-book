@@ -297,7 +297,6 @@
 
     label {
       margin-bottom: 0.25rem;
-      color: var(--spell-book-text-primary);
       font-size: var(--spell-book-font-sm);
     }
 
@@ -420,7 +419,6 @@
 .spell-book {
   .spell-level {
     align-items: center;
-    margin-bottom: 15px;
 
     &.collapsed {
       .collapse-indicator {
@@ -437,8 +435,8 @@
   .spell-level-heading {
     display: flex;
     align-items: center;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.35rem;
+    margin-bottom: 1px;
+    padding: 0.5rem 0;
     border-bottom: 1px solid var(--color-border-light);
     color: var(--spell-book-text-primary);
     font-size: 1.2em;
@@ -477,8 +475,8 @@
     position: relative;
     align-items: center;
     min-height: 40px;
-    margin-bottom: 2px;
-    padding: 0.25rem 0.375rem;
+    margin: 2px 0;
+    padding: 0 0.375rem;
     border-bottom: 1px solid var(--spell-book-border-light);
     border-radius: var(--spell-book-border-radius);
     overflow: hidden;
@@ -937,6 +935,7 @@
     .spell-level-heading {
       border-bottom: 1px solid var(--color-border-light-secondary);
       color: var(--color-text-dark-primary);
+      text-shadow: none;
     }
 
     .name-stacked {

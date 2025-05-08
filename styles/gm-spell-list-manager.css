@@ -182,7 +182,6 @@
       margin: 0;
       padding: 0;
       border: none;
-      color: var(--manager-text-primary);
       font-size: 1rem;
       cursor: pointer;
       background: none;
@@ -260,7 +259,6 @@
     .list-name {
       display: flex;
       align-items: center;
-      color: var(--manager-text-primary);
       font-weight: bold;
       font-size: var(--manager-font-lg);
 
@@ -355,7 +353,6 @@
     .action-button {
       padding: 0.25rem 0.5rem;
       border: none;
-      color: var(--color-text-light-0);
       font-size: var(--manager-font-md);
       cursor: pointer;
       background: none;
@@ -365,7 +362,6 @@
 
       &:hover {
         border: none;
-        color: var(--manager-text-primary);
         text-shadow: 0 0 8px var(--color-shadow-highlight);
         background: none;
         box-shadow: none;
@@ -771,6 +767,8 @@
     &.checkbox-filter {
       display: flex;
       align-items: center;
+      min-width: 0;
+      width: 100%;
 
       label {
         gap: 0.25rem;
@@ -778,7 +776,9 @@
         align-items: center;
         font-size: var(--manager-font-xs);
         text-transform: initial;
-        white-space: nowrap;
+        white-space: normal;
+        width: 100%;
+        overflow: visible;
       }
     }
   }
@@ -899,7 +899,72 @@
     margin: 0;
   }
 }
+/* ----------------------------------------- */
+/*  Light Theme Support                      */
+/* ----------------------------------------- */
+.theme-light {
+  .gm-spell-list-manager {
+    h2 {
+      color: #000;
+    }
 
+    .spell-lists-sidebar {
+      background: #f4f4f4e6;
+
+      .list-meta {
+        color: unset;
+      }
+
+      i {
+        color: unset;
+      }
+
+      i.has-custom-version {
+        color: #299792;
+      }
+
+      .sidebar-collapser {
+        background: inherit;
+      }
+    }
+
+    .selected-list-spells {
+      .spell-level-heading {
+        color: #111;
+      }
+
+      .name-stacked {
+        .title {
+          color: inherit;
+        }
+
+        .subtitle {
+          color: inherit;
+        }
+      }
+    }
+
+    .available-spells-sidebar {
+      label {
+        color: inherit;
+      }
+
+      .name-stacked {
+        .title {
+          color: inherit;
+        }
+
+        .subtitle {
+          color: inherit;
+        }
+      }
+
+      .filter-count {
+        color: #111;
+      }
+    }
+  }
+}
 /* ----------------------------------------- */
 /*  Responsive Design                        */
 /* ----------------------------------------- */
