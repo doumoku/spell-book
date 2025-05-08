@@ -154,6 +154,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           action: 'reset',
           icon: 'fas fa-undo',
           label: 'SPELLBOOK.UI.Reset',
+          tooltip: 'SPELLBOOK.UI.ResetTooltip',
           cssClass: 'reset-button'
         }
       ],
@@ -1111,17 +1112,41 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * Handle form reset action
    * @static
    */
-  static handleReset(_event, _form) {
+  static handleReset(event, form) {
     try {
       log(3, 'Handling form reset');
 
-      // Give the browser time to reset form elements
-      setTimeout(() => {
-        // Update spell items to match checkbox state
+      // Check if shift key is pressed for alternative reset
+      const isShiftReset = event.shiftKey;
+
+      if (isShiftReset) {
+        // Alternative reset: uncheck all boxes
+        log(3, 'Performing alternative reset (uncheck all)');
+
+        // Uncheck all non-disabled preparation checkboxes
+        const checkboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+
+        // Reset filters to default state
+        const filters = this.element.querySelectorAll('.spell-filters input, .spell-filters select');
+        filters.forEach((filter) => {
+          if (filter.type === 'checkbox') {
+            filter.checked = false;
+          } else if (filter.type === 'text' || filter.type === 'number') {
+            filter.value = '';
+          } else if (filter.tagName === 'SELECT') {
+            filter.selectedIndex = 0;
+          }
+        });
+
+        // Update UI classes
         const spellItems = this.element.querySelectorAll('.spell-item');
         spellItems.forEach((item) => {
+          // Only remove the class from non-disabled items
           const checkbox = item.querySelector('input[type="checkbox"]');
-          if (checkbox && !checkbox.checked) {
+          if (checkbox && !checkbox.disabled) {
             item.classList.remove('prepared-spell');
           }
         });
@@ -1141,12 +1166,47 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         // Clear the collapsed levels in user flags
         game.user.setFlag(MODULE.ID, FLAGS.COLLAPSED_LEVELS, []);
 
-        // Reapply filters
+        // Reapply filters and update tracking
         this._applyFilters();
-
-        // Update preparation tracking
         this._updateSpellPreparationTracking();
-      }, 0);
+
+        // Prevent default reset behavior
+        event.preventDefault();
+      } else {
+        // Original reset behavior
+        // Give the browser time to reset form elements
+        setTimeout(() => {
+          // Update spell items to match checkbox state
+          const spellItems = this.element.querySelectorAll('.spell-item');
+          spellItems.forEach((item) => {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox && !checkbox.checked) {
+              item.classList.remove('prepared-spell');
+            }
+          });
+
+          // Uncollapse all spell levels
+          const collapsedLevels = this.element.querySelectorAll('.spell-level.collapsed');
+          collapsedLevels.forEach((level) => {
+            level.classList.remove('collapsed');
+
+            // Update the aria-expanded attribute
+            const heading = level.querySelector('.spell-level-heading');
+            if (heading) {
+              heading.setAttribute('aria-expanded', 'true');
+            }
+          });
+
+          // Clear the collapsed levels in user flags
+          game.user.setFlag(MODULE.ID, FLAGS.COLLAPSED_LEVELS, []);
+
+          // Reapply filters
+          this._applyFilters();
+
+          // Update preparation tracking
+          this._updateSpellPreparationTracking();
+        }, 0);
+      }
     } catch (error) {
       log(1, 'Error handling reset:', error);
     }

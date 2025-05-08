@@ -87,6 +87,7 @@
   "SPELLBOOK.UI.NoResults": "No results found.",
   "SPELLBOOK.UI.OpenSpellBook": "Spell Book",
   "SPELLBOOK.UI.Reset": "Reset",
+  "SPELLBOOK.UI.ResetTooltip": "Reset (Shift+Click to clear all prepared spells)",
   "SPELLBOOK.UI.Save": "Save",
   "SPELLBOOK.UI.SpellCount": "{count} spells",
   "SPELLBOOK.UI.SpellFilters": "Spell Filters",
