@@ -12,7 +12,6 @@ import { registerHooks } from './hooks.mjs';
 import { initializeLogger, log } from './logger.mjs';
 import { registerSettings } from './settings.mjs';
 
-// Main initialization hook
 Hooks.once('init', async function () {
   try {
     log(3, `Initializing ${MODULE.NAME} module`);
@@ -26,6 +25,14 @@ Hooks.once('init', async function () {
     log(3, 'Module initialization complete');
   } catch (error) {
     console.error(`${MODULE.ID} | Error initializing module:`, error);
+  }
+});
+
+Hooks.once('ready', async function () {
+  try {
+    await unlockModuleCompendium();
+  } catch (error) {
+    log(1, 'Error in ready hook:', error);
   }
 });
 
@@ -94,5 +101,22 @@ function registerModuleAPI() {
     log(3, 'Module API registered');
   } catch (error) {
     log(1, 'Error registering module API:', error);
+  }
+}
+
+/**
+ * Check if the module's compendium is locked and unlock it if needed
+ */
+async function unlockModuleCompendium() {
+  try {
+    // Find the module's compendium pack
+    const pack = game.packs.find((p) => p.collection === 'spell-book.custom-spell-lists');
+
+    if (pack && pack.locked) {
+      log(3, 'Unlocking custom spell lists compendium');
+      await pack.configure({ locked: false });
+    }
+  } catch (error) {
+    log(1, 'Error unlocking module compendium:', error);
   }
 }
