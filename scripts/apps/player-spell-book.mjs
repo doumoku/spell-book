@@ -910,14 +910,20 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _updateSpellPreparationTracking() {
     try {
-      const preparedCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+      // Get non-disabled checkboxes for counting prepared spells
+      // This excludes always-prepared and granted spells
+      const countableCheckboxes = this.element.querySelectorAll('input[type="checkbox"][data-uuid]:not([disabled])');
+
+      // Get all checkboxes that have been disabled by reaching the max
+      // These will have a parent element with the 'max-prepared' class
+      const maxDisabledCheckboxes = this.element.querySelectorAll('.max-prepared input[type="checkbox"][data-uuid]');
 
       const countDisplay = this.element.querySelector('.spell-prep-tracking');
       if (!countDisplay) return;
 
-      // Count checked non-disabled checkboxes
+      // Count checked countable checkboxes
       let preparedCount = 0;
-      preparedCheckboxes.forEach((checkbox) => {
+      countableCheckboxes.forEach((checkbox) => {
         if (checkbox.checked) preparedCount++;
       });
 
@@ -945,7 +951,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           this.element.classList.add('at-max-spells');
 
           // Disable unchecked checkboxes
-          preparedCheckboxes.forEach((checkbox) => {
+          countableCheckboxes.forEach((checkbox) => {
             if (!checkbox.checked) {
               checkbox.disabled = true;
               checkbox.closest('.spell-item')?.classList.add('max-prepared');
@@ -955,8 +961,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
           // Remove max spells class
           this.element.classList.remove('at-max-spells');
 
-          // Re-enable all preparation checkboxes
-          preparedCheckboxes.forEach((checkbox) => {
+          // Re-enable all max-disabled checkboxes
+          maxDisabledCheckboxes.forEach((checkbox) => {
             checkbox.disabled = false;
             checkbox.closest('.spell-item')?.classList.remove('max-prepared');
           });
