@@ -1,8 +1,3 @@
-/**
- * Constants for the Spell Book module
- * @module spell-book/constants
- */
-
 //-----------------------------------------------------------------------------
 // CORE MODULE IDENTIFICATION
 //-----------------------------------------------------------------------------
@@ -29,7 +24,11 @@ export const FLAGS = {
   PREPARED_SPELLS: 'preparedSpells',
   COLLAPSED_LEVELS: 'collapsedSpellLevels',
   SIDEBAR_COLLAPSED: 'sidebarCollapsed',
-  GM_COLLAPSED_LEVELS: 'gmCollapsedSpellLevels'
+  GM_COLLAPSED_LEVELS: 'gmCollapsedSpellLevels',
+  CANTRIP_RULES: 'cantripRules',
+  CANTRIP_CHANGE_BEHAVIOR: 'cantripBehavior',
+  PREVIOUS_LEVEL: 'previousLevel',
+  PREVIOUS_CANTRIP_MAX: 'previousCantripMax'
 };
 
 //-----------------------------------------------------------------------------
@@ -73,7 +72,8 @@ export const TEMPLATES = {
   DIALOGS: {
     FILTER_CONFIG: 'modules/spell-book/templates/dialogs/filter-configuration.hbs',
     CREATE_SPELL_LIST: 'modules/spell-book/templates/dialogs/create-spell-list.hbs',
-    MANAGER_DOCUMENTATION: 'modules/spell-book/templates/dialogs/spell-list-manager-documentation.hbs'
+    MANAGER_DOCUMENTATION: 'modules/spell-book/templates/dialogs/spell-list-manager-documentation.hbs',
+    CANTRIP_SETTINGS: 'modules/spell-book/templates/dialogs/cantrip-settings.hbs'
   }
 };
 
@@ -91,7 +91,9 @@ export const SETTINGS = {
   DISTANCE_UNIT: 'distanceUnit',
   FILTER_CONFIGURATION: 'filterConfiguration',
   CUSTOM_SPELL_MAPPINGS: 'customSpellListMappings',
-  OPEN_SPELL_MANAGER: 'openSpellListManager'
+  OPEN_SPELL_MANAGER: 'openSpellListManager',
+  DEFAULT_CANTRIP_RULES: 'defaultCantripRules',
+  DEFAULT_CANTRIP_BEHAVIOR: 'defaultCantripBehavior'
 };
 
 //-----------------------------------------------------------------------------
@@ -223,3 +225,26 @@ export const DEFAULT_FILTER_CONFIG = [
     sortable: false
   }
 ];
+
+//-----------------------------------------------------------------------------
+// CANTRIP CONFIGURATION
+//-----------------------------------------------------------------------------
+
+/**
+ * Cantrip rules options
+ * @type {Object}
+ */
+export const CANTRIP_RULES = {
+  DEFAULT: 'default',
+  MODERN: 'modern'
+};
+
+/**
+ * Cantrip change behavior options
+ * @type {Object}
+ */
+export const CANTRIP_CHANGE_BEHAVIOR = {
+  UNRESTRICTED: 'unrestricted',
+  NOTIFY_GM: 'notifyGM',
+  LOCK_AFTER_MAX: 'lockAfterMax'
+};

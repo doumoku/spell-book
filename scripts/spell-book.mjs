@@ -1,11 +1,4 @@
-/**
- * Main entry point for the Spell Book module
- * Initializes all module components and registers API
- * @module spell-book
- */
-
-import { GMSpellListManager } from './apps/gm-spell-list-manager.mjs';
-import { PlayerSpellBook } from './apps/player-spell-book.mjs';
+import { createAPI } from './api.mjs';
 import { MODULE } from './constants.mjs';
 import { registerHandlebarsHelpers } from './helpers/handlebars-helpers.mjs';
 import { registerHooks } from './hooks.mjs';
@@ -20,11 +13,13 @@ Hooks.once('init', async function () {
     initializeFoundryConfiguration();
     await initializeModuleComponents();
     registerHandlebarsHelpers();
-    registerModuleAPI();
+
+    // Create and register the module API
+    createAPI();
 
     log(3, 'Module initialization complete');
   } catch (error) {
-    console.error(`${MODULE.ID} | Error initializing module:`, error);
+    log(1, `Error initializing module:`, error);
   }
 });
 
@@ -36,9 +31,6 @@ Hooks.once('ready', async function () {
   }
 });
 
-/**
- * Configure Foundry for module needs
- */
 function initializeFoundryConfiguration() {
   try {
     // Extend compendium indexes with needed fields
@@ -51,9 +43,6 @@ function initializeFoundryConfiguration() {
   }
 }
 
-/**
- * Initialize module components
- */
 async function initializeModuleComponents() {
   try {
     // Register module settings
@@ -71,42 +60,6 @@ async function initializeModuleComponents() {
   }
 }
 
-/**
- * Register the module API in the global scope
- */
-function registerModuleAPI() {
-  try {
-    const api = {
-      apps: {
-        PlayerSpellBook,
-        GMSpellListManager
-      },
-      openSpellBookForActor: (actor) => {
-        if (!actor) {
-          throw new Error('No actor provided');
-        }
-        const spellBook = new PlayerSpellBook(actor);
-        spellBook.render(true);
-        return spellBook;
-      },
-      openSpellListManager: () => {
-        const manager = new GMSpellListManager();
-        manager.render(true);
-        return manager;
-      }
-    };
-
-    globalThis.SPELLBOOK = api;
-
-    log(3, 'Module API registered');
-  } catch (error) {
-    log(1, 'Error registering module API:', error);
-  }
-}
-
-/**
- * Check if the module's compendium is locked and unlock it if needed
- */
 async function unlockModuleCompendium() {
   try {
     // Find the module's compendium pack

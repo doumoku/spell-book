@@ -41,12 +41,8 @@
 							</div>
 						</div>
 
-						<div class="spell-preparation">
-							<input type="checkbox" name="spellPreparation.{{compendiumUuid}}" id="prep-{{compendiumUuid}}" value="1"
-								data-uuid="{{compendiumUuid}}" data-name="{{name}}" data-ritual="{{filterData.isRitual}}"
-								data-was-prepared="{{preparation.prepared}}" {{checked preparation.prepared}}
-								{{disabled preparation.disabled}}
-								aria-label="{{#if preparation.prepared}}{{localize 'SPELLBOOK.Preparation.Unprepare' name=name}}{{else}}{{localize 'SPELLBOOK.Preparation.Prepare' name=name}}{{/if}}" />
+						<div class="spell-preparation dnd5e2">
+							{{{preparationCheckboxHtml}}}
 						</div>
 					</li>
 					{{/modules/spell-book/templates/components/spell-level.hbs}}

@@ -181,60 +181,24 @@
     transform: translateZ(0);
   }
 
-  /* Shared control styles */
-  .sidebar-control {
-    place-content: center;
-    display: grid;
-    z-index: var(--spell-book-z-index-controls);
-    position: absolute;
-    border-color: var(--spell-book-border-light);
-    border-radius: 0 3px 3px 0;
-    outline: none;
-    cursor: pointer;
-    background: var(--spell-book-bg-primary);
-    box-shadow: var(--spell-book-shadow-normal);
-    transition: var(--spell-book-transition-normal);
-    transform: translateZ(-1px);
-
-    i {
-      margin-left: 0.375rem;
-      font-size: 0.75rem;
-    }
-  }
-
-  .sidebar-collapser {
-    place-content: center;
-    display: grid;
-    z-index: var(--spell-book-z-index-controls);
-    position: absolute;
-    top: 3rem;
-    right: -16px;
-    width: var(--spell-book-control-width);
-    height: 32px;
-    border-color: var(--spell-book-border-light);
-    border-radius: 0 3px 3px 0;
-    outline: none;
-    cursor: pointer;
-    background: var(--spell-book-bg-primary);
-    box-shadow: var(--spell-book-shadow-normal);
-    transition: var(--spell-book-transition-normal);
-    transform: translateZ(-1px);
-
-    i {
-      margin-left: 0.375rem;
-      font-size: 0.75rem;
-    }
-  }
-
-  .filter-config-button {
-    place-content: center;
-    display: grid;
+  /* Sidebar Controls Container */
+  .sidebar-controls {
+    gap: 0.5rem;
+    display: flex;
     z-index: var(--spell-book-z-index-controls);
     position: absolute;
     top: 0.5rem;
     right: -22px;
-    width: var(--spell-book-config-width);
-    height: 32px;
+    flex-direction: column;
+    transform: translateZ(-1px);
+  }
+
+  /* Base styles for control buttons */
+  .filter-config-button,
+  .cantrip-config-button,
+  .sidebar-collapser {
+    place-content: center;
+    display: grid;
     border-color: var(--spell-book-border-light);
     border-radius: 0 3px 3px 0;
     outline: none;
@@ -242,12 +206,23 @@
     background: var(--spell-book-bg-primary);
     box-shadow: var(--spell-book-shadow-normal);
     transition: var(--spell-book-transition-normal);
-    transform: translateZ(-1px);
 
     i {
       margin-left: 0.375rem;
       font-size: 0.75rem;
     }
+  }
+
+  /* Size differences between buttons */
+  .filter-config-button,
+  .cantrip-config-button {
+    width: var(--spell-book-config-width);
+    height: 32px;
+  }
+
+  .sidebar-collapser {
+    width: var(--spell-book-control-width);
+    height: 32px;
   }
 
   .sidebar-footer-container {
@@ -297,6 +272,7 @@
 
     label {
       margin-bottom: 0.25rem;
+      color: var(--spell-book-text-primary);
       font-size: var(--spell-book-font-sm);
     }
 
@@ -320,6 +296,7 @@
       gap: 0.2rem;
       display: flex;
       align-items: center;
+      color: var(--spell-book-text-primary);
       font-size: var(--spell-book-font-md);
 
       &.active {
@@ -329,10 +306,11 @@
     }
   }
 
-  .range-filter {
+  .filter-range {
     .range-inputs {
       gap: 0.5rem;
       display: flex;
+      flex-wrap: nowrap;
       align-items: center;
       width: 100%;
     }
@@ -340,6 +318,7 @@
     input[type='number'] {
       box-sizing: border-box;
       width: 45%;
+      min-width: 0;
       padding: 0.25rem;
       font-size: var(--spell-book-font-sm);
       text-align: center;
@@ -354,6 +333,7 @@
       flex: none;
       width: 10%;
       height: var(--form-field-height);
+      color: var(--spell-book-text-primary);
     }
   }
 }
@@ -464,6 +444,22 @@
     list-style: none;
     transition: max-height 0.4s ease;
   }
+
+  .spell-level[data-level='0'] .spell-count {
+    display: none;
+  }
+
+  .cantrip-counter {
+    opacity: 0.85;
+    margin-left: 0.5rem;
+    font-weight: normal;
+    font-size: 0.8em;
+
+    &.at-max {
+      color: var(--color-level-warning);
+      font-weight: bold;
+    }
+  }
 }
 
 /* ----------------------------------------- */
@@ -501,6 +497,10 @@
           text-shadow: none;
         }
       }
+    }
+
+    .hide-checkbox .spell-preparation {
+      visibility: hidden;
     }
   }
 
@@ -599,6 +599,21 @@
         cursor: not-allowed;
       }
     }
+
+    .cantrip-lock-icon {
+      display: block;
+      width: 16px;
+      height: 16px;
+      margin: 0 auto;
+      color: #888;
+      font-size: 1.2em;
+      text-align: center;
+    }
+  }
+
+  .spell-item.cantrip-locked {
+    opacity: 0.8;
+    cursor: not-allowed;
   }
 }
 
@@ -699,6 +714,7 @@
     align-items: center;
     width: 100%;
     padding: 0.25rem 0;
+    color: var(--spell-book-text-primary);
 
     .max-count {
       margin-right: 0.25rem;
@@ -906,17 +922,70 @@
 }
 
 /* ----------------------------------------- */
+/*  Cantrip Settings Dialog                  */
+/* ----------------------------------------- */
+.cantrip-settings-dialog {
+  .cantrip-settings-form {
+    gap: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem;
+  }
+
+  .cantrip-stats {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 3px;
+    background: #0000000d;
+  }
+
+  .notice {
+    color: var(--color-text-dark-secondary);
+    font-style: italic;
+  }
+
+  .warning {
+    color: var(--color-level-warning);
+    font-weight: bold;
+  }
+
+  .override-buttons {
+    gap: 0.5rem;
+    display: flex;
+  }
+
+  button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .submit-button {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+/* ----------------------------------------- */
 /*  Theme Support                            */
 /* ----------------------------------------- */
 .theme-light {
   .spell-book {
+    label {
+      color: inherit;
+    }
+
+    .spell-prep-tracking {
+      color: inherit;
+    }
+
     .sidebar {
       background: #f4f4f4e6;
       box-shadow: 0 0 0.375rem #0000001a;
     }
 
     .sidebar-collapser,
-    .filter-config-button {
+    .filter-config-button,
+    .cantrip-config-button {
       background: #f4f4f4e6;
     }
 
@@ -1027,8 +1096,7 @@
       border-bottom: 1px solid var(--color-border-light);
     }
 
-    .sidebar-collapser,
-    .filter-config-button {
+    .sidebar-controls {
       display: none;
     }
 
