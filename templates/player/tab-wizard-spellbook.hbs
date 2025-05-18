@@ -1,0 +1,58 @@
+<div class="wizardtab tab {{#if (eq activeTab 'wizardtab')}}active{{/if}}" data-tab="wizardtab"
+	data-group="spellbook-tabs">
+	<div class="spells-container">
+		{{#if isLoading}}
+			{{> "modules/spell-book/templates/components/loading-spinner.hbs" size=3 message=(localize 'SPELLBOOK.Application.Loading')}}
+		{{else if hasError}}
+			{{> "modules/spell-book/templates/components/error-message.hbs" message=errorMessage}}
+		{{else}}
+			{{#if isWizard}}
+				<div class="spellbook-rules">
+					<h3>{{localize 'SPELLBOOK.Wizard.NewSpellsTitle'}}</h3>
+					<p>{{localize 'SPELLBOOK.Wizard.NewSpellsInfo1'}}</p>
+					<p>{{localize 'SPELLBOOK.Wizard.NewSpellsInfo2'}}</p>
+				</div>
+				{{#if spellLevels.length}}
+					{{#each spellLevels as |levelData|}}
+						{{#> "modules/spell-book/templates/components/spell-level.hbs" level=levelData.level levelName=levelData.levelName spells=levelData.spells}}
+							<li class="{{cssClasses}}" {{{dataAttributes}}} role="listitem">
+								<div class="spell-header">
+									<div class="spell-name">
+										{{{enrichedIcon}}}
+										<div class="name-stacked">
+											<span class="title">{{name}}</span>
+											<span class="subtitle">{{{formattedDetails}}}</span>
+										</div>
+									</div>
+									<div class="wizard-spell-status">
+										{{#if inWizardSpellbook}}
+											<span class="in-spellbook-tag" aria-label="Spell is in your spellbook">
+												{{localize 'SPELLBOOK.Wizard.InSpellbook'}}
+											</span>
+										{{else}}
+											{{#if (gt system.level 0)}}
+												<button class="copy-spell-btn" data-action="learnSpell" data-uuid="{{compendiumUuid}}"
+													type="button">
+													<i class="fas fa-book"></i> {{localize 'SPELLBOOK.Wizard.LearnSpell'}}
+												</button>
+											{{/if}}
+										{{/if}}
+									</div>
+								</div>
+							</li>
+							{{/modules/spell-book/templates/components/spell-level.hbs}}
+					{{/each}}
+				{{else}}
+					{{> "modules/spell-book/templates/components/empty-state.hbs" message=(localize 'SPELLBOOK.Errors.NoSpellsFound' actor=actor.name)}}
+				{{/if}}
+			{{else}}
+				<div class="wizard-unavailable">
+					<p>{{localize 'SPELLBOOK.Wizard.Unavailable'}}</p>
+				</div>
+			{{/if}}
+			<div class="no-filter-results" style="display: none;" role="status">
+				{{localize 'SPELLBOOK.Filters.NoResults'}}
+			</div>
+		{{/if}}
+	</div>
+</div>

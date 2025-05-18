@@ -1,5 +1,5 @@
 import { GMSpellListManager } from './apps/gm-spell-list-manager.mjs';
-import { CANTRIP_CHANGE_BEHAVIOR, CANTRIP_RULES, DEFAULT_FILTER_CONFIG, MODULE, SETTINGS } from './constants.mjs';
+import { CANTRIP_RULES, DEFAULT_FILTER_CONFIG, ENFORCEMENT_BEHAVIOR, MODULE, SETTINGS } from './constants.mjs';
 import { log } from './logger.mjs';
 
 /**
@@ -7,7 +7,6 @@ import { log } from './logger.mjs';
  */
 export function registerSettings() {
   try {
-    // Logging level setting
     game.settings.register(MODULE.ID, SETTINGS.LOGGING_LEVEL, {
       name: 'SPELLBOOK.Settings.Logger.Name',
       hint: 'SPELLBOOK.Settings.Logger.Hint',
@@ -27,7 +26,6 @@ export function registerSettings() {
       }
     });
 
-    // Rest prompt setting
     game.settings.register(MODULE.ID, SETTINGS.ENABLE_REST_PROMPT, {
       name: 'SPELLBOOK.Settings.EnableRestPrompt.Name',
       hint: 'SPELLBOOK.Settings.EnableRestPrompt.Hint',
@@ -37,18 +35,15 @@ export function registerSettings() {
       default: true
     });
 
-    // Custom spell list mappings (not shown in settings menu)
     game.settings.register(MODULE.ID, SETTINGS.CUSTOM_SPELL_MAPPINGS, {
-      name: 'Custom Spell List Mappings',
-      hint: 'Mappings between original and custom spell lists',
+      name: 'SPELLBOOK.Settings.CustomSpellMappings.Name',
+      hint: 'SPELLBOOK.Settings.CustomSpellMappings.Hint',
       scope: 'world',
       config: false,
       type: Object,
       default: {},
-      // Add validation to ensure proper structure
       onChange: (value) => {
         try {
-          // Simple validation to ensure it's an object
           if (typeof value !== 'object' || value === null) {
             log(2, 'Invalid custom spell mappings format, resetting to default');
             game.settings.set(MODULE.ID, SETTINGS.CUSTOM_SPELL_MAPPINGS, {});
@@ -59,7 +54,6 @@ export function registerSettings() {
       }
     });
 
-    // Distance unit setting (affects range filter)
     game.settings.register(MODULE.ID, SETTINGS.DISTANCE_UNIT, {
       name: 'SPELLBOOK.Settings.DistanceUnit.Name',
       hint: 'SPELLBOOK.Settings.DistanceUnit.Hint',
@@ -73,18 +67,15 @@ export function registerSettings() {
       default: 'feet'
     });
 
-    // Filter configuration (not shown in settings menu)
     game.settings.register(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, {
-      name: 'Filter Configuration',
-      hint: 'Configure which filters are enabled and their display order',
+      name: 'SPELLBOOK.Settings.FilterConfiguration.Name',
+      hint: 'SPELLBOOK.Settings.FilterConfiguration.Hint',
       scope: 'client',
       config: false,
       type: Object,
       default: DEFAULT_FILTER_CONFIG,
-      // Add validation
       onChange: (value) => {
         try {
-          // Ensure value is an array
           if (!Array.isArray(value)) {
             log(2, 'Invalid filter configuration format, resetting to default');
             game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, DEFAULT_FILTER_CONFIG);
@@ -95,7 +86,6 @@ export function registerSettings() {
       }
     });
 
-    // Add Spell List Manager button
     game.settings.registerMenu(MODULE.ID, SETTINGS.OPEN_SPELL_MANAGER, {
       name: 'SPELLBOOK.Settings.OpenSpellListManager.Name',
       hint: 'SPELLBOOK.Settings.OpenSpellListManager.Hint',
@@ -106,37 +96,57 @@ export function registerSettings() {
       restricted: true
     });
 
-    /* Cantrip Settings */
     game.settings.register(MODULE.ID, SETTINGS.DEFAULT_CANTRIP_RULES, {
-      name: 'SPELLBOOK.Settings.DefaultCantripRules',
-      hint: 'SPELLBOOK.Settings.DefaultCantripRulesHint',
+      name: 'SPELLBOOK.Settings.DefaultCantripRules.Name',
+      hint: 'SPELLBOOK.Settings.DefaultCantripRules.Hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        [CANTRIP_RULES.DEFAULT]: 'SPELLBOOK.Cantrips.RulesDefault',
-        [CANTRIP_RULES.MODERN]: 'SPELLBOOK.Cantrips.RulesModern'
+        [CANTRIP_RULES.LEGACY]: 'SPELLBOOK.Cantrips.RulesLegacy',
+        [CANTRIP_RULES.MODERN_LEVEL_UP]: 'SPELLBOOK.Cantrips.RulesModernLevelUp',
+        [CANTRIP_RULES.MODERN_LONG_REST]: 'SPELLBOOK.Cantrips.RulesModernLongRest'
       },
-      default: CANTRIP_RULES.DEFAULT
+      default: CANTRIP_RULES.LEGACY
     });
 
-    game.settings.register(MODULE.ID, SETTINGS.DEFAULT_CANTRIP_BEHAVIOR, {
-      name: 'SPELLBOOK.Settings.DefaultCantripBehavior',
-      hint: 'SPELLBOOK.Settings.DefaultCantripBehaviorHint',
+    game.settings.register(MODULE.ID, SETTINGS.DEFAULT_ENFORCEMENT_BEHAVIOR, {
+      name: 'SPELLBOOK.Settings.DefaultEnforcementBehavior.Name',
+      hint: 'SPELLBOOK.Settings.DefaultEnforcementBehavior.Hint',
       scope: 'world',
       config: true,
       type: String,
       choices: {
-        [CANTRIP_CHANGE_BEHAVIOR.UNRESTRICTED]: 'SPELLBOOK.Cantrips.BehaviorUnrestricted',
-        [CANTRIP_CHANGE_BEHAVIOR.NOTIFY_GM]: 'SPELLBOOK.Cantrips.BehaviorNotifyGM',
-        [CANTRIP_CHANGE_BEHAVIOR.LOCK_AFTER_MAX]: 'SPELLBOOK.Cantrips.BehaviorLockAfterMax'
+        [ENFORCEMENT_BEHAVIOR.UNENFORCED]: 'SPELLBOOK.Cantrips.BehaviorUnenforced',
+        [ENFORCEMENT_BEHAVIOR.NOTIFY_GM]: 'SPELLBOOK.Cantrips.BehaviorNotifyGM',
+        [ENFORCEMENT_BEHAVIOR.ENFORCED]: 'SPELLBOOK.Cantrips.BehaviorEnforced'
       },
-      default: CANTRIP_CHANGE_BEHAVIOR.NOTIFY_GM
+      default: ENFORCEMENT_BEHAVIOR.NOTIFY_GM
+    });
+
+    game.settings.register(MODULE.ID, SETTINGS.DISABLE_CANTRIP_SWAP_PROMPT, {
+      name: 'SPELLBOOK.Settings.DisableCantripSwapPrompt.Name',
+      hint: 'SPELLBOOK.Settings.DisableCantripSwapPrompt.Hint',
+      scope: 'client',
+      config: true,
+      type: Boolean,
+      default: false
+    });
+
+    game.settings.register(MODULE.ID, SETTINGS.ENABLE_JOURNAL_BUTTON, {
+      name: 'SPELLBOOK.Settings.EnableJournalButton.Name',
+      hint: 'SPELLBOOK.Settings.EnableJournalButton.Hint',
+      scope: 'world',
+      config: true,
+      type: Boolean,
+      default: false,
+      onChange: () => {
+        if (game.user.isGM) ui.sidebar.render(true);
+      }
     });
 
     log(3, 'Module settings registered');
   } catch (error) {
     log(1, 'Error registering settings:', error);
-    log(1, `Fatal error registering settings:`, error);
   }
 }

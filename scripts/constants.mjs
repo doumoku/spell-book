@@ -1,7 +1,3 @@
-//-----------------------------------------------------------------------------
-// CORE MODULE IDENTIFICATION
-//-----------------------------------------------------------------------------
-
 /**
  * Core module identification and configuration constants
  * @type {Object}
@@ -9,106 +5,94 @@
 export const MODULE = {
   ID: 'spell-book',
   NAME: 'Spell Book',
+  PACK: 'spell-book.custom-spell-lists',
   LOG_LEVEL: 0
 };
-
-//-----------------------------------------------------------------------------
-// FLAGS
-//-----------------------------------------------------------------------------
 
 /**
  * Flags used for data storage and state tracking
  * @type {Object}
  */
 export const FLAGS = {
-  PREPARED_SPELLS: 'preparedSpells',
-  COLLAPSED_LEVELS: 'collapsedSpellLevels',
-  SIDEBAR_COLLAPSED: 'sidebarCollapsed',
-  GM_COLLAPSED_LEVELS: 'gmCollapsedSpellLevels',
   CANTRIP_RULES: 'cantripRules',
-  CANTRIP_CHANGE_BEHAVIOR: 'cantripBehavior',
+  CANTRIP_SWAP_TRACKING: 'cantripSwapTracking',
+  COLLAPSED_FOLDERS: 'collapsedFolders',
+  COLLAPSED_LEVELS: 'collapsedSpellLevels',
+  ENFORCEMENT_BEHAVIOR: 'enforcementBehavior',
+  FORCE_WIZARD_MODE: 'forceWizardMode',
+  GM_COLLAPSED_LEVELS: 'gmCollapsedSpellLevels',
+  PREPARED_SPELLS: 'preparedSpells',
+  PREVIOUS_CANTRIP_MAX: 'previousCantripMax',
   PREVIOUS_LEVEL: 'previousLevel',
-  PREVIOUS_CANTRIP_MAX: 'previousCantripMax'
+  SIDEBAR_COLLAPSED: 'sidebarCollapsed',
+  WIZARD_COPIED_SPELLS: 'wizardCopiedSpells',
+  WIZARD_LEARNED_SPELLS: 'wizardLearnedSpells',
+  WIZARD_LONG_REST_TRACKING: 'wizardLongRestTracking',
+  WIZARD_SPELLBOOK: 'wizardSpellbook'
 };
-
-//-----------------------------------------------------------------------------
-// TEMPLATE PATHS
-//-----------------------------------------------------------------------------
 
 /**
  * Handlebars template paths used by the module
  * @type {Object}
  */
 export const TEMPLATES = {
-  PLAYER: {
-    MAIN: 'modules/spell-book/templates/player/spell-book.hbs',
-    SIDEBAR: 'modules/spell-book/templates/player/sidebar.hbs',
-    SPELL_LIST: 'modules/spell-book/templates/player/spell-list.hbs',
-    FOOTER: 'modules/spell-book/templates/player/footer.hbs'
-  },
-
-  GM: {
-    MAIN: 'modules/spell-book/templates/gm/manager.hbs',
-    SPELL_LISTS: 'modules/spell-book/templates/gm/spell-lists.hbs',
-    LIST_CONTENT: 'modules/spell-book/templates/gm/list-content.hbs',
-    AVAILABLE_SPELLS: 'modules/spell-book/templates/gm/available-spells.hbs',
-    FOOTER: 'modules/spell-book/templates/gm/footer.hbs'
-  },
-
   COMPONENTS: {
-    LOADING: 'modules/spell-book/templates/components/loading-spinner.hbs',
-    ERROR: 'modules/spell-book/templates/components/error-message.hbs',
     EMPTY: 'modules/spell-book/templates/components/empty-state.hbs',
-    SPELL_LEVEL: 'modules/spell-book/templates/components/spell-level.hbs',
+    ERROR: 'modules/spell-book/templates/components/error-message.hbs',
+    LOADING: 'modules/spell-book/templates/components/loading-spinner.hbs',
     SPELL_ITEM: 'modules/spell-book/templates/components/spell-item.hbs',
-    FILTERS: {
-      SEARCH: 'modules/spell-book/templates/components/filter-fields/search.hbs',
-      DROPDOWN: 'modules/spell-book/templates/components/filter-fields/dropdown.hbs',
-      RANGE: 'modules/spell-book/templates/components/filter-fields/range.hbs',
-      CHECKBOX: 'modules/spell-book/templates/components/filter-fields/checkbox.hbs'
-    }
+    SPELL_LEVEL: 'modules/spell-book/templates/components/spell-level.hbs'
   },
-
   DIALOGS: {
-    FILTER_CONFIG: 'modules/spell-book/templates/dialogs/filter-configuration.hbs',
     CREATE_SPELL_LIST: 'modules/spell-book/templates/dialogs/create-spell-list.hbs',
+    FILTER_CONFIG: 'modules/spell-book/templates/dialogs/filter-configuration.hbs',
     MANAGER_DOCUMENTATION: 'modules/spell-book/templates/dialogs/spell-list-manager-documentation.hbs',
-    CANTRIP_SETTINGS: 'modules/spell-book/templates/dialogs/cantrip-settings.hbs'
+    SPELLBOOK_SETTINGS: 'modules/spell-book/templates/dialogs/spellbook-settings.hbs'
+  },
+  GM: {
+    AVAILABLE_SPELLS: 'modules/spell-book/templates/gm/available-spells.hbs',
+    FOOTER: 'modules/spell-book/templates/gm/footer.hbs',
+    LIST_CONTENT: 'modules/spell-book/templates/gm/list-content.hbs',
+    MAIN: 'modules/spell-book/templates/gm/manager.hbs',
+    SPELL_LISTS: 'modules/spell-book/templates/gm/spell-lists.hbs'
+  },
+  PLAYER: {
+    CONTAINER: 'modules/spell-book/templates/player/spell-container.hbs',
+    FOOTER: 'modules/spell-book/templates/player/footer.hbs',
+    SIDEBAR: 'modules/spell-book/templates/player/sidebar.hbs',
+    TAB_NAV: 'modules/spell-book/templates/player/tab-navigation.hbs',
+    TAB_SPELLS: 'modules/spell-book/templates/player/tab-spells.hbs',
+    TAB_WIZARD_SPELLBOOK: 'modules/spell-book/templates/player/tab-wizard-spellbook.hbs'
   }
 };
-
-//-----------------------------------------------------------------------------
-// SETTINGS
-//-----------------------------------------------------------------------------
 
 /**
  * Settings keys used by the module
  * @type {Object}
  */
 export const SETTINGS = {
-  LOGGING_LEVEL: 'loggingLevel',
-  ENABLE_REST_PROMPT: 'enableRestPrompt',
-  DISTANCE_UNIT: 'distanceUnit',
-  FILTER_CONFIGURATION: 'filterConfiguration',
   CUSTOM_SPELL_MAPPINGS: 'customSpellListMappings',
-  OPEN_SPELL_MANAGER: 'openSpellListManager',
   DEFAULT_CANTRIP_RULES: 'defaultCantripRules',
-  DEFAULT_CANTRIP_BEHAVIOR: 'defaultCantripBehavior'
+  DEFAULT_ENFORCEMENT_BEHAVIOR: 'defaultEnforcementBehavior',
+  DISABLE_CANTRIP_SWAP_PROMPT: 'disableCantripSwapPrompt',
+  DISTANCE_UNIT: 'distanceUnit',
+  ENABLE_JOURNAL_BUTTON: 'enableJournalButton',
+  ENABLE_REST_PROMPT: 'enableRestPrompt',
+  FILTER_CONFIGURATION: 'filterConfiguration',
+  LOGGING_LEVEL: 'loggingLevel',
+  OPEN_SPELL_MANAGER: 'openSpellListManager',
+  RUN_MIGRATIONS: 'runMigrations'
 };
-
-//-----------------------------------------------------------------------------
-// FILTER CONFIGURATION
-//-----------------------------------------------------------------------------
 
 /**
  * Filter types used in configuration
  * @type {Object}
  */
 export const FILTER_TYPES = {
-  SEARCH: 'search',
-  DROPDOWN: 'dropdown',
   CHECKBOX: 'checkbox',
-  RANGE: 'range'
+  DROPDOWN: 'dropdown',
+  RANGE: 'range',
+  SEARCH: 'search'
 };
 
 /**
@@ -118,13 +102,12 @@ export const FILTER_TYPES = {
 export const SORT_BY = {
   LEVEL: 'level',
   NAME: 'name',
-  SCHOOL: 'school',
-  PREPARED: 'prepared'
+  PREPARED: 'prepared',
+  SCHOOL: 'school'
 };
 
 /**
  * Default filter configuration
- * Defines all available filters and their initial state
  * @type {Array}
  */
 export const DEFAULT_FILTER_CONFIG = [
@@ -226,25 +209,58 @@ export const DEFAULT_FILTER_CONFIG = [
   }
 ];
 
-//-----------------------------------------------------------------------------
-// CANTRIP CONFIGURATION
-//-----------------------------------------------------------------------------
-
 /**
  * Cantrip rules options
  * @type {Object}
  */
 export const CANTRIP_RULES = {
-  DEFAULT: 'default',
-  MODERN: 'modern'
+  LEGACY: 'legacy',
+  MODERN_LEVEL_UP: 'levelUp',
+  MODERN_LONG_REST: 'longRest'
 };
 
 /**
  * Cantrip change behavior options
  * @type {Object}
  */
-export const CANTRIP_CHANGE_BEHAVIOR = {
-  UNRESTRICTED: 'unrestricted',
+export const ENFORCEMENT_BEHAVIOR = {
+  ENFORCED: 'enforced',
   NOTIFY_GM: 'notifyGM',
-  LOCK_AFTER_MAX: 'lockAfterMax'
+  UNENFORCED: 'unenforced'
+};
+
+/**
+ * Default wizard configuration values
+ * @type {Object}
+ */
+export const WIZARD_DEFAULTS = {
+  RITUAL_CASTING: true,
+  SPELLS_PER_LEVEL: 2,
+  STARTING_SPELLS: 6
+};
+
+/**
+ * Wizard spell source types
+ * @type {Object}
+ */
+export const WIZARD_SPELL_SOURCE = {
+  COPIED: 'copied',
+  FREE: 'free',
+  INITIAL: 'initial',
+  LEVEL_UP: 'levelUp'
+};
+
+/**
+ * Class identifiers for spellcasting classes
+ * @type {Object}
+ */
+export const CLASS_IDENTIFIERS = {
+  ARTIFICER: 'artificer',
+  BARD: 'bard',
+  CLERIC: 'cleric',
+  DRUID: 'druid',
+  RANGER: 'ranger',
+  SORCERER: 'sorcerer',
+  WARLOCK: 'warlock',
+  WIZARD: 'wizard'
 };

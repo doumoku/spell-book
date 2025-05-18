@@ -16,12 +16,12 @@
     }
   ],
   "compatibility": {
-    "maximum": "13.340",
+    "maximum": "13.999",
     "minimum": "12.331",
     "verified": "12.331"
   },
   "download": "",
-  "esmodules": ["scripts/spell-book.mjs", "scripts/constants.mjs", "scripts/hooks.mjs"],
+  "esmodules": ["scripts/spell-book.mjs", "scripts/constants.mjs"],
   "flags": {
     "hotReload": {
       "extensions": ["css", "html", "hbs", "json"],
@@ -69,6 +69,5 @@
     }
   ],
   "styles": ["styles/spell-book.css", "styles/gm-spell-list-manager.css"],
-  "url": "https://github.com/Sayshal/spell-book",
-  "hasStorage": true
+  "url": "https://github.com/Sayshal/spell-book"
 }
