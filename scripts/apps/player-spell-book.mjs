@@ -215,7 +215,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   _getSpellDataAttributes(spell) {
     return [
       `data-spell-uuid="${spell.compendiumUuid}"`,
-      `data-spell-level="${spell.level || 0}"`,
+      `data-spell-level="${spell.system.level || 0}"`,
       `data-spell-school="${spell.system?.school || ''}"`,
       `data-casting-time-type="${spell.filterData?.castingTime?.type || ''}"`,
       `data-casting-time-value="${spell.filterData?.castingTime?.value || ''}"`,
