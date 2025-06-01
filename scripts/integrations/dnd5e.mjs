@@ -1,10 +1,9 @@
 import { GMSpellListManager } from '../apps/gm-spell-list-manager.mjs';
 import { PlayerSpellBook } from '../apps/player-spell-book.mjs';
-import { CANTRIP_RULES, FLAGS, MODULE, SETTINGS } from '../constants.mjs';
-import * as genericUtils from '../helpers/generic-utils.mjs';
+import { FLAGS, MODULE, SETTINGS } from '../constants.mjs';
 import * as discoveryUtils from '../helpers/spell-discovery.mjs';
-import { SpellManager } from '../helpers/spell-preparation.mjs';
 import { log } from '../logger.mjs';
+import { SpellManager } from '../managers/spell-manager.mjs';
 
 /**
  * Register hooks related to DnD5e system integration
@@ -24,116 +23,135 @@ export function registerDnD5eIntegration() {
  * Add spellbook button to character sheet
  */
 function addSpellbookButton(app, html, data) {
-  try {
-    const actor = data.actor;
-    if (!canAddSpellbookButton(actor, html)) return;
-
-    const spellsTab = html[0].querySelector('.tab.spells');
-    const controlsList = spellsTab.querySelector('ul.controls');
-    if (!controlsList) return;
-
-    const button = createSpellBookButton(actor);
-    const listItem = document.createElement('li');
-    listItem.appendChild(button);
-    controlsList.appendChild(listItem);
-
-    log(3, `Added spell book button to ${actor.name}'s character sheet`);
-  } catch (error) {
-    log(1, `Error adding spell book button:`, error);
-  }
+  const actor = data.actor;
+  if (!canAddSpellbookButton(actor, html)) return;
+  const spellsTab = html[0].querySelector('.tab.spells');
+  const controlsList = spellsTab.querySelector('ul.controls');
+  if (!controlsList) return;
+  const button = createSpellBookButton(actor);
+  const listItem = document.createElement('li');
+  listItem.appendChild(button);
+  controlsList.appendChild(listItem);
 }
 
 /**
- * Handle long rest completion for wizard cantrip swapping
+ * Handle long rest completion for all spellcasting classes
  */
 async function handleRestCompleted(actor, result, config) {
-  try {
-    if (!result.longRest) return;
-    if (!genericUtils.isWizard(actor)) return;
-
-    log(3, `Long rest completed for wizard ${actor.name}, checking cantrip rules`);
-    const spellManager = new SpellManager(actor);
-    const rulesVersion = spellManager.getSettings().rules;
-
-    if (rulesVersion !== CANTRIP_RULES.MODERN_LONG_REST) {
-      log(3, `Wizard ${actor.name} uses ${rulesVersion} rules, skipping cantrip swap prompt`);
-      return;
+  if (!result.longRest) return;
+  log(3, `Long rest completed for ${actor.name}, processing all spellcasting classes`);
+  const classRules = actor.getFlag(MODULE.ID, FLAGS.CLASS_RULES) || {};
+  let hasAnyLongRestMechanics = false;
+  const longRestClasses = { cantripSwapping: [], spellSwapping: [] };
+  for (const [classIdentifier, rules] of Object.entries(classRules)) {
+    const needsSpellSwap = rules.spellSwapping === 'longRest';
+    const needsCantripSwap = rules.cantripSwapping === 'longRest';
+    if (needsSpellSwap || needsCantripSwap) {
+      hasAnyLongRestMechanics = true;
+      log(3, `Class ${classIdentifier} needs long rest mechanics: spell swap=${needsSpellSwap}, cantrip swap=${needsCantripSwap}`);
+      if (needsCantripSwap) {
+        const spellcastingClasses = actor.items.filter((i) => i.type === 'class' && i.system.spellcasting?.progression !== 'none');
+        const classItem = spellcastingClasses.find((c) => c.system.identifier?.toLowerCase() === classIdentifier || c.name.toLowerCase() === classIdentifier);
+        const className = classItem?.name || classIdentifier;
+        longRestClasses.cantripSwapping.push({ identifier: classIdentifier, name: className });
+      }
+      if (needsSpellSwap) {
+        const spellcastingClasses = actor.items.filter((i) => i.type === 'class' && i.system.spellcasting?.progression !== 'none');
+        const classItem = spellcastingClasses.find((c) => c.system.identifier?.toLowerCase() === classIdentifier || c.name.toLowerCase() === classIdentifier);
+        const className = classItem?.name || classIdentifier;
+        longRestClasses.spellSwapping.push({ identifier: classIdentifier, name: className });
+      }
+      if (needsSpellSwap) {
+        const swapTracking = actor.getFlag(MODULE.ID, FLAGS.SWAP_TRACKING) || {};
+        if (!swapTracking[classIdentifier]) swapTracking[classIdentifier] = {};
+        swapTracking[classIdentifier].longRest = true;
+        await actor.setFlag(MODULE.ID, FLAGS.SWAP_TRACKING, swapTracking);
+        log(3, `Set spell swap flag for class ${classIdentifier}`);
+      }
     }
-
-    await spellManager.resetSwapTracking();
-    await handleCantripSwapPrompt(actor);
-  } catch (error) {
-    log(1, `Error in long rest completed hook:`, error);
   }
+  if (hasAnyLongRestMechanics) {
+    await actor.setFlag(MODULE.ID, FLAGS.LONG_REST_COMPLETED, true);
+    log(3, `Set long rest completion flag for ${actor.name} - available for all classes that need it`);
+    await handleLongRestSwapPrompt(actor, longRestClasses);
+  }
+  if (!hasAnyLongRestMechanics) log(3, `No classes on ${actor.name} require long rest mechanics, skipping`);
 }
 
 /**
  * Add spellbook button to journal sidebar footer
  */
 function addJournalSpellBookButton(app, html, data) {
-  try {
-    if (app.tabName !== 'journal') return;
-    if (!game.settings.get(MODULE.ID, SETTINGS.ENABLE_JOURNAL_BUTTON)) return;
-    if (!game.user.isGM) return;
-    const footer = html.find('.directory-footer');
-    if (!footer.length) return;
-    if (footer.find('.spell-book-journal-button').length) return;
-    const button = document.createElement('button');
-    button.classList.add('spell-book-journal-button');
-    button.innerHTML = `<i class="fas fa-bars-progress"></i> ${game.i18n.localize('SPELLBOOK.UI.JournalButton')}`;
-    button.addEventListener('click', () => {
-      const manager = new GMSpellListManager();
-      manager.render(true);
-    });
-    footer[0].appendChild(button);
-  } catch (error) {
-    log(1, 'Error adding Spell Book button to Journal sidebar:', error);
-  }
+  if (app.tabName !== 'journal') return;
+  if (!game.settings.get(MODULE.ID, SETTINGS.ENABLE_JOURNAL_BUTTON)) return;
+  if (!game.user.isGM) return;
+  const footer = html.find('.directory-footer');
+  if (!footer.length) return;
+  if (footer.find('.spell-book-journal-button').length) return;
+  const button = document.createElement('button');
+  button.classList.add('spell-book-journal-button');
+  button.innerHTML = `<i class="fas fa-bars-progress"></i> ${game.i18n.localize('SPELLBOOK.UI.JournalButton')}`;
+  button.addEventListener('click', () => {
+    const manager = new GMSpellListManager();
+    manager.render(true);
+  });
+  footer[0].appendChild(button);
 }
 
 /**
- * Handle the cantrip swap prompt after a long rest
+ * Handle the long rest swap prompt for all applicable classes
  */
-async function handleCantripSwapPrompt(actor) {
-  const isPromptDisabled = game.settings.get(MODULE.ID, SETTINGS.DISABLE_CANTRIP_SWAP_PROMPT);
-
+async function handleLongRestSwapPrompt(actor, longRestClasses) {
+  const isPromptDisabled = game.settings.get(MODULE.ID, SETTINGS.DISABLE_LONG_REST_SWAP_PROMPT);
   if (isPromptDisabled) {
-    log(3, `Cantrip swap prompt disabled by user preference, setting flag silently`);
-    await actor.setFlag(MODULE.ID, FLAGS.WIZARD_LONG_REST_TRACKING, true);
-    ui.notifications.info(game.i18n.format('SPELLBOOK.Cantrips.SwapAvailableNotification', { name: actor.name }));
+    log(3, `Long rest swap prompt disabled by user preference, flag already set`);
+    const classNames = [...longRestClasses.cantripSwapping.map((c) => c.name), ...longRestClasses.spellSwapping.map((c) => c.name)];
+    const uniqueClassNames = [...new Set(classNames)];
+    ui.notifications.info(game.i18n.format('SPELLBOOK.LongRest.SwapAvailableNotification', { name: actor.name, classes: uniqueClassNames.join(', ') }));
     return;
   }
-
-  const dialogResult = await showCantripSwapDialog();
+  const dialogResult = await showLongRestSwapDialog(longRestClasses);
   if (dialogResult === 'confirm') {
-    await actor.setFlag(MODULE.ID, FLAGS.WIZARD_LONG_REST_TRACKING, true);
     const spellBook = new PlayerSpellBook(actor);
     spellBook.render(true);
   }
 }
 
 /**
- * Show the cantrip swap dialog
+ * Show the long rest swap dialog with dynamic content
  */
-async function showCantripSwapDialog() {
+async function showLongRestSwapDialog(longRestClasses) {
+  let content = `<div class="long-rest-swap-info">`;
+  content += `<p>${game.i18n.localize('SPELLBOOK.LongRest.SwapPromptIntro')}</p>`;
+  if (longRestClasses.cantripSwapping.length > 0) {
+    content += `<div class="swap-category">`;
+    content += `<ul>`;
+    for (const classInfo of longRestClasses.cantripSwapping) {
+      content += `<li>${game.i18n.format('SPELLBOOK.LongRest.CantripSwappingClass', { className: classInfo.name })}</li>`;
+    }
+    content += `</ul>`;
+    content += `</div>`;
+  }
+  if (longRestClasses.spellSwapping.length > 0) {
+    content += `<div class="swap-category">`;
+    content += `<ul>`;
+    for (const classInfo of longRestClasses.spellSwapping) {
+      content += `<li>${game.i18n.format('SPELLBOOK.LongRest.SpellSwappingClass', { className: classInfo.name })}</li>`;
+    }
+    content += `</ul>`;
+    content += `</div>`;
+  }
+  content += `</div>`;
   return foundry.applications.api.DialogV2.wait({
-    title: game.i18n.localize('SPELLBOOK.Wizard.SwapCantripTitle'),
-    content: `<p>${game.i18n.localize('SPELLBOOK.Wizard.SwapCantripPrompt')}</p>`,
+    content: content,
+    window: { icon: 'fas fa-bed', resizable: false, minimizable: false, positioned: true, title: game.i18n.localize('SPELLBOOK.LongRest.SwapTitle') },
+    position: { height: 'auto', width: '450' },
     buttons: [
-      {
-        icon: 'fas fa-book-spells',
-        label: game.i18n.localize('SPELLBOOK.Wizard.SwapCantripConfirm'),
-        action: 'confirm',
-        className: 'dialog-button'
-      },
-      {
-        icon: 'fas fa-times',
-        label: game.i18n.localize('SPELLBOOK.Wizard.SwapCantripCancel'),
-        action: 'cancel',
-        className: 'dialog-button'
-      }
+      { icon: 'fas fa-book', label: game.i18n.localize('SPELLBOOK.LongRest.SwapConfirm'), action: 'confirm', className: 'dialog-button' },
+      { icon: 'fas fa-times', label: game.i18n.localize('SPELLBOOK.LongRest.SwapCancel'), action: 'cancel', className: 'dialog-button' }
     ],
-    default: 'cancel'
+    default: 'cancel',
+    rejectClose: false
   });
 }
 
@@ -161,31 +179,27 @@ function createSpellBookButton(actor) {
 /**
  * Handle spellbook button click
  */
-async function onSpellBookButtonClick(actor, ev) {
-  ev.preventDefault();
-  try {
-    if (genericUtils.isWizard(actor)) {
-      const spellManager = new SpellManager(actor);
-      const rulesVersion = spellManager.getSettings().rules;
-
-      if (rulesVersion === CANTRIP_RULES.MODERN_LONG_REST) {
-        const longRestFlagValue = actor.getFlag(MODULE.ID, FLAGS.WIZARD_LONG_REST_TRACKING);
-        const swapData = actor.getFlag(MODULE.ID, FLAGS.CANTRIP_SWAP_TRACKING)?.longRest;
-        const hasCompletedSwap = swapData && swapData.hasLearned && swapData.hasUnlearned;
-
-        if (hasCompletedSwap) {
-          await spellManager.resetSwapTracking();
-        }
-
-        if (longRestFlagValue === undefined || longRestFlagValue === null) {
-          await actor.setFlag(MODULE.ID, FLAGS.WIZARD_LONG_REST_TRACKING, true);
-        }
+async function onSpellBookButtonClick(actor, event) {
+  event.preventDefault();
+  const classRules = actor.getFlag(MODULE.ID, FLAGS.CLASS_RULES) || {};
+  const hasLongRestSwapping = Object.values(classRules).some((rules) => rules.cantripSwapping === 'longRest' || rules.spellSwapping === 'longRest');
+  if (hasLongRestSwapping) {
+    const longRestFlagValue = actor.getFlag(MODULE.ID, FLAGS.LONG_REST_COMPLETED);
+    const swapTracking = actor.getFlag(MODULE.ID, FLAGS.SWAP_TRACKING) || {};
+    const cantripSwapTracking = actor.getFlag(MODULE.ID, FLAGS.CANTRIP_SWAP_TRACKING) || {};
+    let hasCompletedSwaps = false;
+    for (const [classId, tracking] of Object.entries(cantripSwapTracking)) {
+      if (tracking.longRest?.hasLearned && tracking.longRest?.hasUnlearned) {
+        hasCompletedSwaps = true;
+        break;
       }
     }
-
-    const spellBook = new PlayerSpellBook(actor);
-    spellBook.render(true);
-  } catch (error) {
-    log(1, `Error opening spell book:`, error);
+    if (hasCompletedSwaps) {
+      const spellManager = new SpellManager(actor);
+      await spellManager.resetSwapTracking();
+    }
+    if (longRestFlagValue === undefined || longRestFlagValue === null) await actor.setFlag(MODULE.ID, FLAGS.LONG_REST_COMPLETED, true);
   }
+  const spellBook = new PlayerSpellBook(actor);
+  spellBook.render(true);
 }

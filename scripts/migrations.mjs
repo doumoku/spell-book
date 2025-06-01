@@ -33,16 +33,21 @@ async function checkAndRunMigration() {
  */
 async function runMigration() {
   const validFlags = Object.values(FLAGS);
-  const migrationResults = { actors: [], processed: 0 };
+  const migrationResults = {
+    actors: [],
+    processed: 0,
+    cantripMigrations: 0,
+    invalidFlagRemovals: 0
+  };
+
   log(3, 'Migrating world actors');
   for (const actor of game.actors) {
-    const wasUpdated = await migrateDocument(actor, validFlags);
-    if (wasUpdated) {
-      migrationResults.actors.push({
-        name: actor.name,
-        id: actor.id
-      });
+    const result = await migrateDocument(actor, validFlags);
+    if (result.wasUpdated) {
+      migrationResults.actors.push({ name: actor.name, id: actor.id, hadCantripMigration: result.cantripMigration, hadInvalidFlags: result.invalidFlags });
       migrationResults.processed++;
+      if (result.cantripMigration) migrationResults.cantripMigrations++;
+      if (result.invalidFlags) migrationResults.invalidFlagRemovals++;
     }
   }
   const modulePack = game.packs.get(MODULE.PACK);
@@ -50,14 +55,18 @@ async function runMigration() {
     log(3, `Migrating module compendium: ${modulePack.metadata.label}`);
     const documents = await modulePack.getDocuments();
     for (const doc of documents) {
-      const wasUpdated = await migrateDocument(doc, validFlags);
-      if (wasUpdated) {
+      const result = await migrateDocument(doc, validFlags);
+      if (result.wasUpdated) {
         migrationResults.actors.push({
           name: doc.name,
           id: doc.id,
-          pack: modulePack.collection
+          pack: modulePack.collection,
+          hadCantripMigration: result.cantripMigration,
+          hadInvalidFlags: result.invalidFlags
         });
         migrationResults.processed++;
+        if (result.cantripMigration) migrationResults.cantripMigrations++;
+        if (result.invalidFlags) migrationResults.invalidFlagRemovals++;
       }
     }
   }
@@ -66,36 +75,30 @@ async function runMigration() {
 
 /**
  * Migrate a single document
- * @returns {Boolean} Whether the document was updated
+ * @param {Document} doc - The document to migrate
+ * @param {Array} validFlags - Array of valid flag names
+ * @returns {Object} Migration result with wasUpdated, cantripMigration, and invalidFlags flags
  */
 async function migrateDocument(doc, validFlags) {
   const flags = doc.flags?.[MODULE.ID];
-  if (!flags) return false;
-
-  let updated = false;
+  if (!flags) return { wasUpdated: false, cantripMigration: false, invalidFlags: false };
+  let wasUpdated = false;
+  let cantripMigration = false;
+  let invalidFlags = false;
   const updates = {};
-
-  // Check each flag
   for (const [key, value] of Object.entries(flags)) {
     if (!validFlags.includes(key) || value === null || value === undefined || (typeof value === 'object' && Object.keys(value).length === 0)) {
       updates[`flags.${MODULE.ID}.-=${key}`] = null;
-      updated = true;
+      invalidFlags = true;
+      wasUpdated = true;
       log(3, `Removing invalid flag "${key}" from ${doc.documentName} "${doc.name}"`);
     }
   }
-
-  if (updated) {
-    try {
-      await doc.update(updates);
-      log(3, `Updated ${doc.documentName} "${doc.name}"`);
-      return true;
-    } catch (error) {
-      log(1, `Error updating ${doc.documentName} "${doc.name}":`, error);
-      return false;
-    }
+  if (wasUpdated) {
+    await doc.update(updates);
+    log(3, `Updated ${doc.documentName} "${doc.name}"`);
   }
-
-  return false;
+  return { wasUpdated, cantripMigration, invalidFlags };
 }
 
 /**
@@ -107,31 +110,38 @@ function logMigrationResults(results) {
     log(2, game.i18n.localize('SPELLBOOK.Migrations.NoUpdatesNeeded'));
     return;
   }
-
   let content = `
   <h2>${game.i18n.localize('SPELLBOOK.Migrations.ChatTitle')}</h2>
   <p>${game.i18n.localize('SPELLBOOK.Migrations.ChatDescription')}</p>
   <p>${game.i18n.format('SPELLBOOK.Migrations.TotalUpdated', { count: results.processed })}</p>`;
-
+  if (results.cantripMigrations > 0)
+    content += `<p><strong>Cantrip Rules Migration:</strong> ${results.cantripMigrations} actors migrated from legacy cantrip system to per-class rules</p>`;
+  if (results.invalidFlagRemovals > 0) content += `<p><strong>Invalid Flags Removed:</strong> ${results.invalidFlagRemovals} actors had invalid flags cleaned up</p>`;
   if (actorCount > 0) {
     content += `<h3>${game.i18n.format('SPELLBOOK.Migrations.UpdatedActors', { count: actorCount })}</h3><ul>`;
     results.actors.slice(0, 10).forEach((actor) => {
-      if (actor.pack) {
-        content += `<li>${actor.name} (${game.i18n.format('SPELLBOOK.Migrations.Compendium', { name: actor.pack })})</li>`;
-      } else {
-        content += `<li>${actor.name}</li>`;
-      }
+      let actorLine = actor.name;
+      let details = [];
+      if (actor.hadCantripMigration) details.push('cantrip rules');
+      if (actor.hadInvalidFlags) details.push('invalid flags');
+      if (details.length > 0) actorLine += ` (${details.join(', ')})`;
+      if (actor.pack) actorLine += ` - ${game.i18n.format('SPELLBOOK.Migrations.Compendium', { name: actor.pack })}`;
+      content += `<li>${actorLine}</li>`;
     });
-    if (actorCount > 10) {
-      content += `<li>${game.i18n.format('SPELLBOOK.Migrations.AndMore', { count: actorCount - 10 })}</li>`;
-    }
+    if (actorCount > 10) content += `<li>${game.i18n.format('SPELLBOOK.Migrations.AndMore', { count: actorCount - 10 })}</li>`;
     content += `</ul>`;
   }
   content += `<p>${game.i18n.localize('SPELLBOOK.Migrations.Apology')}</p>`;
-  ChatMessage.create({
-    content: content,
-    whisper: [game.user.id],
-    user: game.user.id
-  });
+  ChatMessage.create({ content: content, whisper: [game.user.id], user: game.user.id });
   log(2, game.i18n.format('SPELLBOOK.Migrations.LogComplete', { count: results.processed }));
+}
+
+/**
+ * Force run migration for testing - remove this after testing
+ * Call this from the browser console: game.modules.get('spell-book').api.forceMigration()
+ */
+export async function forceMigration() {
+  log(2, 'Force running migration for testing...');
+  await runMigration();
+  log(2, 'Migration test complete.');
 }

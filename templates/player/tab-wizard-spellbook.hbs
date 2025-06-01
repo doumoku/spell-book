@@ -1,4 +1,4 @@
-<div class="wizardtab tab {{#if (eq activeTab 'wizardtab')}}active{{/if}}" data-tab="wizardtab"
+<div class="wizardbook tab {{#if (eq activeTab 'wizardbook')}}active{{/if}}" data-tab="wizardbook"
 	data-group="spellbook-tabs">
 	<div class="spells-container">
 		{{#if isLoading}}
@@ -26,7 +26,7 @@
 									</div>
 									<div class="wizard-spell-status">
 										{{#if inWizardSpellbook}}
-											<span class="in-spellbook-tag" aria-label="Spell is in your spellbook">
+											<span class="in-spellbook-tag" aria-label="Spell is in your spellbook"> {{!-- TODO: Localize --}}
 												{{localize 'SPELLBOOK.Wizard.InSpellbook'}}
 											</span>
 										{{else}}
