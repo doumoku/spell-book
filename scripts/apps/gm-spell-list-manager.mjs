@@ -371,7 +371,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
         element.addEventListener('change', (event) => {
           if (this.filterState[property] !== event.target.value) {
             this.filterState[property] = event.target.value;
-            if (property === 'level') this._refreshFilteredContent();
+            if (property === 'level' || property === 'source') this._refreshFilteredContent();
             else this.applyFilters();
           }
         });
