@@ -170,12 +170,21 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       if (this._stateManager.classSpellData[classIdentifier]) {
         context.classIdentifier = classIdentifier;
         context.className = this._stateManager.classSpellData[classIdentifier].className;
-        context.spellLevels = this._stateManager.classSpellData[classIdentifier].spellLevels.map((level) => {
-          const processedLevel = { ...level };
-          processedLevel.spells = level.spells.map((spell) => this._processSpellForDisplay(spell));
-          return processedLevel;
-        });
-        context.spellPreparation = this._stateManager.classSpellData[classIdentifier].spellPreparation;
+        if (this.wizardManager?.isWizard && this._stateManager.tabData?.spellstab) {
+          context.spellLevels = this._stateManager.tabData.spellstab.spellLevels.map((level) => {
+            const processedLevel = { ...level };
+            processedLevel.spells = level.spells.map((spell) => this._processSpellForDisplay(spell));
+            return processedLevel;
+          });
+          context.spellPreparation = this._stateManager.tabData.spellstab.spellPreparation;
+        } else {
+          context.spellLevels = this._stateManager.classSpellData[classIdentifier].spellLevels.map((level) => {
+            const processedLevel = { ...level };
+            processedLevel.spells = level.spells.map((spell) => this._processSpellForDisplay(spell));
+            return processedLevel;
+          });
+          context.spellPreparation = this._stateManager.classSpellData[classIdentifier].spellPreparation;
+        }
         context.globalPrepared = this._stateManager.spellPreparation;
       }
     }
