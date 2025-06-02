@@ -153,22 +153,57 @@ async function findCustomSpellListByIdentifier(identifier) {
 export function calculateMaxSpellLevel(classItem, actor) {
   const spellcasting = classItem?.system?.spellcasting;
   if (!spellcasting || spellcasting.progression === 'none') return 0;
-  if (spellcasting.type === 'leveled') {
-    const progression = { slot: 0 };
+
+  if (spellcasting?.type === 'leveled' || spellcasting?.progression !== 'pact') {
+    const progression = {
+      slot: 0,
+      // Add class level information that might be needed in 3.X
+      [classItem.identifier || classItem.name?.slugify() || 'class']: classItem.system?.levels || 0
+    };
+
     const maxPossibleSpellLevel = CONFIG.DND5E.SPELL_SLOT_TABLE[CONFIG.DND5E.SPELL_SLOT_TABLE.length - 1].length;
-    const spells = Object.fromEntries(Array.fromRange(maxPossibleSpellLevel, 1).map((l) => [`spell${l}`, {}]));
-    actor.constructor.computeClassProgression(progression, classItem, { spellcasting });
-    actor.constructor.prepareSpellcastingSlots(spells, 'leveled', progression);
-    return Object.values(spells).reduce((maxLevel, { max, level }) => {
-      if (!max) return maxLevel;
-      return Math.max(maxLevel, level || -1);
-    }, 0);
-  } else if (spellcasting.type === 'pact') {
+    const spellLevels = [];
+    for (let i = 1; i <= maxPossibleSpellLevel; i++) spellLevels.push(i);
+    const spells = Object.fromEntries(spellLevels.map((l) => [`spell${l}`, { level: l }]));
+    try {
+      actor.constructor.computeClassProgression(progression, classItem, { spellcasting });
+      if (!progression.slot && classItem.system?.levels) {
+        const classLevel = classItem.system.levels;
+        const spellcastingLevel = Math.floor(
+          classLevel *
+            (spellcasting.progression === 'full' ? 1
+            : spellcasting.progression === 'half' ? 0.5
+            : spellcasting.progression === 'third' ? 1 / 3
+            : 0)
+        );
+        progression.slot = Math.max(1, spellcastingLevel);
+      }
+      actor.constructor.prepareSpellcastingSlots(spells, 'leveled', progression);
+      return Object.values(spells).reduce((maxLevel, spellData) => {
+        const max = spellData.max;
+        const level = spellData.level;
+        if (!max) return maxLevel;
+        return Math.max(maxLevel, level || -1);
+      }, 0);
+    } catch (error) {
+      log(1, 'Error calculating spell progression:', error);
+      return 0;
+    }
+  } else if (spellcasting?.type === 'pact' || spellcasting?.progression === 'pact') {
     const spells = { pact: {} };
-    const progression = { pact: 0 };
-    actor.constructor.computeClassProgression(progression, classItem, { spellcasting });
-    actor.constructor.prepareSpellcastingSlots(spells, 'pact', progression);
-    return spells.pact.level || 0;
+    const progression = {
+      pact: 0,
+      // Add class level for 3.X compatibility
+      [classItem.identifier || classItem.name?.slugify() || 'class']: classItem.system?.levels || 0
+    };
+    try {
+      actor.constructor.computeClassProgression(progression, classItem, { spellcasting });
+      actor.constructor.prepareSpellcastingSlots(spells, 'pact', progression);
+      return spells.pact.level || 0;
+    } catch (error) {
+      log(1, 'Error calculating pact spell progression:', error);
+      return 0;
+    }
   }
   return 0;
 }
@@ -179,10 +214,7 @@ export function calculateMaxSpellLevel(classItem, actor) {
  * @returns {boolean} Whether the actor can cast spells
  */
 export function canCastSpells(actor) {
-  return (
-    actor?.system?.attributes?.spellcasting &&
-    (actor.items.some((i) => i.type === 'spell') || actor.items.some((i) => i.type === 'class' && i.system?.spellcasting?.progression !== 'none'))
-  );
+  return Object.keys(actor?.spellcastingClasses || {}).length > 0;
 }
 
 /**
