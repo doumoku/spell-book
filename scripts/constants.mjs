@@ -197,6 +197,13 @@ export const MODULE = {
 };
 
 /**
+ * Deprecated flags that should be removed during migration
+ * Each entry should include the flag name and reason for deprecation
+ * @type {Array<{key: string, reason: string, removedInVersion?: string}>}
+ */
+export const DEPRECATED_FLAGS = [];
+
+/**
  * Flags used for data storage and state tracking
  * @type {Object}
  */
@@ -236,6 +243,7 @@ export const TEMPLATES = {
     CREATE_SPELL_LIST: 'modules/spell-book/templates/dialogs/create-spell-list.hbs',
     FILTER_CONFIG: 'modules/spell-book/templates/dialogs/filter-configuration.hbs',
     MANAGER_DOCUMENTATION: 'modules/spell-book/templates/dialogs/spell-list-manager-documentation.hbs',
+    MERGE_SPELL_LISTS: 'modules/spell-book/templates/dialogs/merge-spell-lists.hbs',
     SPELLBOOK_SETTINGS: 'modules/spell-book/templates/dialogs/spellbook-settings.hbs'
   },
   GM: {
@@ -261,6 +269,7 @@ export const TEMPLATES = {
  */
 export const SETTINGS = {
   CANTRIP_SCALE_VALUES: 'cantripScaleValues',
+  CONSUME_SCROLLS_WHEN_LEARNING: 'consumeScrollsWhenLearning',
   CUSTOM_SPELL_MAPPINGS: 'customSpellListMappings',
   DEFAULT_ENFORCEMENT_BEHAVIOR: 'defaultEnforcementBehavior',
   DISABLE_LONG_REST_SWAP_PROMPT: 'disableLongRestSwapPrompt',

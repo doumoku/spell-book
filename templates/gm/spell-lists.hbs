@@ -7,9 +7,15 @@
 	</button>
 
 	<div class="lists-header">
+		<button type="button" class="merge-lists-button" data-action="mergeLists"
+			aria-label="{{localize 'SPELLMANAGER.Buttons.MergeLists'}}"
+			data-tooltip="{{localize 'SPELLMANAGER.Tooltips.MergeLists'}}">
+			<i class="fas fa-code-merge" aria-hidden="true"></i>
+		</button>
 		<h2 id="available-lists-heading">{{localize "SPELLMANAGER.Columns.AvailableLists"}}</h2>
 		<button type="button" class="create-new-button" data-action="createNewList"
-			aria-label="{{localize 'SPELLMANAGER.Buttons.CreateNew'}}">
+			aria-label="{{localize 'SPELLMANAGER.Buttons.CreateNew'}}"
+			data-tooltip="{{localize 'SPELLMANAGER.Tooltips.CreateNew'}}">
 			<i class="fas fa-plus" aria-hidden="true"></i>
 		</button>
 	</div>
@@ -72,6 +78,37 @@
 									<span class="spell-count">{{localize "SPELLMANAGER.Status.SpellCount" count=list.spellCount}}</span>
 									<span class="meta-separator" aria-hidden="true">•</span>
 									<span class="source">{{localize "SPELLMANAGER.ListSource.Custom"}}</span>
+								</div>
+							</div>
+						</li>
+					{{/each}}
+				</ul>
+			</div>
+		{{/if}}
+
+		<!-- Merged Spell Lists Section -->
+		{{#if hasMergedLists}}
+			<div class="list-folder merged-lists-folder" data-folder-id="merged-lists">
+				<div class="folder-header" data-action="toggleFolder"
+					data-tooltip="{{localize 'SPELLMANAGER.Tooltips.MergedListsFolder'}}">
+					<i class="fas fa-chevron-down collapse-indicator" aria-hidden="true"></i>
+					<i class="fas fa-code-merge folder-icon" aria-hidden="true"></i>
+					<span>{{localize "SPELLMANAGER.Folders.MergedLists"}}</span>
+				</div>
+				<ul class="spell-list-items folder-content">
+					{{#each mergedLists as |list|}}
+						<li class="spell-list-item merged-list" data-uuid="{{list.uuid}}" role="listitem"
+							data-tooltip="{{localize 'SPELLMANAGER.Tooltips.MergedList'}}"
+							aria-label="{{list.name}} - {{localize 'SPELLMANAGER.Status.SpellCount' count=list.spellCount}} - {{localize 'SPELLMANAGER.ListSource.Merged'}}">
+							<div class="list-item-header" data-action="selectSpellList" data-uuid="{{list.uuid}}">
+								<div class="list-name">
+									<i class="fas fa-book is-merged-list" aria-hidden="true"></i>
+									<span>{{list.name}}</span>
+								</div>
+								<div class="list-meta">
+									<span class="spell-count">{{localize "SPELLMANAGER.Status.SpellCount" count=list.spellCount}}</span>
+									<span class="meta-separator" aria-hidden="true">•</span>
+									<span class="source">{{localize "SPELLMANAGER.ListSource.Merged"}}</span>
 								</div>
 							</div>
 						</li>

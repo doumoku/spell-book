@@ -2,6 +2,7 @@ import { FLAGS, MODULE, SETTINGS } from '../../constants.mjs';
 import { log } from '../../logger.mjs';
 import { RuleSetManager } from '../../managers/rule-set-manager.mjs';
 import * as actorSpellUtils from '../actor-spells.mjs';
+import { ScrollScanner } from '../scroll-scanner.mjs';
 import * as discoveryUtils from '../spell-discovery.mjs';
 import * as formattingUtils from '../spell-formatting.mjs';
 
@@ -29,6 +30,7 @@ export class SpellbookState {
     this.classSwapRules = {};
     this.isLoading = true;
     this.isLongRest = false;
+    this.scrollSpells = [];
     this.spellcastingClasses = {};
     this.spellLevels = [];
     this.spellPreparation = { current: 0, maximum: 0 };
@@ -323,7 +325,9 @@ export class SpellbookState {
     }
     this.spellPreparation = { current: totalPrepared, maximum: totalMaxPrepared };
     log(3, `Updated global preparation count: ${totalPrepared}/${totalMaxPrepared}`);
-    if (totalMaxPrepared <= 0) log(2, `Global max preparation is ${totalMaxPrepared}, this might indicate a data issue`);
+    if (totalMaxPrepared <= 0) {
+      log(2, `Global max preparation is ${totalMaxPrepared}, this might indicate a data issue. Note: If on 3.3.1, you must set this manually due to system limitations.`);
+    }
   }
 
   /**
@@ -433,6 +437,7 @@ export class SpellbookState {
     const usedFreeSpells = await this.app.wizardManager.getUsedFreeSpells();
     const remainingFreeSpells = Math.max(0, totalFreeSpells - usedFreeSpells);
     const totalSpells = personalSpellbook.length;
+    this.scrollSpells = await ScrollScanner.scanForScrollSpells(this.actor);
     tabData.wizardbook.wizardTotalSpellbookCount = totalSpells;
     tabData.wizardbook.wizardFreeSpellbookCount = totalFreeSpells;
     tabData.wizardbook.wizardRemainingFreeSpells = remainingFreeSpells;
@@ -453,8 +458,8 @@ export class SpellbookState {
     tabData.wizardbook.wizardMaxSpellbookCount = maxSpellsAllowed;
     tabData.wizardbook.wizardIsAtMax = isAtMaxSpells;
     const sortBy = this.app.filterHelper?.getFilterState()?.sortBy || 'level';
-    this.enrichwizardbookSpells(prepLevels, personalSpellbook, sortBy);
-    this.enrichwizardbookSpells(wizardLevels, personalSpellbook, sortBy, true, isAtMaxSpells);
+    this.enrichWizardBookSpells(prepLevels, personalSpellbook, sortBy);
+    this.enrichWizardBookSpells(wizardLevels, personalSpellbook, sortBy, true, isAtMaxSpells);
     const prepStats = this.calculatePreparationStats(identifier, prepLevels, classItem);
     tabData.spellstab.spellLevels = prepLevels;
     tabData.spellstab.spellPreparation = prepStats;
@@ -476,16 +481,25 @@ export class SpellbookState {
    * @param {Array} levels - Spell level groups
    * @param {Array} personalSpellbook - The personal spellbook spell UUIDs
    * @param {string} sortBy - Sort criteria
-   * @param {boolean} iswizardbook - Whether this is for the wizard tab
+   * @param {boolean} isWizardBook - Whether this is for the wizard tab
    * @param {boolean} isAtMaxSpells - Whether maximum spells are reached
    */
-  enrichwizardbookSpells(levels, personalSpellbook, sortBy, iswizardbook = false, isAtMaxSpells = false) {
+  enrichWizardBookSpells(levels, personalSpellbook, sortBy, isWizardBook = false, isAtMaxSpells = false) {
+    if (isWizardBook && this.scrollSpells.length > 0) {
+      for (const scrollSpell of this.scrollSpells) {
+        scrollSpell.isWizardClass = true;
+        scrollSpell.inWizardSpellbook = personalSpellbook.includes(scrollSpell.spellUuid);
+        scrollSpell.canAddToSpellbook = true;
+        scrollSpell.isAtMaxSpells = isAtMaxSpells;
+        scrollSpell.isFromScroll = true;
+      }
+    }
     for (const level of levels) {
       level.spells = this.app.filterHelper?.sortSpells(level.spells, sortBy) || level.spells;
       for (const spell of level.spells) {
         spell.isWizardClass = true;
         spell.inWizardSpellbook = personalSpellbook.includes(spell.compendiumUuid);
-        if (iswizardbook) {
+        if (isWizardBook) {
           spell.canAddToSpellbook = !spell.inWizardSpellbook && spell.system.level > 0;
           spell.isAtMaxSpells = isAtMaxSpells;
         }
@@ -540,7 +554,7 @@ export class SpellbookState {
   }
 
   /**
-   * Preserve tab state (moved from PlayerSpellBook)
+   * Preserve tab state
    * @param {string} tabName - The tab to preserve state for
    */
   preserveTabState(tabName) {
@@ -560,7 +574,7 @@ export class SpellbookState {
   }
 
   /**
-   * Restore tab state (moved from PlayerSpellBook)
+   * Restore tab state
    * @param {string} tabName - The tab to restore state for
    */
   restoreTabState(tabName) {
@@ -587,7 +601,7 @@ export class SpellbookState {
   }
 
   /**
-   * Handle post-processing after spell save (moved from PlayerSpellBook)
+   * Handle post-processing after spell save
    * @param {Actor} actor - The actor
    * @returns {Promise<void>}
    */
@@ -766,7 +780,7 @@ export class SpellbookState {
   }
 
   /**
-   * Send GM notifications if needed (moved from PlayerSpellBook)
+   * Send GM notifications if needed
    * @param {Object} spellDataByClass - The spell data grouped by class
    * @param {Object} allCantripChangesByClass - Cantrip changes by class
    * @returns {Promise<void>}

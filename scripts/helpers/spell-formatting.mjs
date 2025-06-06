@@ -28,7 +28,7 @@ export function formatSpellDetails(spell) {
 }
 
 /**
- * Process spell list data for display (moved from GMSpellListManager)
+ * Process spell list data for display
  * @param {Object} spellList - The spell list to process
  * @returns {Object} Processed spell list with display data
  */
@@ -41,7 +41,8 @@ export function processSpellListForDisplay(spellList) {
   processed.actorId = spellList.document.flags?.[MODULE.ID]?.actorId;
   processed.isPlayerSpellbook = !!processed.actorId;
   processed.identifier = spellList.document.system?.identifier;
-  processed.isClassSpellList = !processed.isCustomList && !processed.isPlayerSpellbook && !!processed.identifier;
+  processed.isMerged = !!spellList.document?.flags?.[MODULE.ID]?.isMerged;
+  processed.isClassSpellList = !processed.isCustomList && !processed.isPlayerSpellbook && !processed.isMerged && !!processed.identifier;
   if (spellList.spellsByLevel?.length) {
     processed.spellsByLevel = spellList.spellsByLevel.map((level) => ({
       ...level,
@@ -52,7 +53,7 @@ export function processSpellListForDisplay(spellList) {
 }
 
 /**
- * Process spell item for display in the GM interface (moved from GMSpellListManager)
+ * Process spell item for display in the GM interface
  * @param {Object} spell - The spell to process
  * @returns {Object} Processed spell with display data
  */
@@ -65,7 +66,7 @@ export function processSpellItemForDisplay(spell) {
 }
 
 /**
- * Process spell for display in PlayerSpellBook (moved from PlayerSpellBook)
+ * Process spell for display in PlayerSpellBook
  * @param {Object} spell - The spell to process
  * @param {Function} getSpellCssClasses - Function to get CSS classes
  * @param {Function} getSpellDataAttributes - Function to get data attributes

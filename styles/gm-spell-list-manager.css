@@ -16,6 +16,7 @@
   --spell-book-manager-bg-item: rgb(0 0 0 / 5.1%);
   --spell-book-manager-bg-item-hover: rgb(0 0 0 / 10.2%);
   --spell-book-manager-custom-color: rgb(121 215 212);
+  --spell-book-manager-merged-color: rgb(147 51 234);
 
   /* Text Colors */
   --spell-book-manager-text-primary: var(--color-text-light-highlight);
@@ -118,11 +119,11 @@
 /* ----------------------------------------- */
 .gm-spell-list-manager {
   .spell-lists-sidebar {
+    inset: 0 0 60px;
     transform-style: preserve-3d;
     display: flex;
     z-index: var(--spell-book-manager-z-sidebar);
     position: absolute;
-    inset: 0 0 60px;
     flex-direction: column;
     width: var(--spell-book-manager-sidebar-width);
     height: auto;
@@ -147,14 +148,73 @@
     }
 
     .lists-header {
+      display: flex;
       z-index: var(--spell-book-manager-z-header);
       position: relative;
       justify-content: space-between;
       align-items: center;
       margin: 0;
+      padding: 0.75rem 0.5rem;
       color: var(--spell-book-manager-text-primary);
       background-color: rgb(0 0 0 / 20%);
       box-shadow: var(--spell-book-manager-header-shadow);
+
+      h2 {
+        flex: 1;
+        margin: 0;
+        padding: 0;
+        font-size: var(--spell-book-manager-font-title);
+        text-align: center;
+        background: none;
+        box-shadow: none;
+      }
+    }
+
+    .merge-lists-button,
+    .create-new-button {
+      z-index: 5;
+      position: absolute;
+      align-items: center;
+      width: auto;
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      background: none;
+      transition: all 0.2s ease;
+
+      i {
+        margin: 0;
+      }
+
+      &:hover {
+        border: none;
+        text-shadow: none;
+        box-shadow: none;
+      }
+
+      &:focus {
+        border-color: var(--color-border-highlight);
+        outline: none;
+        box-shadow: 0 0 3px var(--color-shadow-highlight);
+      }
+    }
+
+    .merge-lists-button {
+      top: 12px;
+      left: 15px;
+      order: 1;
+    }
+
+    .create-new-button {
+      top: 12px;
+      right: 15px;
+      order: 3;
+    }
+
+    h2 {
+      order: 2;
     }
 
     /* Folder styling */
@@ -217,6 +277,54 @@
       }
     }
 
+    /* Custom Lists folder styling */
+    .custom-lists-folder {
+      .folder-header {
+        color: rgb(255 201 25);
+
+        .folder-icon {
+          color: rgb(255 201 25);
+        }
+      }
+
+      .custom-list {
+        border-left: 2px solid rgb(255 201 25);
+
+        &:hover {
+          background-color: rgb(255 201 25 / 20%);
+        }
+
+        .source {
+          color: rgb(255 201 25);
+          font-weight: 600;
+        }
+      }
+    }
+
+    /* Merged Lists folder styling */
+    .merged-lists-folder {
+      .folder-header {
+        color: var(--spell-book-manager-merged-color);
+
+        .folder-icon {
+          color: var(--spell-book-manager-merged-color);
+        }
+      }
+
+      .merged-list {
+        border-left: 2px solid var(--spell-book-manager-merged-color);
+
+        &:hover {
+          background-color: rgb(147 51 234 / 20%);
+        }
+
+        .source {
+          color: var(--spell-book-manager-merged-color);
+          font-weight: 600;
+        }
+      }
+    }
+
     /* Standard folder styling */
     .standard-lists-folder {
       .folder-header {
@@ -243,56 +351,6 @@
       .source {
         color: rgb(107 209 77);
         font-weight: 600;
-      }
-    }
-
-    /* Custom Lists folder styling */
-    .custom-lists-folder {
-      .folder-header {
-        color: rgb(255 201 25);
-
-        .folder-icon {
-          color: rgb(255 201 25);
-        }
-      }
-
-      .custom-list {
-        border-left: 2px solid rgb(255 201 25);
-
-        &:hover {
-          background-color: rgb(255 201 25 / 20%);
-        }
-
-        .source {
-          color: rgb(255 201 25);
-          font-weight: 600;
-        }
-      }
-    }
-
-    .create-new-button {
-      z-index: 5;
-      position: absolute;
-      top: 12px;
-      right: 15px;
-      align-items: center;
-      width: auto;
-      margin: 0;
-      padding: 0;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-      background: none;
-      transition: all 0.2s ease;
-
-      i {
-        margin-right: 0;
-      }
-
-      &:hover {
-        border: none;
-        text-shadow: none;
-        box-shadow: none;
       }
     }
   }
@@ -371,6 +429,10 @@
         &.is-custom-list {
           color: rgb(255 201 25);
         }
+
+        &.is-merged-list {
+          color: var(--spell-book-manager-merged-color);
+        }
       }
     }
 
@@ -423,10 +485,10 @@
 .gm-spell-list-manager {
   .selected-list-content {
     inset: 0 var(--spell-book-manager-spells-sidebar-width) 60px var(--spell-book-manager-sidebar-width);
-    padding-left: 1.25rem;
     display: flex;
     position: absolute;
     flex-direction: column;
+    padding-left: 1.25rem;
     overflow: hidden;
     transition: all var(--spell-book-manager-transition-slow);
   }
@@ -669,11 +731,11 @@
 
     .spell-name {
       display: flex;
-      align-items: center;
-      font-weight: bold;
       flex: 1;
+      align-items: center;
       min-width: 0;
       overflow: hidden;
+      font-weight: bold;
 
       .content-link {
         display: inline-flex;
@@ -722,8 +784,8 @@
     .spell-meta {
       gap: 0.5rem;
       display: flex;
-      align-items: center;
       flex-shrink: 0;
+      align-items: center;
       color: var(--spell-book-manager-text-tertiary);
     }
 
@@ -963,12 +1025,12 @@
     }
 
     .range-separator {
+      --icon-fill: var(--color-text-light-6);
+
       display: flex;
       justify-content: center;
       align-items: center;
       width: 1rem;
-
-      --icon-fill: var(--color-text-light-6);
     }
   }
 }
@@ -1057,6 +1119,43 @@
   }
 }
 
+/* Merge spell lists dialog styling */
+.merge-spell-lists-form {
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  select {
+    width: auto;
+    min-width: 200px;
+    max-width: 100%;
+  }
+
+  input[type='text'] {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .notes {
+    margin: 0.5rem 0 0;
+    color: var(--color-text-dark-5);
+    font-style: italic;
+    font-size: 0.875rem;
+  }
+
+  .validation-error {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+  }
+}
+
 /* ----------------------------------------- */
 /*  Documentation Dialog Styles             */
 /* ----------------------------------------- */
@@ -1101,15 +1200,15 @@
 
     ol {
       li {
-        padding-left: 0.25rem;
         margin-bottom: 0;
+        padding-left: 0.25rem;
       }
     }
 
     ul {
       li {
-        padding-left: 0.25rem;
         margin-bottom: 0;
+        padding-left: 0.25rem;
       }
     }
 
@@ -1227,6 +1326,26 @@
 
       i {
         color: rgb(41 151 146);
+      }
+    }
+
+    .merged-list {
+      background-color: rgb(147 51 234 / 14.9%);
+
+      .list-name i.is-merged-list {
+        color: rgb(126 34 206) !important;
+      }
+
+      .source {
+        color: rgb(126 34 206);
+      }
+    }
+
+    .merged-lists-folder .folder-header {
+      color: rgb(126 34 206);
+
+      i {
+        color: rgb(126 34 206);
       }
     }
   }

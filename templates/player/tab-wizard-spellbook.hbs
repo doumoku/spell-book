@@ -25,8 +25,14 @@
 										</div>
 									</div>
 									<div class="wizard-spell-status">
-										{{#if inWizardSpellbook}}
-											<span class="in-spellbook-tag" aria-label="Spell is in your spellbook"> {{!-- TODO: Localize --}}
+										{{#if isFromScroll}}
+											<button class="copy-spell-btn scroll-spell-btn" data-action="learnFromScroll"
+												data-uuid="{{spellUuid}}" data-scroll-id="{{scrollId}}" type="button"
+												aria-label="{{localize 'SPELLBOOK.Scrolls.LearnFromScroll' name=name}}">
+												<i class="fas fa-scroll"></i> {{localize 'SPELLBOOK.Wizard.LearnSpell'}}
+											</button>
+										{{else if inWizardSpellbook}}
+											<span class="in-spellbook-tag" aria-label="Spell is in your spellbook">
 												{{localize 'SPELLBOOK.Wizard.InSpellbook'}}
 											</span>
 										{{else}}
