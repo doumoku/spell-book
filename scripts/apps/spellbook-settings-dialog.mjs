@@ -413,6 +413,8 @@ export class SpellbookSettingsDialog extends HandlebarsApplicationMixin(Applicat
   async _prepareSpellListOptions() {
     try {
       const options = [{ value: '', label: game.i18n.localize('SPELLBOOK.Settings.SpellList.AutoDetect') }];
+      const hiddenLists = game.settings.get(MODULE.ID, SETTINGS.HIDDEN_SPELL_LISTS) || [];
+      const allSpellLists = [];
       const journalPacks = Array.from(game.packs).filter((p) => p.metadata.type === 'JournalEntry');
       for (const pack of journalPacks) {
         let topLevelFolderName = pack.metadata.label;
@@ -424,11 +426,53 @@ export class SpellbookSettingsDialog extends HandlebarsApplicationMixin(Applicat
         for (const journalData of index) {
           const journal = await pack.getDocument(journalData._id);
           for (const page of journal.pages) {
-            if (page.type === 'spells') {
-              options.push({ value: page.uuid, label: `${page.name} (${topLevelFolderName})` });
-            }
+            if (page.type !== 'spells' || page.system?.type === 'other') continue;
+            if (hiddenLists.includes(page.uuid)) continue;
+            const flags = page.flags?.[MODULE.ID] || {};
+            const isActorOwned = !!flags.actorId;
+            const isCustom = !!flags.isCustom || !!flags.isNewList;
+            const isMerged = !!flags.isMerged;
+            allSpellLists.push({ uuid: page.uuid, name: page.name, pack: topLevelFolderName, isActorOwned, isCustom, isMerged, flags });
           }
         }
+      }
+      const actorOwnedLists = allSpellLists.filter((list) => list.isActorOwned);
+      const customLists = allSpellLists.filter((list) => !list.isActorOwned && list.isCustom && !list.isMerged);
+      const mergedLists = allSpellLists.filter((list) => !list.isActorOwned && list.isMerged);
+      const standardLists = allSpellLists.filter((list) => !list.isActorOwned && !list.isCustom && !list.isMerged);
+      if (actorOwnedLists.length > 0) {
+        options.push({ value: '', label: game.i18n.localize('SPELLMANAGER.Folders.PlayerSpellbooks'), optgroup: 'start' });
+        actorOwnedLists.forEach((list) => {
+          let actorName = game.i18n.localize('SPELLMANAGER.ListSource.Character');
+          if (list.flags.actorId) {
+            const actor = game.actors.get(list.flags.actorId);
+            if (actor) actorName = actor.name;
+          }
+          const label = `${list.name} (${actorName})`;
+          options.push({ value: list.uuid, label: label, selected: false });
+        });
+        options.push({ value: '', label: '', optgroup: 'end' });
+      }
+      if (customLists.length > 0) {
+        options.push({ value: '', label: game.i18n.localize('SPELLMANAGER.Folders.CustomLists'), optgroup: 'start' });
+        customLists.forEach((list) => {
+          options.push({ value: list.uuid, label: list.name, selected: false });
+        });
+        options.push({ value: '', label: '', optgroup: 'end' });
+      }
+      if (mergedLists.length > 0) {
+        options.push({ value: '', label: game.i18n.localize('SPELLMANAGER.Folders.MergedLists'), optgroup: 'start' });
+        mergedLists.forEach((list) => {
+          options.push({ value: list.uuid, label: list.name, selected: false });
+        });
+        options.push({ value: '', label: '', optgroup: 'end' });
+      }
+      if (standardLists.length > 0) {
+        options.push({ value: '', label: game.i18n.localize('SPELLMANAGER.Folders.SpellLists'), optgroup: 'start' });
+        standardLists.forEach((list) => {
+          options.push({ value: list.uuid, label: `${list.name} (${list.pack})`, selected: false });
+        });
+        options.push({ value: '', label: '', optgroup: 'end' });
       }
       return options;
     } catch (error) {
@@ -663,32 +707,11 @@ export class SpellbookSettingsDialog extends HandlebarsApplicationMixin(Applicat
       }
     }
     if (Object.keys(cantripVisibilityChanges).length > 0) await SpellbookSettingsDialog._handleCantripVisibilityChanges(actor, cantripVisibilityChanges);
-    if (Object.keys(wizardModeChanges).length > 0) await SpellbookSettingsDialog._handleWizardModeChanges(actor, wizardModeChanges);
     const allInstances = Array.from(foundry.applications.instances.values());
     const openSpellbooks = allInstances.filter((w) => w.constructor.name === 'PlayerSpellBook' && w.actor.id === actor.id);
     for (const spellbook of openSpellbooks) await spellbook.refreshFromSettingsChange();
     ui.notifications.info(game.i18n.format('SPELLBOOK.Settings.Saved', { name: actor.name }));
     return actor;
-  }
-
-  /**
-   * Handle wizard mode changes - create/cleanup wizard spellbooks when enabled/disabled
-   * @param {Actor5e} actor - The actor
-   * @param {Object} changes - Object mapping class IDs to 'enabled'/'disabled'
-   * @returns {Promise<void>}
-   * @private
-   */
-  static async _handleWizardModeChanges(actor, changes) {
-    for (const [classId, changeType] of Object.entries(changes)) {
-      if (changeType === 'enabled') {
-        log(3, `Force wizard mode enabled for class ${classId}`);
-        // Wizard spellbook will be created automatically when the spellbook is opened
-      } else if (changeType === 'disabled') {
-        log(3, `Force wizard mode disabled for class ${classId}`);
-        // Optional: Could cleanup wizard spellbook here, but safer to leave it
-        // in case the user wants to re-enable wizard mode later
-      }
-    }
   }
 
   /**

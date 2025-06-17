@@ -4,13 +4,20 @@ import * as formattingUtils from './spell-formatting.mjs';
 
 /**
  * Scan compendiums for spell lists
+ * @param {boolean} [includeHidden=true] - Whether to include hidden spell lists
  * @returns {Promise<Array>} Array of spell list objects with metadata
  */
-export async function findCompendiumSpellLists() {
+export async function findCompendiumSpellLists(includeHidden = true) {
   const spellLists = [];
   const journalPacks = Array.from(game.packs).filter((p) => p.metadata.type === 'JournalEntry');
   await processStandardPacks(journalPacks, spellLists);
   await processCustomPack(spellLists);
+  if (!includeHidden && !game.user.isGM) {
+    const hiddenLists = game.settings.get(MODULE.ID, SETTINGS.HIDDEN_SPELL_LISTS) || [];
+    const filteredLists = spellLists.filter((list) => !hiddenLists.includes(list.uuid));
+    log(3, `Filtered out ${spellLists.length - filteredLists.length} hidden spell lists.`);
+    return filteredLists;
+  }
   for (const list of spellLists) {
     const document = await fromUuid(list.uuid);
     if (document.system?.identifier && !list.identifier) list.identifier = document.system.identifier;
@@ -552,21 +559,10 @@ export async function getOrCreateSpellListFolder(folderName, localizationKey) {
     log(1, 'Custom spell lists pack not found');
     return null;
   }
-
-  // Check if folder already exists
   const existingFolder = customPack.folders.find((f) => f.name === folderName);
-  if (existingFolder) {
-    return existingFolder;
-  }
-
-  // Create new folder
+  if (existingFolder) return existingFolder;
   try {
-    const folderData = {
-      name: folderName,
-      type: 'JournalEntry',
-      folder: null // Top-level folder
-    };
-
+    const folderData = { name: folderName, type: 'JournalEntry', folder: null };
     const folder = await Folder.create(folderData, { pack: customPack.collection });
     log(3, `Created spell list folder: ${folderName}`);
     return folder;

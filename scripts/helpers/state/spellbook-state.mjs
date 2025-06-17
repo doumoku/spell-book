@@ -29,7 +29,6 @@ export class SpellbookState {
     this.classRitualRules = {};
     this.classSpellData = {};
     this.classSwapRules = {};
-    this.isLoading = true;
     this.isLongRest = false;
     this.scrollSpells = [];
     this.spellcastingClasses = {};
@@ -47,7 +46,7 @@ export class SpellbookState {
   async initialize() {
     if (this._initialized) return true;
     this.isLongRest = !!this.actor.getFlag(MODULE.ID, FLAGS.LONG_REST_COMPLETED);
-    if (!this._classesDetected) await this.detectSpellcastingClasses();
+    if (!this._classesDetected) this.detectSpellcastingClasses();
     await this.app.spellManager.cleanupStalePreparationFlags();
     await this.loadSpellData();
     this._initialized = true;
@@ -55,12 +54,13 @@ export class SpellbookState {
   }
 
   /**
-   * Detect and initialize all spellcasting classes for the actor
+   * Detect and initialize all spellcasting classes for the actor with cleanup of stale data
    * @returns {Promise<void>}
-   * @async
    */
-  async detectSpellcastingClasses() {
+  detectSpellcastingClasses() {
     if (this._classesDetected) return;
+    const currentClassIds = [];
+    const classItems = this.actor.items.filter((i) => i.type === 'class');
     this.spellcastingClasses = {};
     this.classSpellData = {};
     this.classPrepModes = {};
@@ -68,10 +68,10 @@ export class SpellbookState {
     this.classSwapRules = {};
     this._preparationStatsCache.clear();
     this._classDetectionCache.clear();
-    const classItems = this.actor.items.filter((i) => i.type === 'class');
     for (const classItem of classItems) {
       if (!classItem.system.spellcasting?.progression || classItem.system.spellcasting.progression === 'none') continue;
       const identifier = classItem.system.identifier?.toLowerCase() || classItem.name.toLowerCase();
+      currentClassIds.push(identifier);
       this.spellcastingClasses[identifier] = {
         name: classItem.name,
         uuid: classItem.uuid,
@@ -91,8 +91,105 @@ export class SpellbookState {
       this.classRitualRules[identifier] = this.getClassRitualRules(classItem);
       this.classSwapRules[identifier] = this.getClassSwapRules(classItem);
     }
+    this._cleanupStaleClassData(currentClassIds);
     if (Object.keys(this.spellcastingClasses).length > 0 && !this.activeClass) this.activeClass = Object.keys(this.spellcastingClasses)[0];
     this._classesDetected = true;
+  }
+
+  /**
+   * Clean up all stored data for class identifiers that don't match current actor classes
+   * @param {Array<string>} currentClassIds - Array of current valid class identifiers
+   * @returns {Promise<void>}
+   * @private
+   */
+  _cleanupStaleClassData(currentClassIds) {
+    this._cleanupStaleFlags(currentClassIds);
+    this._cleanupStaleManagers(currentClassIds);
+  }
+
+  /**
+   * Clean up all flag-based data for non-existent classes
+   * @param {Array<string>} currentClassIds - Array of current valid class identifiers
+   * @returns {Promise<void>}
+   * @private
+   */
+  _cleanupStaleFlags(currentClassIds) {
+    const actorFlags = this.actor.flags?.[MODULE.ID] || {};
+    const classRules = actorFlags[FLAGS.CLASS_RULES] || {};
+    const validClassRules = {};
+    for (const [classId, rules] of Object.entries(classRules)) if (currentClassIds.includes(classId)) validClassRules[classId] = rules;
+    if (Object.keys(validClassRules).length !== Object.keys(classRules).length) {
+      this.actor.unsetFlag(MODULE.ID, FLAGS.CLASS_RULES);
+      this.actor.setFlag(MODULE.ID, FLAGS.CLASS_RULES, validClassRules);
+    }
+    const preparedByClass = actorFlags[FLAGS.PREPARED_SPELLS_BY_CLASS] || {};
+    const validPreparedByClass = {};
+    for (const [classId, spells] of Object.entries(preparedByClass)) if (currentClassIds.includes(classId)) validPreparedByClass[classId] = spells;
+    if (Object.keys(validPreparedByClass).length !== Object.keys(preparedByClass).length) {
+      this.actor.unsetFlag(MODULE.ID, FLAGS.PREPARED_SPELLS_BY_CLASS);
+      this.actor.setFlag(MODULE.ID, FLAGS.PREPARED_SPELLS_BY_CLASS, validPreparedByClass);
+      const allPreparedKeys = Object.values(validPreparedByClass).flat();
+      const allPreparedUuids = allPreparedKeys.map((key) => {
+        const [, ...uuidParts] = key.split(':');
+        return uuidParts.join(':');
+      });
+      this.actor.unsetFlag(MODULE.ID, FLAGS.PREPARED_SPELLS);
+      this.actor.setFlag(MODULE.ID, FLAGS.PREPARED_SPELLS, allPreparedUuids);
+    }
+    const cantripTracking = actorFlags[FLAGS.CANTRIP_SWAP_TRACKING] || {};
+    const validCantripTracking = {};
+    for (const [classId, tracking] of Object.entries(cantripTracking)) if (currentClassIds.includes(classId)) validCantripTracking[classId] = tracking;
+    if (Object.keys(validCantripTracking).length !== Object.keys(cantripTracking).length) {
+      this.actor.unsetFlag(MODULE.ID, FLAGS.CANTRIP_SWAP_TRACKING);
+      this.actor.setFlag(MODULE.ID, FLAGS.CANTRIP_SWAP_TRACKING, validCantripTracking);
+    }
+    const swapTracking = actorFlags[FLAGS.SWAP_TRACKING] || {};
+    const validSwapTracking = {};
+    for (const [classId, tracking] of Object.entries(swapTracking)) if (currentClassIds.includes(classId)) validSwapTracking[classId] = tracking;
+    if (Object.keys(validSwapTracking).length !== Object.keys(swapTracking).length) {
+      this.actor.unsetFlag(MODULE.ID, FLAGS.SWAP_TRACKING);
+      this.actor.setFlag(MODULE.ID, FLAGS.SWAP_TRACKING, validSwapTracking);
+    }
+    const wizardFlags = Object.keys(actorFlags).filter(
+      (key) =>
+        key.startsWith(FLAGS.WIZARD_COPIED_SPELLS + '-') ||
+        key.startsWith(FLAGS.WIZARD_COPIED_SPELLS + '_') ||
+        key.startsWith(FLAGS.WIZARD_RITUAL_CASTING + '-') ||
+        key.startsWith(FLAGS.WIZARD_RITUAL_CASTING + '_')
+    );
+    for (const flagKey of wizardFlags) {
+      const separatorIndex = Math.max(flagKey.lastIndexOf('-'), flagKey.lastIndexOf('_'));
+      const classId = flagKey.substring(separatorIndex + 1);
+      if (!currentClassIds.includes(classId)) this.actor.unsetFlag(MODULE.ID, flagKey);
+    }
+  }
+
+  /**
+   * Clean up manager caches and maps for non-existent classes
+   * @param {Array<string>} currentClassIds - Array of current valid class identifiers
+   * @private
+   */
+  _cleanupStaleManagers(currentClassIds) {
+    if (this.app.wizardManagers) {
+      const wizardManagerKeys = [...this.app.wizardManagers.keys()];
+      for (const classId of wizardManagerKeys) if (!currentClassIds.includes(classId)) this.app.wizardManagers.delete(classId);
+    }
+    if (this.app.ritualManagers) {
+      const ritualManagerKeys = [...this.app.ritualManagers.keys()];
+      for (const classId of ritualManagerKeys) if (!currentClassIds.includes(classId)) this.app.ritualManagers.delete(classId);
+    }
+    if (this.wizardSpellbookCache) {
+      const wizardCacheKeys = [...this.wizardSpellbookCache.keys()];
+      for (const classId of wizardCacheKeys) if (!currentClassIds.includes(classId)) this.wizardSpellbookCache.delete(classId);
+    }
+    if (this.app._wizardBookImages) {
+      const wizardImageKeys = [...this.app._wizardBookImages.keys()];
+      for (const classId of wizardImageKeys) if (!currentClassIds.includes(classId)) this.app._wizardBookImages.delete(classId);
+    }
+    const prepStatsSize = this._preparationStatsCache.size;
+    const classDetectionSize = this._classDetectionCache.size;
+    this._preparationStatsCache.clear();
+    this._classDetectionCache.clear();
   }
 
   /**
@@ -155,7 +252,6 @@ export class SpellbookState {
     }
     if (Object.keys(this.spellcastingClasses).length === 0) {
       log(2, 'No spellcasting classes found for actor');
-      this.isLoading = false;
       return false;
     }
     this.handleCantripLevelUp();
@@ -171,7 +267,6 @@ export class SpellbookState {
       this.spellPreparation = this.classSpellData[this.activeClass].spellPreparation || { current: 0, maximum: 0 };
     }
     this.updateGlobalPreparationCount();
-    this.isLoading = false;
     return true;
   }
 
@@ -190,49 +285,20 @@ export class SpellbookState {
     let maxSpellLevel = discoveryUtils.calculateMaxSpellLevel(classItem, this.actor);
     const hideCantrips = this._shouldHideCantrips(identifier);
     if (hideCantrips && maxSpellLevel > 0) maxSpellLevel = Math.max(1, maxSpellLevel);
-    const spellItems = await actorSpellUtils.fetchSpellDocuments(spellList, maxSpellLevel);
+    const spellItems = await actorSpellUtils.fetchSpellDocuments(spellList, maxSpellLevel, this.actor.id);
     if (!spellItems || !spellItems.length) return;
     await this.processAndOrganizeSpellsForClass(identifier, spellItems, classItem);
   }
 
   /**
-   * Process and organize spells for a specific class with class-aware preparation
-   * @param {string} identifier - Identifier of the class
-   * @param {Array} spellItems - Array of spell items
-   * @param {Item} classItem - The class item
-   * @returns {Promise<void>}
-   * @async
-   */
-  async processAndOrganizeSpellsForClass(identifier, spellItems, classItem) {
-    for (const spell of spellItems) {
-      const preparationMode = spell.system?.preparation?.mode;
-      const isSpecialMode = ['innate', 'pact', 'atwill', 'always'].includes(preparationMode);
-      const isGranted = !!spell.flags?.dnd5e?.cachedFor;
-      if (!isSpecialMode && !isGranted) {
-        spell.sourceClass = identifier;
-        if (spell.system && !spell.system.sourceClass) spell.system.sourceClass = identifier;
-      }
-    }
-    const spellLevels = this._organizeSpellsByLevelForClass(spellItems, identifier, classItem);
-    const sortBy = this.app.filterHelper?.getFilterState()?.sortBy || 'level';
-    for (const level of spellLevels) level.spells = this.app.filterHelper?.sortSpells(level.spells, sortBy) || level.spells;
-    await this.enrichSpellData(spellLevels);
-    const prepStats = this.calculatePreparationStats(identifier, spellLevels, classItem);
-    this.classSpellData[identifier] = { spellLevels, className: classItem.name, spellPreparation: prepStats, classItem, identifier };
-    if (this._shouldHideCantrips(identifier)) this.classSpellData[identifier].spellLevels = spellLevels.filter((level) => level.level !== '0' && level.level !== 0);
-    log(3, `Processed ${spellItems.length} spells for class ${classItem.name}`);
-  }
-
-  /**
-   * Organize spells by level with class-specific preparation awareness
+   * Organize spells into flattened array with level metadata for lazy loading
    * @param {Array} spellItems - Array of spell documents
    * @param {string} classIdentifier - The class identifier
    * @param {Item} classItem - The class item
-   * @returns {Array} Array of spell levels with formatted data
+   * @returns {Array} Flattened array of spells with level metadata
    * @private
    */
   _organizeSpellsByLevelForClass(spellItems, classIdentifier, classItem) {
-    log(3, `Organizing ${spellItems.length} spells by level for class ${classIdentifier}`);
     const spellsByLevel = {};
     const processedSpellIds = new Set();
     const processedSpellNames = new Set();
@@ -249,7 +315,8 @@ export class SpellbookState {
           ...spell,
           preparation: this.app.spellManager.getSpellPreparationStatus(spell, classIdentifier),
           filterData: formattingUtils.extractSpellFilterData(spell),
-          formattedDetails: formattingUtils.formatSpellDetails(spell)
+          formattedDetails: formattingUtils.formatSpellDetails(spell),
+          enrichedIcon: formattingUtils.createSpellIconLink(spell)
         };
         if (!isSpecialMode) spellData.sourceClass = classIdentifier;
         spellsByLevel[level].push(spellData);
@@ -268,22 +335,69 @@ export class SpellbookState {
       spellData.sourceClass = classIdentifier;
       spellData.filterData = formattingUtils.extractSpellFilterData(spell);
       spellData.formattedDetails = formattingUtils.formatSpellDetails(spell);
+      spellData.enrichedIcon = formattingUtils.createSpellIconLink(spell);
       spellsByLevel[level].push(spellData);
       processedSpellIds.add(spell.id || spell.compendiumUuid || spell.uuid);
       processedSpellNames.add(spellName);
     }
     for (const level in spellsByLevel) if (spellsByLevel.hasOwnProperty(level)) spellsByLevel[level].sort((a, b) => a.name.localeCompare(b.name));
-    const result = Object.entries(spellsByLevel)
-      .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([level, spells]) => ({ level: level, levelName: CONFIG.DND5E.spellLevels[level], spells: spells }));
-    log(3, `Final organized spell levels for ${classIdentifier}: ${result.length}`);
-    return result;
+    const flattened = [];
+    const sortedLevels = Object.entries(spellsByLevel).sort(([a], [b]) => Number(a) - Number(b));
+    for (const [level, spells] of sortedLevels) {
+      const levelName = CONFIG.DND5E.spellLevels[level];
+      for (let i = 0; i < spells.length; i++) {
+        const spell = spells[i];
+        flattened.push({
+          ...spell,
+          _levelMetadata: {
+            level: level,
+            levelName: levelName,
+            isFirstInLevel: i === 0,
+            levelSpellCount: spells.length,
+            levelIndex: i
+          }
+        });
+      }
+    }
+    return flattened;
   }
 
   /**
-   * Calculate preparation statistics for a specific class (with caching)
+   * Process and organize spells for a specific class with flattened structure
+   * @param {string} identifier - Identifier of the class
+   * @param {Array} spellItems - Array of spell items
+   * @param {Item} classItem - The class item
+   * @returns {Promise<void>}
+   * @async
+   */
+  async processAndOrganizeSpellsForClass(identifier, spellItems, classItem) {
+    for (const spell of spellItems) {
+      const preparationMode = spell.system?.preparation?.mode;
+      const isSpecialMode = ['innate', 'pact', 'atwill', 'always'].includes(preparationMode);
+      const isGranted = !!spell.flags?.dnd5e?.cachedFor;
+      if (!isSpecialMode && !isGranted) {
+        spell.sourceClass = identifier;
+        if (spell.system && !spell.system.sourceClass) spell.system.sourceClass = identifier;
+      }
+    }
+    const spellLevels = this._organizeSpellsByLevelForClass(spellItems, identifier, classItem);
+    const prepStats = this.calculatePreparationStats(identifier, spellLevels, classItem);
+    this.classSpellData[identifier] = {
+      spellLevels,
+      className: classItem.name,
+      spellPreparation: prepStats,
+      classItem,
+      identifier
+    };
+    if (this._shouldHideCantrips(identifier)) {
+      this.classSpellData[identifier].spellLevels = spellLevels.filter((spell) => spell._levelMetadata.level !== '0' && spell._levelMetadata.level !== 0);
+    }
+  }
+
+  /**
+   * Calculate preparation statistics for a specific class
    * @param {string} classIdentifier - The class identifier
-   * @param {Array} spellLevels - Spell level groups
+   * @param {Array} spellLevels - Flattened spell array
    * @param {Item} classItem - The spellcasting class item
    * @returns {Object} Preparation stats object
    */
@@ -295,25 +409,13 @@ export class SpellbookState {
     const classRules = RuleSetManager.getClassRules(this.actor, classIdentifier);
     const preparationBonus = classRules?.spellPreparationBonus || 0;
     const maxPrepared = baseMaxPrepared + preparationBonus;
-    if (!Array.isArray(spellLevels)) spellLevels = [];
-    for (const level of spellLevels) {
-      if (level.level === '0' || level.level === 0) continue;
-      if (Array.isArray(level.spells)) {
-        for (const spell of level.spells) {
-          if (spell.preparation?.prepared && spell.sourceClass === classIdentifier && !spell.preparation?.alwaysPrepared) preparedCount++;
-        }
-      }
+    for (const spell of spellLevels) {
+      if (spell._levelMetadata.level === '0' || spell._levelMetadata.level === 0) continue;
+      if (spell.preparation?.prepared && spell.sourceClass === classIdentifier && !spell.preparation?.alwaysPrepared) preparedCount++;
     }
     const result = { current: preparedCount, maximum: maxPrepared };
     this._preparationStatsCache.set(cacheKey, result);
     return result;
-  }
-
-  /**
-   * Invalidate preparation stats cache (call when class data changes)
-   */
-  invalidatePreparationStatsCache() {
-    this._preparationStatsCache.clear();
   }
 
   /**
@@ -448,11 +550,6 @@ export class SpellbookState {
     if (!this.tabData) this.tabData = {};
     const spellsTabId = `${classIdentifier}Tab`;
     const wizardTabId = `wizardbook-${classIdentifier}`;
-    log(3, `Processing wizard spells for ${classIdentifier}, spellsTabId: ${spellsTabId}, wizardTabId: ${wizardTabId}`);
-    const tabData = {
-      [spellsTabId]: { spellLevels: [], spellPreparation: { current: 0, maximum: 0 } },
-      [wizardTabId]: { spellLevels: [], spellPreparation: { current: 0, maximum: 0 } }
-    };
     const shouldHideCantrips = this._shouldHideCantrips(classIdentifier);
     const wizardManager = this.app.wizardManagers.get(classIdentifier);
     const totalFreeSpells = wizardManager.getTotalFreeSpells();
@@ -460,10 +557,6 @@ export class SpellbookState {
     const remainingFreeSpells = Math.max(0, totalFreeSpells - usedFreeSpells);
     const totalSpells = personalSpellbook.length;
     this.scrollSpells = await ScrollScanner.scanForScrollSpells(this.actor);
-    tabData[wizardTabId].wizardTotalSpellbookCount = totalSpells;
-    tabData[wizardTabId].wizardFreeSpellbookCount = totalFreeSpells;
-    tabData[wizardTabId].wizardRemainingFreeSpells = remainingFreeSpells;
-    tabData[wizardTabId].wizardHasFreeSpells = remainingFreeSpells > 0;
     const grantedSpells = this.actor.items
       .filter((i) => i.type === 'spell' && (i.flags?.dnd5e?.cachedFor || (i.system?.preparation?.mode && ['pact', 'innate', 'atwill'].includes(i.system.preparation.mode))))
       .map((i) => i.flags?.core?.sourceId || i.uuid)
@@ -475,25 +568,30 @@ export class SpellbookState {
         (spell.system.level !== 0 && (personalSpellbook.includes(spell.compendiumUuid) || grantedSpells.includes(spell.compendiumUuid)))
     );
     const wizardbookSpells = allSpellItems.filter((spell) => this._fullWizardSpellLists.get(classIdentifier).has(spell.compendiumUuid) && spell.system.level !== 0);
-    log(3, `Filtered spells for ${classIdentifier}: prepTab=${prepTabSpells.length}, wizardbook=${wizardbookSpells.length}`);
-    let prepLevels = actorSpellUtils.organizeSpellsByLevel(prepTabSpells, this.actor, this.app.spellManager);
-    const wizardLevels = actorSpellUtils.organizeSpellsByLevel(wizardbookSpells, null, this.app.spellManager);
+    const prepLevelsFlattened = this._organizeSpellsByLevelForClass(prepTabSpells, classIdentifier, classItem);
+    const wizardLevelsFlattened = this._organizeSpellsByLevelForClass(wizardbookSpells, classIdentifier, classItem);
     const maxSpellsAllowed = wizardManager.getMaxSpellsAllowed();
     const isAtMaxSpells = personalSpellbook.length >= maxSpellsAllowed;
-    tabData[wizardTabId].wizardMaxSpellbookCount = maxSpellsAllowed;
-    tabData[wizardTabId].wizardIsAtMax = isAtMaxSpells;
-    const sortBy = this.app.filterHelper?.getFilterState()?.sortBy || 'level';
-    if (shouldHideCantrips) prepLevels = prepLevels.filter((level) => level.level !== '0' && level.level !== 0);
-    this.enrichWizardBookSpells(prepLevels, personalSpellbook, sortBy);
-    this.enrichWizardBookSpells(wizardLevels, personalSpellbook, sortBy, true, isAtMaxSpells);
-    const prepStats = this.calculatePreparationStats(classIdentifier, prepLevels, classItem);
-    tabData[spellsTabId].spellLevels = prepLevels;
-    tabData[spellsTabId].spellPreparation = prepStats;
-    tabData[wizardTabId].spellLevels = wizardLevels;
-    tabData[wizardTabId].spellPreparation = prepStats;
-    log(3, `Created tab data for ${classIdentifier}: prepLevels=${prepLevels.length}, wizardLevels=${wizardLevels.length}`);
+    let finalPrepLevels = prepLevelsFlattened;
+    if (shouldHideCantrips) finalPrepLevels = prepLevelsFlattened.filter((spell) => spell._levelMetadata.level !== '0' && spell._levelMetadata.level !== 0);
+    this.enrichWizardBookSpells(finalPrepLevels, personalSpellbook, (isWizardBook = false), (isAtMaxSpells = false));
+    this.enrichWizardBookSpells(wizardLevelsFlattened, personalSpellbook, (isWizardBook = true), isAtMaxSpells);
+    const prepStats = this.calculatePreparationStats(classIdentifier, finalPrepLevels, classItem);
+    const tabData = {
+      [spellsTabId]: { spellLevels: finalPrepLevels, spellPreparation: prepStats },
+      [wizardTabId]: {
+        spellLevels: wizardLevelsFlattened,
+        spellPreparation: prepStats,
+        wizardTotalSpellbookCount: totalSpells,
+        wizardFreeSpellbookCount: totalFreeSpells,
+        wizardRemainingFreeSpells: remainingFreeSpells,
+        wizardHasFreeSpells: remainingFreeSpells > 0,
+        wizardMaxSpellbookCount: maxSpellsAllowed,
+        wizardIsAtMax: isAtMaxSpells
+      }
+    };
     this.classSpellData[classIdentifier] = {
-      spellLevels: activeTab === wizardTabId ? wizardLevels : prepLevels,
+      spellLevels: activeTab === wizardTabId ? wizardLevelsFlattened : finalPrepLevels,
       className: classItem.name,
       spellPreparation: prepStats,
       classItem,
@@ -501,39 +599,32 @@ export class SpellbookState {
       identifier: classIdentifier
     };
     Object.assign(this.tabData, tabData);
-    log(3, `Final tabData keys: ${Object.keys(this.tabData).join(', ')}`);
   }
 
   /**
    * Enrich wizard tab spells with additional data
-   * @param {Array} levels - Spell level groups
+   * @param {Array} flattenedSpells - Flattened spell array
    * @param {Array} personalSpellbook - The personal spellbook spell UUIDs
-   * @param {string} sortBy - Sort criteria
    * @param {boolean} isWizardBook - Whether this is for the wizard tab
    * @param {boolean} isAtMaxSpells - Whether maximum spells are reached
    */
-  enrichWizardBookSpells(levels, personalSpellbook, sortBy, isWizardBook = false, isAtMaxSpells = false) {
-    if (isWizardBook && this.scrollSpells.length > 0) {
-      for (const scrollSpell of this.scrollSpells) {
-        scrollSpell.isWizardClass = true;
-        scrollSpell.inWizardSpellbook = personalSpellbook.includes(scrollSpell.spellUuid);
-        scrollSpell.canAddToSpellbook = true;
-        scrollSpell.isAtMaxSpells = isAtMaxSpells;
-        scrollSpell.isFromScroll = true;
-      }
-    }
-    for (const level of levels) {
-      level.spells = this.app.filterHelper?.sortSpells(level.spells, sortBy) || level.spells;
-      for (const spell of level.spells) {
-        spell.isWizardClass = true;
-        spell.inWizardSpellbook = personalSpellbook.includes(spell.compendiumUuid);
-        if (isWizardBook) {
-          spell.canAddToSpellbook = !spell.inWizardSpellbook && spell.system.level > 0;
-          spell.isAtMaxSpells = isAtMaxSpells;
+  enrichWizardBookSpells(flattenedSpells, personalSpellbook, isWizardBook = false, isAtMaxSpells = false) {
+    for (const spell of flattenedSpells) {
+      spell.isWizardClass = true;
+      spell.inWizardSpellbook = personalSpellbook.includes(spell.compendiumUuid || spell.spellUuid);
+      if (isWizardBook) {
+        spell.canAddToSpellbook = !spell.inWizardSpellbook && spell.system.level > 0;
+        spell.isAtMaxSpells = isAtMaxSpells;
+        if (spell.isFromScroll) {
+          spell.canLearnFromScroll = !spell.inWizardSpellbook;
+          spell.scrollMetadata = {
+            scrollId: spell.scrollId,
+            scrollName: spell.scrollName
+          };
         }
-        spell.enrichedIcon = formattingUtils.createSpellIconLink(spell);
-        spell.formattedDetails = formattingUtils.formatSpellDetails(spell);
       }
+      if (!spell.enrichedIcon) spell.enrichedIcon = formattingUtils.createSpellIconLink(spell);
+      if (!spell.formattedDetails) spell.formattedDetails = formattingUtils.formatSpellDetails(spell);
     }
   }
 
@@ -572,14 +663,19 @@ export class SpellbookState {
   async refreshClassSpellData(classIdentifier) {
     const classData = this.spellcastingClasses[classIdentifier];
     if (!classData) return;
-    this.invalidatePreparationStatsCache();
+    this._preparationStatsCache.clear();
+    this.scrollSpells = [];
+    const wizardManager = this.app.wizardManagers.get(classIdentifier);
+    if (wizardManager) wizardManager.invalidateCache();
     const classItem = this.actor.items.get(classData.id);
     if (!classItem) return;
-    if (genericUtils.isClassWizardEnabled(this.actor, classIdentifier)) await this.cacheWizardSpellbook(classIdentifier);
-    if (genericUtils.isClassWizardEnabled(this.actor, classIdentifier)) await this.loadWizardSpellData(classItem, classIdentifier);
-    else await this.loadClassSpellData(classIdentifier, classItem);
+    if (genericUtils.isClassWizardEnabled(this.actor, classIdentifier)) {
+      await this.cacheWizardSpellbook(classIdentifier);
+      await this.loadWizardSpellData(classItem, classIdentifier);
+    } else {
+      await this.loadClassSpellData(classIdentifier, classItem);
+    }
     this.updateGlobalPreparationCount();
-    log(3, `Refreshed spell data for class ${classIdentifier}`);
   }
 
   /**

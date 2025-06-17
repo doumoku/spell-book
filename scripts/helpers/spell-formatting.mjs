@@ -20,7 +20,7 @@ export function formatSpellDetails(spell) {
     if (materialsStr) details.push(materialsStr);
     return details.filter(Boolean).join(' • ');
   } catch (error) {
-    log(1, `Error formatting spell details:`, error);
+    log(1, 'Error formatting spell details:', error);
     return '';
   }
 }
@@ -84,15 +84,16 @@ function formatSpellComponents(spell) {
  * @returns {string} - Formatted activation string
  */
 function formatSpellActivation(spell) {
-  if (spell.labels?.activation) return spell.labels.activation;
-  if (spell.system?.activation?.type) {
+  let result = '';
+  if (spell.labels?.activation) result = spell.labels.activation;
+  else if (spell.system?.activation?.type) {
     const type = spell.system.activation.type;
     const value = spell.system.activation.value || 1;
     const typeLabel = CONFIG.DND5E.abilityActivationTypes[type];
-    if (value === 1 || value === null) return typeLabel;
-    return `${value} ${typeLabel}s`;
+    if (value === 1 || value === null) result = typeLabel;
+    else result = `${value} ${typeLabel}s`;
   }
-  return '';
+  return result;
 }
 
 /**
@@ -101,9 +102,10 @@ function formatSpellActivation(spell) {
  * @returns {string} - Formatted school string
  */
 function formatSpellSchool(spell) {
-  if (spell.labels?.school) return spell.labels.school;
-  if (spell.system?.school) return CONFIG.DND5E.spellSchools[spell.system.school]?.label || spell.system.school;
-  return '';
+  let result = '';
+  if (spell.labels?.school) result = spell.labels.school;
+  else if (spell.system?.school) result = CONFIG.DND5E.spellSchools[spell.system.school]?.label || spell.system.school;
+  return result;
 }
 
 /**
@@ -113,10 +115,13 @@ function formatSpellSchool(spell) {
  */
 function formatMaterialComponents(spell) {
   const materials = spell.system?.materials;
-  if (!materials || !materials.consumed) return '';
-  if (materials.cost && materials.cost > 0) return game.i18n.format('SPELLBOOK.MaterialComponents.Cost', { cost: materials.cost });
-  else if (materials.value) return materials.value;
-  else return game.i18n.localize('SPELLBOOK.MaterialComponents.UnknownCost');
+  let result = '';
+  if (materials && materials.consumed) {
+    if (materials.cost && materials.cost > 0) result = game.i18n.format('SPELLBOOK.MaterialComponents.Cost', { cost: materials.cost });
+    else if (materials.value) result = materials.value;
+    else result = game.i18n.localize('SPELLBOOK.MaterialComponents.UnknownCost');
+  }
+  return result;
 }
 
 /**
@@ -137,16 +142,15 @@ export function getLocalizedPreparationMode(mode) {
  */
 export function extractSpellFilterData(spell) {
   if (!spell) return {};
-  return {
-    castingTime: extractCastingTime(spell),
-    range: extractRange(spell),
-    damageTypes: extractDamageTypes(spell),
-    isRitual: checkIsRitual(spell),
-    concentration: checkIsConcentration(spell),
-    materialComponents: extractMaterialComponents(spell),
-    requiresSave: checkSpellRequiresSave(spell),
-    conditions: extractSpellConditions(spell)
-  };
+  const castingTime = extractCastingTime(spell);
+  const range = extractRange(spell);
+  const damageTypes = extractDamageTypes(spell);
+  const isRitual = checkIsRitual(spell);
+  const concentration = checkIsConcentration(spell);
+  const materialComponents = extractMaterialComponents(spell);
+  const requiresSave = checkSpellRequiresSave(spell);
+  const conditions = extractSpellConditions(spell);
+  return { castingTime, range, damageTypes, isRitual, concentration, materialComponents, requiresSave, conditions };
 }
 
 /**
@@ -182,18 +186,14 @@ function extractRange(spell) {
 function extractDamageTypes(spell) {
   const damageTypes = [];
   if (spell.labels?.damages?.length) {
-    for (const damage of spell.labels.damages) {
-      if (damage.damageType && !damageTypes.includes(damage.damageType)) damageTypes.push(damage.damageType);
-    }
+    for (const damage of spell.labels.damages) if (damage.damageType && !damageTypes.includes(damage.damageType)) damageTypes.push(damage.damageType);
   }
   if (spell.system?.activities) {
     for (const [_key, activity] of Object.entries(spell.system.activities)) {
       if (activity.damage?.parts?.length) {
         for (const part of activity.damage.parts) {
           if (part.types && Array.isArray(part.types) && part.types.length) {
-            for (const type of part.types) {
-              if (!damageTypes.includes(type)) damageTypes.push(type);
-            }
+            for (const type of part.types) if (!damageTypes.includes(type)) damageTypes.push(type);
           } else if (part[1] && !damageTypes.includes(part[1])) damageTypes.push(part[1]);
         }
       }
@@ -241,16 +241,20 @@ function extractMaterialComponents(spell) {
  * @returns {boolean} - Whether the spell requires a save
  */
 function checkSpellRequiresSave(spell) {
+  let result = false;
   if (spell.system?.activities) {
     for (const [_key, activity] of Object.entries(spell.system.activities)) {
-      if (activity.value?.type === 'save') return true;
+      if (activity.value?.type === 'save') {
+        result = true;
+        break;
+      }
     }
   }
-  if (spell.system?.description?.value) {
+  if (!result && spell.system?.description?.value) {
     const saveText = game.i18n.localize('SPELLBOOK.Filters.SavingThrow').toLowerCase();
-    if (spell.system.description.value.toLowerCase().includes(saveText)) return true;
+    if (spell.system.description.value.toLowerCase().includes(saveText)) result = true;
   }
-  return false;
+  return result;
 }
 
 /**
@@ -263,9 +267,7 @@ function extractSpellConditions(spell) {
   const description = spell.system?.description?.value || '';
   if (description && CONFIG.DND5E.conditionTypes) {
     const lowerDesc = description.toLowerCase();
-    for (const [key, condition] of Object.entries(CONFIG.DND5E.conditionTypes)) {
-      if (condition?.label && lowerDesc.includes(condition.label.toLowerCase())) conditions.push(key);
-    }
+    for (const [key, condition] of Object.entries(CONFIG.DND5E.conditionTypes)) if (condition?.label && lowerDesc.includes(condition.label.toLowerCase())) conditions.push(key);
   }
   return conditions;
 }
@@ -283,7 +285,7 @@ export function createSpellIconLink(spell) {
   const entityType = parsed.type || 'Item';
   let packId = '';
   if (parsed.collection) packId = parsed.collection.collection || '';
-  return `<a class="content-link"
+  const result = `<a class="content-link"
   draggable="true"
   data-link=""
   data-uuid="${uuid}"
@@ -297,4 +299,5 @@ export function createSpellIconLink(spell) {
   icon"></a>`
     .replace(/\s+/g, ' ')
     .trim();
+  return result;
 }

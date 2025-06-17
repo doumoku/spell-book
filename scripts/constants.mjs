@@ -94,14 +94,6 @@ export const MODULE = {
       sortable: true
     },
     {
-      id: 'sortBy',
-      type: 'dropdown',
-      enabled: true,
-      order: 1000,
-      label: 'SPELLBOOK.Filters.SortBy',
-      sortable: false
-    },
-    {
       id: 'prepared',
       type: 'checkbox',
       enabled: true,
@@ -193,6 +185,15 @@ export const MODULE = {
     NONE: 'none',
     PREPARED: 'prepared',
     ALWAYS: 'always'
+  },
+
+  /**
+   * Batching configuration for lazy loading
+   * @type {Object}
+   */
+  BATCHING: {
+    SIZE: 30,
+    MARGIN: 100
   }
 };
 
@@ -221,6 +222,7 @@ export const FLAGS = {
   PREVIOUS_LEVEL: 'previousLevel',
   RULE_SET_OVERRIDE: 'ruleSetOverride',
   SIDEBAR_COLLAPSED: 'sidebarCollapsed',
+  SPELL_LOADOUTS: 'spellLoadouts',
   SWAP_TRACKING: 'swapTracking',
   WIZARD_COPIED_SPELLS: 'wizardCopiedSpells',
   WIZARD_RITUAL_CASTING: 'wizardRitualCasting'
@@ -243,6 +245,7 @@ export const TEMPLATES = {
     FILTER_CONFIG: 'modules/spell-book/templates/dialogs/filter-configuration.hbs',
     MANAGER_DOCUMENTATION: 'modules/spell-book/templates/dialogs/spell-list-manager-documentation.hbs',
     MERGE_SPELL_LISTS: 'modules/spell-book/templates/dialogs/merge-spell-lists.hbs',
+    SPELL_LOADOUT: 'modules/spell-book/templates/dialogs/spell-loadout.hbs',
     SPELLBOOK_SETTINGS: 'modules/spell-book/templates/dialogs/spellbook-settings.hbs'
   },
   GM: {
@@ -275,20 +278,11 @@ export const SETTINGS = {
   DISTANCE_UNIT: 'distanceUnit',
   ENABLE_JOURNAL_BUTTON: 'enableJournalButton',
   FILTER_CONFIGURATION: 'filterConfiguration',
+  HIDDEN_SPELL_LISTS: 'hiddenSpellLists',
+  LAZY_BATCH_SIZE: 'lazyBatchSize',
   LOGGING_LEVEL: 'loggingLevel',
   OPEN_SPELL_MANAGER: 'openSpellListManager',
   RUN_MIGRATIONS: 'runMigrations',
   SPELL_BOOK_POSITION: 'spellBookPositionn',
   SPELLCASTING_RULE_SET: 'spellcastingRuleSet'
-};
-
-/**
- * Sort options for spell display
- * @type {Object}
- */
-export const SORT_BY = {
-  LEVEL: 'level',
-  NAME: 'name',
-  PREPARED: 'prepared',
-  SCHOOL: 'school'
 };

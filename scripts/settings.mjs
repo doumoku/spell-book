@@ -177,4 +177,41 @@ export function registerSettings() {
     type: Boolean,
     default: true
   });
+
+  game.settings.register(MODULE.ID, SETTINGS.HIDDEN_SPELL_LISTS, {
+    name: 'SPELLBOOK.Settings.HiddenSpellLists.Name',
+    hint: 'SPELLBOOK.Settings.HiddenSpellLists.Hint',
+    scope: 'world',
+    config: false,
+    type: Array,
+    default: [],
+    onChange: (value) => {
+      try {
+        if (!Array.isArray(value)) {
+          log(2, 'Invalid hidden spell lists format, resetting to default');
+          game.settings.set(MODULE.ID, SETTINGS.HIDDEN_SPELL_LISTS, []);
+        }
+      } catch (error) {
+        log(1, 'Error validating hidden spell lists setting:', error);
+      }
+    }
+  });
+
+  game.settings.register(MODULE.ID, SETTINGS.LAZY_BATCH_SIZE, {
+    name: 'SPELLBOOK.Settings.LazyBatchSize.Name',
+    hint: 'SPELLBOOK.Settings.LazyBatchSize.Hint',
+    scope: 'client',
+    config: true,
+    type: Number,
+    default: MODULE.BATCHING.SIZE,
+    range: {
+      min: 20,
+      max: 250,
+      step: 10
+    },
+    onChange: (value) => {
+      MODULE.BATCHING.SIZE = value;
+      log(3, `Lazy batch size changed to ${value}`);
+    }
+  });
 }

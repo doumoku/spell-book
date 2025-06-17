@@ -38,7 +38,7 @@ export class SpellbookFilterHelper {
    */
   getFilterState() {
     const now = Date.now();
-    if (this._cachedFilterState && now - this._lastFilterUpdate < 100) return this._cachedFilterState;
+    if (this._cachedFilterState && now - this._lastFilterUpdate < 1000) return this._cachedFilterState;
     if (!this.element) return filterUtils.getDefaultFilterState();
     this._cachedFilterState = {
       name: this.element.querySelector('[name="filter-name"]')?.value || '',
@@ -53,8 +53,7 @@ export class SpellbookFilterHelper {
       prepared: this.element.querySelector('[name="filter-prepared"]')?.checked || false,
       ritual: this.element.querySelector('[name="filter-ritual"]')?.checked || false,
       concentration: this.element.querySelector('[name="filter-concentration"]')?.value || '',
-      materialComponents: this.element.querySelector('[name="filter-materialComponents"]')?.value || '',
-      sortBy: this.element.querySelector('[name="sort-by"]')?.value || 'level'
+      materialComponents: this.element.querySelector('[name="filter-materialComponents"]')?.value || ''
     };
     this._lastFilterUpdate = now;
     return this._cachedFilterState;
@@ -117,7 +116,6 @@ export class SpellbookFilterHelper {
       filterState.source = 'all';
       return spells;
     }
-    log(3, `After source filter: ${filtered.length} spells remaining`);
     return filtered;
   }
 
@@ -345,62 +343,6 @@ export class SpellbookFilterHelper {
   }
 
   /**
-   * Sort spells according to criteria
-   * @param {Array} spells - Spells to sort
-   * @param {string} sortBy - Sort criteria
-   * @returns {Array} Sorted spells
-   */
-  sortSpells(spells, sortBy) {
-    return [...spells].sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'school':
-          const schoolA = a.system.school || '';
-          const schoolB = b.system.school || '';
-          return schoolA.localeCompare(schoolB) || a.name.localeCompare(b.name);
-        case 'prepared':
-          const prepA = a.preparation.prepared ? 0 : 1;
-          const prepB = b.preparation.prepared ? 0 : 1;
-          return prepA - prepB || a.name.localeCompare(b.name);
-        case 'level':
-        default:
-          return a.name.localeCompare(b.name);
-      }
-    });
-  }
-
-  /**
-   * Apply sorting to spells in the DOM
-   * @param {string} sortBy - Sort criteria
-   */
-  applySorting(sortBy) {
-    const levelContainers = this.element.querySelectorAll('.spell-level');
-    for (const levelContainer of levelContainers) {
-      const list = levelContainer.querySelector('.spell-list');
-      if (!list) continue;
-      const items = Array.from(list.children);
-      items.sort((a, b) => {
-        switch (sortBy) {
-          case 'name':
-            return a.querySelector('.spell-name').textContent.localeCompare(b.querySelector('.spell-name').textContent);
-          case 'school':
-            const schoolA = a.dataset.spellSchool || '';
-            const schoolB = b.dataset.spellSchool || '';
-            return schoolA.localeCompare(schoolB) || a.querySelector('.spell-name').textContent.localeCompare(b.querySelector('.spell-name').textContent);
-          case 'prepared':
-            const aPrepared = a.classList.contains('prepared-spell') ? 0 : 1;
-            const bPrepared = b.classList.contains('prepared-spell') ? 0 : 1;
-            return aPrepared - bPrepared || a.querySelector('.spell-name').textContent.localeCompare(b.querySelector('.spell-name').textContent);
-          default:
-            return 0;
-        }
-      });
-      for (const item of items) list.appendChild(item);
-    }
-  }
-
-  /**
    * Update level container visibility and counts
    * @param {Map} levelVisibilityMap - Map of level visibility data
    * @private
@@ -409,19 +351,11 @@ export class SpellbookFilterHelper {
     const levelContainers = this.element.querySelectorAll('.spell-level');
     for (const container of levelContainers) {
       const levelId = container.dataset.level;
-      const levelStats = levelVisibilityMap.get(levelId) || {
-        visible: 0,
-        prepared: 0,
-        countable: 0,
-        countablePrepared: 0
-      };
-      container.style.display = levelStats.visible > 0 ? '' : '';
+      const levelStats = levelVisibilityMap.get(levelId) || { visible: 0, prepared: 0, countable: 0, countablePrepared: 0 };
+      container.style.display = levelStats.visible > 0 ? '' : 'none';
       const countDisplay = container.querySelector('.spell-count');
-      if (countDisplay && levelStats.countable > 0) {
-        countDisplay.textContent = `(${levelStats.countablePrepared}/${levelStats.countable})`;
-      } else if (countDisplay) {
-        countDisplay.textContent = '';
-      }
+      if (countDisplay && levelStats.countable > 0) countDisplay.textContent = `(${levelStats.countablePrepared}/${levelStats.countable})`;
+      else if (countDisplay) countDisplay.textContent = '';
     }
   }
 }

@@ -20,17 +20,29 @@ export function convertRangeToStandardUnit(units, value) {
  * Prepare filter options based on filter type
  * @param {string} filterId - The filter ID
  * @param {Object} filterState - Current filter state
- * @param {Array} spellLevels - Spell level data
+ * @param {Array} spellData - Spell data
  * @returns {Array} Options for the dropdown
  */
-export function getOptionsForFilter(filterId, filterState, spellLevels) {
+export function getOptionsForFilter(filterId, filterState, spellData) {
   const options = [{ value: '', label: game.i18n.localize('SPELLBOOK.Filters.All') }];
   switch (filterId) {
     case 'level':
-      if (spellLevels) {
-        spellLevels.forEach((level) => {
-          options.push({ value: level.level, label: CONFIG.DND5E.spellLevels[level.level], selected: filterState.level === level.level });
-        });
+      if (spellData && Array.isArray(spellData)) {
+        const levels = new Set();
+        if (spellData.length > 0 && spellData[0]._levelMetadata) {
+          spellData.forEach((spell) => {
+            levels.add(spell._levelMetadata.level);
+          });
+        }
+        Array.from(levels)
+          .sort((a, b) => Number(a) - Number(b))
+          .forEach((level) => {
+            options.push({
+              value: level,
+              label: CONFIG.DND5E.spellLevels[level],
+              selected: filterState.level === level
+            });
+          });
       }
       break;
     case 'school':
@@ -39,8 +51,8 @@ export function getOptionsForFilter(filterId, filterState, spellLevels) {
       });
       break;
     case 'castingTime':
-      if (spellLevels) {
-        const uniqueTypes = getCastingTimeOptions(spellLevels, filterState);
+      if (spellData) {
+        const uniqueTypes = getCastingTimeOptions(spellData, filterState);
         options.push(...uniqueTypes);
       }
       break;
@@ -72,33 +84,24 @@ export function getOptionsForFilter(filterId, filterState, spellLevels) {
         { value: 'notConsumed', label: game.i18n.localize('SPELLBOOK.Filters.MaterialComponents.NotConsumed'), selected: filterState.materialComponents === 'notConsumed' }
       );
       break;
-    case 'sortBy':
-      options.push(
-        { value: 'level', label: game.i18n.localize('SPELLBOOK.Sort.ByLevel'), selected: filterState.sortBy === 'level' },
-        { value: 'name', label: game.i18n.localize('SPELLBOOK.Sort.ByName'), selected: filterState.sortBy === 'name' },
-        { value: 'school', label: game.i18n.localize('SPELLBOOK.Sort.BySchool'), selected: filterState.sortBy === 'school' },
-        { value: 'prepared', label: game.i18n.localize('SPELLBOOK.Sort.ByPrepared'), selected: filterState.sortBy === 'prepared' }
-      );
-      break;
   }
   return options;
 }
 
 /**
  * Get casting time options from spell levels
- * @param {Array} spellLevels - Spell level data
+ * @param {Array} spellData - Spell data
  * @param {Object} filterState - Current filter state
  * @returns {Array} Casting time options
  */
-function getCastingTimeOptions(spellLevels, filterState) {
+function getCastingTimeOptions(spellData, filterState) {
   const uniqueActivationTypes = new Set();
   const options = [];
-  spellLevels.forEach((level) => {
-    level.spells.forEach((spell) => {
-      const type = spell.system?.activation?.type;
-      const value = spell.system?.activation?.value || 1;
-      if (type) uniqueActivationTypes.add(`${type}:${value}`);
-    });
+  const spells = Array.isArray(spellData) ? spellData : [];
+  spells.forEach((spell) => {
+    const type = spell.system?.activation?.type;
+    const value = spell.system?.activation?.value || 1;
+    if (type) uniqueActivationTypes.add(`${type}:${value}`);
   });
   const typeOrder = {
     action: 1,
@@ -152,7 +155,6 @@ export function getDefaultFilterState() {
     prepared: false,
     ritual: false,
     concentration: '',
-    materialComponents: '',
-    sortBy: 'level'
+    materialComponents: ''
   };
 }
