@@ -1,6 +1,6 @@
 # Spell Book Roadmap
 
-### v0.8.0 - Quality of Life & Bug Fixes (Currennt Release)
+### v0.8.0 - Quality of Life & Bug Fixes (Current Release)
 
 **Priority: Critical Bug Fixes & User Requests**
 
