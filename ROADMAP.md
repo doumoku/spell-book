@@ -1,6 +1,6 @@
 # Spell Book Roadmap
 
-### v0.8.0 - Quality of Life & Bug Fixes (Next Release)
+### v0.8.0 - Quality of Life & Bug Fixes (Currennt Release)
 
 **Priority: Critical Bug Fixes & User Requests**
 
@@ -95,7 +95,7 @@ Enhanced the `PlayerSpellBook` class in `player-spell-book.mjs` with lazy loadin
 - **Caching strategy**: Loaded spell data cached for subsequent access with proper invalidation
 - **Loading indicators**: Visual feedback during spell list loading operations
 
-### v0.9.0 - Enhanced User Experience & Multi 5e System Support
+### v0.9.0 - Enhanced User Experience & Multi 5e System Support (Next Release)
 
 **Priority: Usability & Interface Improvements**
 
