@@ -889,6 +889,19 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {Array} Filtered spell array ready for batching
    */
   _prepareLazySpellData(classIdentifier) {
+    const activeTab = this.tabGroups['spellbook-tabs'];
+    if (activeTab && activeTab.startsWith('wizardbook-')) {
+      const tabData = this._stateManager.tabData?.[activeTab];
+      if (!tabData || !tabData.spellLevels) {
+        log(2, `No wizard tab data found for ${activeTab}`);
+        return [];
+      }
+      const filteredSpells = tabData.spellLevels.filter((spell) => {
+        return this._checkSpellVisibilityLazy(spell);
+      });
+      log(3, `Prepared ${filteredSpells.length} wizard spells for lazy loading from tab data`);
+      return filteredSpells;
+    }
     const classData = this._stateManager.classSpellData[classIdentifier];
     if (!classData || !classData.spellLevels) {
       log(2, `No spell data found for class ${classIdentifier}`);
@@ -897,6 +910,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const filteredSpells = classData.spellLevels.filter((spell) => {
       return this._checkSpellVisibilityLazy(spell);
     });
+    log(3, `Prepared ${filteredSpells.length} class spells for lazy loading from class data`);
     return filteredSpells;
   }
 
@@ -981,11 +995,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const spellsContainer = activeTabContent.querySelector('.spells-container');
       if (spellsContainer) {
         const emptyState = `<div class="empty-state" role="status">
-        <p>${game.i18n.localize('SPELLBOOK.Errors.NoSpellsFound')}</p>
-      </div>`;
+          <p>${game.i18n.localize('SPELLBOOK.Errors.NoSpellsFound')}</p>
+        </div>`;
         const classHeader = spellsContainer.querySelector('.class-header');
+        const spellbookRules = spellsContainer.querySelector('.spellbook-rules');
         spellsContainer.innerHTML = '';
         if (classHeader) spellsContainer.appendChild(classHeader);
+        if (spellbookRules) spellsContainer.appendChild(spellbookRules);
         spellsContainer.insertAdjacentHTML('beforeend', emptyState);
       }
       return;
@@ -993,8 +1009,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const spellsContainer = activeTabContent.querySelector('.spells-container');
     if (spellsContainer) {
       const classHeader = spellsContainer.querySelector('.class-header');
+      const spellbookRules = spellsContainer.querySelector('.spellbook-rules');
       spellsContainer.innerHTML = '';
       if (classHeader) spellsContainer.appendChild(classHeader);
+      if (spellbookRules) spellsContainer.appendChild(spellbookRules);
     }
     this._renderSpellBatch();
   }
@@ -1013,6 +1031,18 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       log(2, `Failed to get or create level container for spell ${spell.name}`);
       return;
     }
+    const activeTab = this.tabGroups['spellbook-tabs'];
+    const isWizardTab = activeTab && activeTab.startsWith('wizardbook-');
+    if (isWizardTab) {
+      const classIdentifier = activeTab.replace('wizardbook-', '');
+      const wizardManager = this.wizardManagers.get(classIdentifier);
+      if (wizardManager && this._stateManager.wizardSpellbookCache) {
+        const personalSpellbook = this._stateManager.wizardSpellbookCache.get(classIdentifier) || [];
+        spell.inWizardSpellbook = personalSpellbook.includes(spell.compendiumUuid || spell.spellUuid);
+        spell.canAddToSpellbook = !spell.inWizardSpellbook && spell.system?.level > 0;
+      }
+    }
+
     const processedSpell = this._processSpellForDisplay(spell);
     const spellHtml = this._createSpellItemHtml(processedSpell);
     const spellList = levelContainer.querySelector('.spell-list');
@@ -1043,6 +1073,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
     this.#lazyRenderIndex = batchEnd - 1;
     this.#lazyRenderThrottle = false;
+    this._applyCollapsedStateToExistingHeaders();
     this.ui.updateSpellCounts();
   }
 
@@ -1053,18 +1084,23 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {HTMLElement} Created level container
    */
   _createLevelHeader(levelMetadata, container) {
+    const collapsedLevels = game.user.getFlag(MODULE.ID, FLAGS.COLLAPSED_LEVELS) || [];
+    const isCollapsed = collapsedLevels.includes(levelMetadata.level.toString());
+    const ariaExpanded = isCollapsed ? 'false' : 'true';
+    const collapseClass = isCollapsed ? ' collapsed' : '';
+    const caretClass = 'fa-caret-down';
     const levelHtml = `
-    <div class="spell-level" data-level="${levelMetadata.level}">
-      <h3 class="spell-level-heading" data-action="toggleSpellLevel" role="button" aria-expanded="true"
-          aria-controls="spell-list-${levelMetadata.level}">
-        <i class="fas fa-caret-down collapse-indicator" aria-hidden="true"></i>
-        ${levelMetadata.levelName}
-        <span class="spell-count" aria-label="${game.i18n.localize('SPELLBOOK.UI.SpellCount')}"></span>
-      </h3>
-      <ul id="spell-list-${levelMetadata.level}" class="spell-list" role="list">
-      </ul>
-    </div>
-  `;
+      <div class="spell-level${collapseClass}" data-level="${levelMetadata.level}">
+        <h3 class="spell-level-heading" data-action="toggleSpellLevel" role="button" aria-expanded="${ariaExpanded}"
+            aria-controls="spell-list-${levelMetadata.level}">
+          <i class="fas ${caretClass} collapse-indicator" aria-hidden="true"></i>
+          ${levelMetadata.levelName}
+          <span class="spell-count" aria-label="${game.i18n.localize('SPELLBOOK.UI.SpellCount')}"></span>
+        </h3>
+        <ul id="spell-list-${levelMetadata.level}" class="spell-list" role="list">
+        </ul>
+      </div>
+    `;
     let insertPosition = null;
     const existingLevels = container.querySelectorAll('.spell-level');
     for (const existingLevel of existingLevels) {
@@ -1082,7 +1118,34 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       return null;
     }
     this._currentLevelHeaders.set(levelMetadata.level, levelContainer);
+    log(3, `Created level header for level ${levelMetadata.level}, collapsed: ${isCollapsed}`);
     return levelContainer;
+  }
+
+  /**
+   * Apply collapsed state to any existing level headers
+   * @private
+   */
+  _applyCollapsedStateToExistingHeaders() {
+    const collapsedLevels = game.user.getFlag(MODULE.ID, FLAGS.COLLAPSED_LEVELS) || [];
+    const activeTab = this.tabGroups['spellbook-tabs'];
+    const activeTabContent = this.element.querySelector(`.tab[data-tab="${activeTab}"]`);
+    if (!activeTabContent) return;
+    collapsedLevels.forEach((levelId) => {
+      const levelElement = activeTabContent.querySelector(`.spell-level[data-level="${levelId}"]`);
+      if (levelElement && !levelElement.classList.contains('collapsed')) {
+        levelElement.classList.add('collapsed');
+        const heading = levelElement.querySelector('.spell-level-heading');
+        if (heading) {
+          heading.setAttribute('aria-expanded', 'false');
+          const caret = heading.querySelector('.collapse-indicator');
+          if (caret) {
+            caret.classList.remove('fa-caret-down');
+            caret.classList.add('fa-caret-right');
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -1097,21 +1160,54 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const formattedDetails = spell.formattedDetails || '';
     const cssClasses = spell.cssClasses || 'spell-item';
     const dataAttributes = spell.dataAttributes || '';
-    const preparationCheckboxHtml = spell.preparationCheckboxHtml || '';
+    const activeTab = this.tabGroups['spellbook-tabs'];
+    const isWizardTab = activeTab && activeTab.startsWith('wizardbook-');
+    let actionHtml = '';
+    if (isWizardTab) {
+      if (spell.isFromScroll) {
+        actionHtml = `
+          <div class="wizard-spell-status">
+            <button class="copy-spell-btn scroll-spell-btn" data-action="learnFromScroll"
+              data-uuid="${spell.spellUuid || spell.compendiumUuid}" data-scroll-id="${spell.scrollId}" type="button"
+              aria-label="${game.i18n.format('SPELLBOOK.Scrolls.LearnFromScroll', { name })}">
+              <i class="fas fa-scroll"></i> ${game.i18n.localize('SPELLBOOK.Wizard.LearnSpell')}
+            </button>
+          </div>`;
+      } else if (spell.inWizardSpellbook) {
+        actionHtml = `
+          <div class="wizard-spell-status">
+            <span class="in-spellbook-tag" aria-label="Spell is in your spellbook">
+              ${game.i18n.localize('SPELLBOOK.Wizard.InSpellbook')}
+            </span>
+          </div>`;
+      } else if (spell.system?.level > 0) {
+        actionHtml = `
+          <div class="wizard-spell-status">
+            <button class="copy-spell-btn" data-action="learnSpell" data-uuid="${spell.compendiumUuid}" type="button">
+              <i class="fas fa-book"></i> ${game.i18n.localize('SPELLBOOK.Wizard.LearnSpell')}
+            </button>
+          </div>`;
+      }
+    } else {
+      const preparationCheckboxHtml = spell.preparationCheckboxHtml || '';
+      actionHtml = `
+        <div class="spell-preparation dnd5e2">
+          ${preparationCheckboxHtml}
+        </div>`;
+    }
+
     return `
-    <li class="${cssClasses}" ${dataAttributes} role="listitem">
-      <div class="spell-name">
-        ${enrichedIcon}
-        <div class="name-stacked">
-          <span class="title">${name}${tagHtml}</span>
-          <span class="subtitle">${formattedDetails}</span>
+      <li class="${cssClasses}" ${dataAttributes} role="listitem">
+        <div class="spell-name">
+          ${enrichedIcon}
+          <div class="name-stacked">
+            <span class="title">${name}${tagHtml}</span>
+            <span class="subtitle">${formattedDetails}</span>
+          </div>
         </div>
-      </div>
-      <div class="spell-preparation dnd5e2">
-        ${preparationCheckboxHtml}
-      </div>
-    </li>
-  `;
+        ${actionHtml}
+      </li>
+    `;
   }
 
   /**
@@ -1153,8 +1249,13 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   _applyFilters() {
     this._resetLazyState();
+    const activeTab = this.tabGroups['spellbook-tabs'];
+    const activeTabContent = this.element.querySelector(`.tab[data-tab="${activeTab}"]`);
+    let scrollTop = 0;
+    if (activeTabContent) scrollTop = activeTabContent.scrollTop;
     this._initializeLazyLoading();
     setTimeout(() => {
+      if (activeTabContent) activeTabContent.scrollTop = scrollTop;
       this._setupScrollListener();
     }, 50);
   }

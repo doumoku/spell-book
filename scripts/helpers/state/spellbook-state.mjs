@@ -546,8 +546,6 @@ export class SpellbookState {
    * @async
    */
   async processWizardSpells(allSpellItems, classItem, personalSpellbook, classIdentifier) {
-    const activeTab = this.app.tabGroups['spellbook-tabs'];
-    if (!this.tabData) this.tabData = {};
     const spellsTabId = `${classIdentifier}Tab`;
     const wizardTabId = `wizardbook-${classIdentifier}`;
     const shouldHideCantrips = this._shouldHideCantrips(classIdentifier);
@@ -574,8 +572,8 @@ export class SpellbookState {
     const isAtMaxSpells = personalSpellbook.length >= maxSpellsAllowed;
     let finalPrepLevels = prepLevelsFlattened;
     if (shouldHideCantrips) finalPrepLevels = prepLevelsFlattened.filter((spell) => spell._levelMetadata.level !== '0' && spell._levelMetadata.level !== 0);
-    this.enrichWizardBookSpells(finalPrepLevels, personalSpellbook, (isWizardBook = false), (isAtMaxSpells = false));
-    this.enrichWizardBookSpells(wizardLevelsFlattened, personalSpellbook, (isWizardBook = true), isAtMaxSpells);
+    this.enrichWizardBookSpells(finalPrepLevels, personalSpellbook, false, false);
+    this.enrichWizardBookSpells(wizardLevelsFlattened, personalSpellbook, true, isAtMaxSpells);
     const prepStats = this.calculatePreparationStats(classIdentifier, finalPrepLevels, classItem);
     const tabData = {
       [spellsTabId]: { spellLevels: finalPrepLevels, spellPreparation: prepStats },
@@ -591,7 +589,7 @@ export class SpellbookState {
       }
     };
     this.classSpellData[classIdentifier] = {
-      spellLevels: activeTab === wizardTabId ? wizardLevelsFlattened : finalPrepLevels,
+      spellLevels: finalPrepLevels,
       className: classItem.name,
       spellPreparation: prepStats,
       classItem,
