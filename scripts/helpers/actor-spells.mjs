@@ -96,3 +96,34 @@ export async function fetchSpellDocuments(spellUuids, maxSpellLevel, actorId = n
   log(3, `Successfully fetched ${spellItems.length}/${spellUuids.size} spells`);
   return spellItems;
 }
+
+/**
+ * Organize spells by level for display in GM interface
+ * @param {Array} spellItems - Array of spell documents
+ * @param {Actor|null} actor - The actor (optional, for additional context)
+ * @returns {Array} Array of level objects with organized spells
+ */
+export function organizeSpellsByLevel(spellItems, actor = null) {
+  if (!spellItems || !Array.isArray(spellItems)) return [];
+  const spellsByLevel = {};
+  for (const spell of spellItems) {
+    if (spell?.system?.level === undefined) continue;
+    const level = spell.system.level;
+    if (!spellsByLevel[level]) spellsByLevel[level] = [];
+    spellsByLevel[level].push(spell);
+  }
+  for (const level in spellsByLevel) {
+    if (spellsByLevel.hasOwnProperty(level)) spellsByLevel[level].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  const levelArray = [];
+  const sortedLevels = Object.keys(spellsByLevel).sort((a, b) => Number(a) - Number(b));
+  for (const level of sortedLevels) {
+    const levelName = CONFIG.DND5E.spellLevels[level] || `Level ${level}`;
+    levelArray.push({
+      level: Number(level),
+      levelName: levelName,
+      spells: spellsByLevel[level]
+    });
+  }
+  return levelArray;
+}

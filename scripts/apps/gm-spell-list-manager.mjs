@@ -285,6 +285,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       for (const level of spellLevels) {
         for (const spell of level.spells) {
           spell.enrichedIcon = formattingUtils.createSpellIconLink(spell);
+          spell.formattedDetails = formattingUtils.formatSpellDetails(spell);
         }
       }
       this.selectedSpellList.spells = spellDocs;
