@@ -504,6 +504,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       }
       this._initializeLazyLoading();
       this._setupScrollListener();
+      this.ui.updateSpellPreparationTracking();
+      this.ui.updateSpellCounts();
+      this.ui.setupCantripUI();
     } catch (error) {
       log(1, 'Error loading spell data:', error);
       this._showErrorState(error);
@@ -1075,6 +1078,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#lazyRenderThrottle = false;
     this._applyCollapsedStateToExistingHeaders();
     this.ui.updateSpellCounts();
+    const cantripLevel = spellsContainer.querySelector('.spell-level[data-level="0"]');
+    if (cantripLevel) this.ui.updateCantripCounter(cantripLevel, true);
   }
 
   /**
@@ -1382,7 +1387,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._handleSpellPreparationChange(event, uuid, spellItem, sourceClass, wasPrepared, isChecked);
         this.ui.updateSpellPreparationTracking();
         this.ui.updateSpellCounts();
-        this.render(false, { parts: ['footer'] });
       }
     } catch (error) {
       log(1, 'Error handling preparation change:', error);
@@ -1858,6 +1862,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       if (isAlwaysPrepared || isGranted || isInnate || isAtWill) continue;
       if (!spellDataByClass[sourceClass]) spellDataByClass[sourceClass] = {};
       const classSpellKey = `${sourceClass}:${uuid}`;
+      const classData = this._stateManager.classSpellData[sourceClass];
+      const classItem = classData?.classItem;
+      const isPactCaster = classItem?.system?.spellcasting?.type === 'pact';
+      let preparationMode = 'prepared';
+      if (isPactCaster && spellLevel > 0) preparationMode = 'pact';
       spellDataByClass[sourceClass][classSpellKey] = {
         uuid,
         name,
@@ -1871,9 +1880,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         isGranted,
         isInnate,
         isAtWill,
-        classSpellKey
+        classSpellKey,
+        preparationMode
       };
-      log(3, `Processed spell: ${name} (${uuid}) - prepared: ${isPrepared}, ritual: ${isRitual}, class: ${sourceClass}`);
+      log(3, `Processed spell: ${name} (${uuid}) - prepared: ${isPrepared}, ritual: ${isRitual}, class: ${sourceClass}, mode: ${preparationMode}`);
     }
     await this._stateManager.addMissingRitualSpells(spellDataByClass);
     const allCantripChangesByClass = {};

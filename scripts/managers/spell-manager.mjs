@@ -401,13 +401,14 @@ export class SpellManager {
     if (!supportsRitualCasting) await this._cleanupModuleRitualSpells(classIdentifier, spellIdsToRemove);
     for (const [classSpellKey, data] of Object.entries(classSpellData)) {
       const { uuid, isPrepared, wasPrepared, isRitual, sourceClass, name } = data;
+      const spellPreparationMode = data.preparationMode || preparationMode;
       if (isPrepared) {
         newClassPrepared.push(classSpellKey);
         if (!wasPrepared && data.spellLevel === 0) {
           cantripChanges.added.push({ name, uuid });
           cantripChanges.hasChanges = true;
         }
-        await this._ensureSpellOnActor(uuid, sourceClass, preparationMode, spellsToCreate, spellsToUpdate);
+        await this._ensureSpellOnActor(uuid, sourceClass, spellPreparationMode, spellsToCreate, spellsToUpdate);
       } else if (!isPrepared && isRitual && supportsRitualCasting) {
         await this._ensureRitualSpellOnActor(uuid, sourceClass, spellsToCreate, spellsToUpdate);
       } else if (wasPrepared && !isRitual) {
