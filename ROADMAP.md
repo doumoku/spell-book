@@ -127,6 +127,20 @@ Add personal notes on spells, favorite spell marking system, and spell usage his
 - Create "Favorites" filter option
 - Add notes display in spell tooltips and details
 
+#### **Spell List Renaming [Medium Priority]**
+
+Implement ability to rename custom spell lists after creation, providing better organization and management for users who create multiple lists.
+
+**Code justification:** The current custom spell list system in `gm-spell-list-manager.mjs` and `compendium-management.mjs` allows creation but no post-creation editing of list names. The `createCustomSpellList()` method sets the name during creation but provides no update mechanism. The spell list display logic in `findCompendiumSpellLists()` pulls names from compendium metadata, which could be updated through the same `CompendiumCollection.configure()` method used during creation.
+
+**Implementation:**
+
+- Add rename option to spell list context menus
+- Implement rename dialog with validation for duplicate names
+- Update compendium metadata and refresh displays
+- Preserve spell list references and actor associations during rename
+- Add rename functionality to both GM interface and player dropdowns
+
 #### **Visual Enhancements [Medium Priority]**
 
 Implement side-by-side spell comparison view for detailed analysis of similar spells.
@@ -169,6 +183,21 @@ Share spell loadouts between players, export/import spell configurations, and pr
 - Import shared loadouts with validation
 - Community loadout templates for popular builds
 - Party coordination features (avoid spell overlap)
+
+#### **Compendium Indexing Performance [High Priority]**
+
+Implement selective compendium indexing and persistent caching to dramatically reduce spell list loading times, especially for users with extensive compendium collections.
+
+**Code justification:** The current `findCompendiumSpellLists()` function in `compendium-management.mjs` processes all available compendiums on every spellbook open, causing significant delays for users with large collections like Bailywiki. The indexing process in `indexSpellCompendiums()` rebuilds the entire spell index each time without persistence. The system lacks both compendium filtering and index caching capabilities.
+
+**Implementation:**
+
+- **Selective Indexing**: Add world settings for GM to pre-select which compendiums to include in spell indexing
+- **Persistent Cache**: Store compendium indices in world flags or client storage to eliminate re-indexing on every open
+- **Smart Cache Invalidation**: Track compendium modification times and only re-index when content changes
+- **Background Indexing**: Move initial indexing to background process with progress indicators
+- **Index Management**: Provide tools to manually refresh indices and clear cache when needed
+- **Performance Monitoring**: Add metrics to track indexing performance and cache hit rates
 
 #### **Analytics & Insights [Medium Priority]**
 
@@ -252,81 +281,17 @@ Support homebrew and edge-case spellcasting classes that don't follow standard s
 
 #### Code Architecture Status
 
-**Already Implemented Well:**
-
-- **Sophisticated state management system** (`spellbook-state.mjs`) with caching, preservation, and restoration
-- **Comprehensive logging system** (`logger.mjs`) with levels, caller context, and in-memory storage
-- **Modular manager architecture** (CantripManager, SpellManager, RitualManager, etc.) with clear separation of concerns
-- **Extensive caching strategies** throughout managers for performance optimization
-- **Structured API system** (`api.mjs`) for third-party integration
-
-**Areas for Improvement:**
-
-- **Virtual scrolling/lazy loading** for large spell collections not yet implemented
 - **Batch operations** in GM Spell List Manager need implementation
 - **Data validation and cleanup** for class rule changes could be more robust
-- **Mobile/tablet UI optimization** needs attention
-- **Automated testing framework** completely missing
 
 #### User Experience Priorities
 
-**Current Strengths:**
-
-- **Rich UI state management** with tab preservation and filter caching
-- **Class-specific color theming** and visual feedback systems
-- **Comprehensive error handling** with user-friendly notifications
-- **Sophisticated preparation enforcement** with multiple behavior modes
-
-**Improvement Opportunities:**
-
-- **Reduce clicks for common operations** - loadout system would address this
 - **Streamline filter management** - saved filter presets needed
 - **Enhance spell discovery** - recommendation system would help new users
-- **Improve loading performance** - virtual scrolling for 1000+ spell lists
 
 #### Technical Debt Analysis
-
-**Well-Maintained Areas:**
-
-- **Consistent error handling patterns** with try-catch blocks and logging throughout
-- **Modern ES6+ patterns** used consistently across modules
-- **Effective memory management** with cache invalidation and cleanup methods
-- **Good separation of concerns** between UI, state, and business logic
-
-**Technical Debt to Address:**
 
 - **Code duplication** in spell processing between different managers
 - **Complex interdependencies** between state manager and UI components
 - **Legacy compatibility code** for dnd5e version differences
 - **Inconsistent async/await patterns** in some older modules
-
-#### Performance Optimization Status
-
-**Current Optimizations:**
-
-- **Extensive caching systems** in CantripManager, WizardSpellbookManager, and SpellbookState
-- **Lazy initialization** of managers and expensive operations
-- **Efficient DOM manipulation** with minimal re-renders
-- **Debounced filter application** to reduce unnecessary processing
-
-**Needed Optimizations:**
-
-- **Virtual scrolling** for spell lists with 500+ items
-- **Web Workers** for heavy spell processing operations
-- **IndexedDB integration** for offline spell data caching
-- **Bundle splitting** for faster initial load times
-
-#### Integration Patterns
-
-**Current Integrations:**
-
-- **Native dnd5e integration** with proper hooks and system compatibility
-- **Tidy5e sheet integration** with seamless UI embedding
-- **Compendium management** with proper pack handling and indexing
-
-**Integration Improvements Needed:**
-
-- **Better module conflict detection** and resolution
-- **Enhanced API documentation** for third-party developers
-- **Standardized event system** for module communication
-- **Plugin architecture** for custom spell sources
