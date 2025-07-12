@@ -103,7 +103,7 @@ export function isClassWizardEnabled(actor, classIdentifier) {
  * Get HTML element from jQuery object or direct HTML based on version
  */
 export function getHtmlElement(html) {
-  return MODULE.ISV13 ? html : html[0];
+  return foundry.utils.isNewerVersion(game.version, '12.999') ? html : html[0];
 }
 
 /**

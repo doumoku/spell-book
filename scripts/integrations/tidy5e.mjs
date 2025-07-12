@@ -1,5 +1,4 @@
 import { PlayerSpellBook } from '../apps/player-spell-book.mjs';
-import { MODULE } from '../constants.mjs';
 import * as genericUtils from '../helpers/generic-utils.mjs';
 import { preloadSpellDataForActor } from '../helpers/spell-cache.mjs';
 import * as discoveryUtils from '../helpers/spell-discovery.mjs';
@@ -9,7 +8,7 @@ import { log } from '../logger.mjs';
  * Register hooks related to Tidy5e system integration
  */
 export function registerTidy5eIntegration() {
-  if (!MODULE.ISV13) Hooks.on('tidy5e-sheet.renderActorSheet', onTidy5eRender);
+  if (!foundry.utils.isNewerVersion(game.version, '12.999')) Hooks.on('tidy5e-sheet.renderActorSheet', onTidy5eRender);
   else Hooks.on('renderTidy5eCharacterSheet', onTidy5eRender);
   log(3, 'Registered Tidy5e sheet integration');
 }

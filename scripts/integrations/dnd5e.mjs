@@ -13,7 +13,7 @@ import { SpellManager } from '../managers/spell-manager.mjs';
  */
 export function registerDnD5eIntegration() {
   try {
-    if (!MODULE.ISV13) {
+    if (!foundry.utils.isNewerVersion(game.version, '12.999')) {
       Hooks.on('renderActorSheet5e', addSpellbookButton);
       Hooks.on('renderSidebarTab', addJournalSpellBookButton);
     } else {
@@ -38,7 +38,7 @@ function addSpellbookButton(app, html, data) {
   });
   const htmlElement = genericUtils.getHtmlElement(html);
   let spellsTab, controlsList;
-  if (MODULE.ISV13) {
+  if (foundry.utils.isNewerVersion(game.version, '12.999')) {
     spellsTab = htmlElement.querySelector('section.tab[data-tab="spells"]');
     if (!spellsTab) return;
     controlsList = spellsTab.querySelector('item-list-controls search ul.controls');
@@ -234,7 +234,7 @@ function canAddSpellbookButton(actor, html) {
   if (!canCast) return false;
   const htmlElement = genericUtils.getHtmlElement(html);
   let hasSpellsTab;
-  if (MODULE.ISV13) hasSpellsTab = htmlElement.querySelector('section.tab[data-tab="spells"]');
+  if (foundry.utils.isNewerVersion(game.version, '12.999')) hasSpellsTab = htmlElement.querySelector('section.tab[data-tab="spells"]');
   else hasSpellsTab = htmlElement.querySelector('.tab.spells');
   if (!hasSpellsTab) return false;
   return true;

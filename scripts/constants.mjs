@@ -7,7 +7,6 @@ export const MODULE = {
   NAME: 'Spell Book',
   PACK: { SPELLS: 'spell-book.custom-spell-lists', MACROS: 'spell-book.spell-book-macros', USERDATA: 'spell-book.user-spell-data' },
   LOG_LEVEL: 0,
-  ISV13: null,
 
   /**
    * Current version of the default filter configuration

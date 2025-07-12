@@ -23,7 +23,6 @@ Hooks.once('init', async function () {
 });
 
 Hooks.once('ready', async function () {
-  MODULE.ISV13 = foundry.utils.isNewerVersion(game.version, '12.999');
   SpellDescriptionInjection.initialize();
   await unlockModuleCompendium();
   await MacroManager.initializeMacros();
@@ -102,7 +101,7 @@ async function preloadTemplates() {
 
   // Use the appropriate loadTemplates method based on version
   // TODO: Remove when V12 support is dropped
-  if (MODULE.ISV13) return foundry?.applications?.handlebars?.loadTemplates(templatePaths);
+  if (foundry.utils.isNewerVersion(game.version, '12.999')) return foundry?.applications?.handlebars?.loadTemplates(templatePaths);
   else return loadTemplates(templatePaths);
 }
 

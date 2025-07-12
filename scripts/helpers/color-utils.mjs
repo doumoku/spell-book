@@ -1,10 +1,9 @@
 /** Thank you Ben for writing this color detection code for me. */
 
-import { MODULE } from '../constants.mjs';
 import { log } from '../logger.mjs';
 const T = { light: '#f4f4f4', dark: '#1b1d24' };
 function d() {
-  if (!MODULE.ISV13) return game.settings.get('core', 'colorScheme');
+  if (!foundry.utils.isNewerVersion(game.version, '12.999')) return game.settings.get('core', 'colorScheme');
   else return game.settings.get('core', 'uiConfig').colorScheme.applications;
 }
 function h(x) {
