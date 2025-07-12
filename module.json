@@ -36,7 +36,7 @@
   "packFolders": [
     {
       "name": "Spell Book",
-      "packs": ["custom-spell-lists", "spell-book-macros"],
+      "packs": ["custom-spell-lists", "spell-book-macros", "user-spell-data"],
       "sorting": "a"
     }
   ],
@@ -49,6 +49,16 @@
         "PLAYER": "OBSERVER"
       },
       "path": "storage/custom-spell-lists",
+      "type": "JournalEntry"
+    },
+    {
+      "label": "User Spell Data",
+      "name": "user-spell-data",
+      "ownership": {
+        "PLAYER": "OWNER",
+        "ASSISTANT": "OWNER"
+      },
+      "path": "/storage/user-spell-data",
       "type": "JournalEntry"
     },
     {
@@ -66,8 +76,9 @@
     "systems": [
       {
         "compatibility": {
-          "minimum": "3.3.1",
-          "verified": "4.4.3"
+          "minimum": "4.4.3",
+          "verified": "5.0.4",
+          "maximum": "5.9"
         },
         "id": "dnd5e",
         "type": "system"

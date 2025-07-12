@@ -3,6 +3,8 @@ import * as filterUtils from '../helpers/filters.mjs';
 import * as formElements from '../helpers/form-elements.mjs';
 import * as genericUtils from '../helpers/generic-utils.mjs';
 import { ScrollScanner } from '../helpers/scroll-scanner.mjs';
+import * as spellFavorites from '../helpers/spell-favorites.mjs';
+import { SpellUserDataJournal } from '../helpers/spell-user-data.mjs';
 import { SpellbookState } from '../helpers/state/spellbook-state.mjs';
 import { SpellbookFilterHelper } from '../helpers/ui/spellbook-filters.mjs';
 import { SpellbookUI } from '../helpers/ui/spellbook-ui.mjs';
@@ -12,7 +14,10 @@ import { SpellLoadoutManager } from '../managers/spell-loadout-manager.mjs';
 import { SpellManager } from '../managers/spell-manager.mjs';
 import { WizardSpellbookManager } from '../managers/wizard-spellbook-manager.mjs';
 import { PlayerFilterConfiguration } from './player-filter-configuration.mjs';
+import { SpellAnalyticsDashboard } from './spell-analytics-dashboard.mjs';
+import { SpellComparisonDialog } from './spell-comparison-dialog.mjs';
 import { SpellLoadoutDialog } from './spell-loadout-dialog.mjs';
+import { SpellNotesDialog } from './spell-notes-dialog.mjs';
 import { SpellbookSettingsDialog } from './spellbook-settings-dialog.mjs';
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -39,7 +44,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       configureCantripSettings: PlayerSpellBook.configureCantripSettings,
       learnSpell: PlayerSpellBook.learnSpell,
       learnFromScroll: PlayerSpellBook.handleLearnFromScroll,
-      openLoadoutDialog: PlayerSpellBook.openLoadoutDialog
+      openLoadoutDialog: PlayerSpellBook.openLoadoutDialog,
+      toggleFavorite: PlayerSpellBook.handleToggleFavorite,
+      editNotes: PlayerSpellBook.handleEditNotes,
+      openAnalyticsDashboard: PlayerSpellBook.handleOpenAnalyticsDashboard,
+      compareSpell: PlayerSpellBook.handleCompareSpell
     },
     classes: ['spell-book', 'vertical-tabs'],
     window: { icon: 'fas fa-book-open', resizable: true, minimizable: true, positioned: true },
@@ -123,6 +132,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     this._currentLevelHeaders = new Map();
     this._lastScrollElement = null;
     this._isLoadingSpellData = false;
+    this.comparisonSpells = new Set();
+    this.comparisonDialog = null;
   }
 
   /**
@@ -287,6 +298,14 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       },
       {
         type: 'button',
+        action: 'openAnalyticsDashboard',
+        icon: 'fas fa-chart-bar',
+        label: 'SPELLBOOK.Analytics.OpenDashboard',
+        tooltip: 'SPELLBOOK.Analytics.OpenDashboardTooltip',
+        cssClass: 'analytics-button'
+      },
+      {
+        type: 'button',
         action: 'openLoadoutDialog',
         icon: 'fas fa-toolbox',
         label: 'SPELLBOOK.UI.SpellLoadouts',
@@ -334,10 +353,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     processedSpell.cssClasses = this._getSpellCssClasses(spell);
     processedSpell.dataAttributes = this._getSpellDataAttributes(spell);
     processedSpell.tag = this._getSpellPreparationTag(spell);
-    const ariaLabel =
-      spell.preparation.prepared ?
-        game.i18n.format('SPELLBOOK.Preparation.Unprepare', { name: spell.name })
-      : game.i18n.format('SPELLBOOK.Preparation.Prepare', { name: spell.name });
+    const ariaLabel = spell.preparation.prepared ? game.i18n.format('SPELLBOOK.Preparation.Unprepare', { name: spell.name }) : game.i18n.format('SPELLBOOK.Preparation.Prepare', { name: spell.name });
     const checkbox = formElements.createCheckbox({
       name: `spellPreparation.${spell.compendiumUuid}`,
       checked: spell.preparation.prepared,
@@ -356,6 +372,10 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const classSpellbook = this._stateManager.wizardSpellbookCache.get(spell.sourceClass);
       processedSpell.inWizardSpellbook = classSpellbook ? classSpellbook.includes(spell.compendiumUuid) : false;
     } else processedSpell.inWizardSpellbook = false;
+    if (this.comparisonSpells.size < game.settings.get(MODULE.ID, SETTINGS.SPELL_COMPARISON_MAX)) {
+      processedSpell.showCompareLink = true;
+      processedSpell.isInComparison = this.comparisonSpells.has(spell.compendiumUuid);
+    }
     return processedSpell;
   }
 
@@ -376,6 +396,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       `data-range-value="${spell.system?.range?.value || ''}"`,
       `data-damage-types="${spell.filterData?.damageTypes || ''}"`,
       `data-ritual="${spell.filterData?.isRitual || false}"`,
+      `data-favorited="${spell.filterData?.favorited || false}"`,
       `data-concentration="${spell.filterData?.concentration || false}"`,
       `data-requires-save="${spell.filterData?.requiresSave || false}"`,
       `data-conditions="${spell.filterData?.conditions || ''}"`,
@@ -462,8 +483,16 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       this._classesChanged = false;
     }
     this._setupLoadoutContextMenu();
-    setTimeout(() => {
-      this._ensureSpellDataAndInitializeLazyLoading();
+    this.ui.setupAdvancedSearch();
+    setTimeout(async () => {
+      await this._ensureSpellDataAndInitializeLazyLoading();
+      setTimeout(async () => {
+        const favoriteButtons = this.element.querySelectorAll('.spell-favorite-toggle[data-uuid]');
+        if (favoriteButtons.length > 0) {
+          await this._applyFavoriteStatesToButtons(favoriteButtons);
+          favoriteButtons.forEach((button) => button.setAttribute('data-favorites-applied', 'true'));
+        }
+      }, 50);
     }, 10);
   }
 
@@ -486,6 +515,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
         }
       }
     }
+    this._stateManager.clearFavoriteSessionState();
+    await this._syncJournalToActorState();
   }
 
   /**
@@ -512,6 +543,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       this._showErrorState(error);
     } finally {
       this._isLoadingSpellData = false;
+      await this._applyFavoriteStatesAfterRender();
     }
   }
 
@@ -542,6 +574,156 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Apply favorite states after render based on user data
+   * @private
+   */
+  async _applyFavoriteStatesAfterRender() {
+    const favoriteButtons = this.element.querySelectorAll('.spell-favorite-toggle[data-uuid]');
+    log(3, `Applying favorite states to ${favoriteButtons.length} buttons after render`);
+    if (favoriteButtons.length === 0) {
+      setTimeout(async () => {
+        const retryButtons = this.element.querySelectorAll('.spell-favorite-toggle[data-uuid]');
+        if (retryButtons.length > 0) await this._applyFavoriteStatesToButtons(retryButtons);
+        else log(2, 'No favorite buttons found even after retry');
+      }, 100);
+      return;
+    }
+    await this._applyFavoriteStatesToButtons(favoriteButtons);
+  }
+
+  /**
+   * Apply favorite states with actor state validation
+   * @param {NodeList} buttons - The buttons to update
+   * @private
+   */
+  async _applyFavoriteStatesToButtons(buttons) {
+    const targetUserId = genericUtils._getTargetUserId(this.actor);
+    let updatedCount = 0;
+    for (const button of buttons) {
+      const spellUuid = button.dataset.uuid;
+      if (!spellUuid) continue;
+      let isFavorited = this._stateManager.getFavoriteSessionState(spellUuid);
+      if (isFavorited === null) {
+        const userData = await SpellUserDataJournal.getUserDataForSpell(spellUuid, targetUserId, this.actor.id);
+        const journalFavorited = userData?.favorited || false;
+        const isOnActor = this._isSpellOnActor(spellUuid);
+        if (isOnActor && journalFavorited) isFavorited = true;
+        else if (isOnActor && !journalFavorited) isFavorited = false;
+        else if (!isOnActor) isFavorited = journalFavorited;
+      }
+      const icon = button.querySelector('i');
+      const currentlyFavorited = button.classList.contains('favorited');
+      if (currentlyFavorited !== isFavorited) {
+        if (isFavorited) {
+          button.classList.add('favorited');
+          if (icon) {
+            icon.classList.remove('far');
+            icon.classList.add('fas');
+          }
+          button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites'));
+          button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites'));
+        } else {
+          button.classList.remove('favorited');
+          if (icon) {
+            icon.classList.remove('fas');
+            icon.classList.add('far');
+          }
+          button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.AddToFavorites'));
+          button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.AddToFavorites'));
+        }
+        updatedCount++;
+      }
+    }
+    if (updatedCount > 0) log(3, `Applied favorite states: ${updatedCount} buttons updated`);
+  }
+
+  /**
+   * Check if a spell UUID is currently on the actor
+   * @param {string} spellUuid - The spell UUID to check
+   * @returns {boolean} Whether the spell is on the actor
+   * @private
+   */
+  _isSpellOnActor(spellUuid) {
+    return this.actor.items.some((item) => {
+      if (item.type !== 'spell') return false;
+      if (item.flags?.core?.sourceId === spellUuid) return true;
+      if (item.uuid === spellUuid) return true;
+      return false;
+    });
+  }
+
+  /**
+   * Sync journal favorites to match current actor.system.favorites state
+   * This handles the case where user closed without saving - journal is "ahead" of actor
+   * @private
+   */
+  async _syncJournalToActorState() {
+    try {
+      log(3, 'Syncing journal favorites to current actor state...');
+      const actorFavorites = this.actor.system.favorites || [];
+      const actorFavoriteSpellIds = new Set(actorFavorites.filter((fav) => fav.type === 'item' && fav.id.startsWith('.Item.')).map((fav) => fav.id.replace('.Item.', '')));
+      const actorSpells = this.actor.items.filter((item) => item.type === 'spell');
+      const targetUserId = genericUtils._getTargetUserId(this.actor);
+      let syncCount = 0;
+      const changedSpells = [];
+      for (const spell of actorSpells) {
+        const spellUuid = spell.flags?.core?.sourceId || spell.uuid;
+        if (!spellUuid) continue;
+        const isFavoritedInActor = actorFavoriteSpellIds.has(spell.id);
+        const userData = await SpellUserDataJournal.getUserDataForSpell(spellUuid, targetUserId, this.actor.id);
+        const isFavoritedInJournal = userData?.favorited || false;
+        if (isFavoritedInJournal && !isFavoritedInActor) {
+          log(3, `Unfavoriting ${spell.name} in journal to match actor state`);
+          await SpellUserDataJournal.setSpellFavorite(spellUuid, false);
+          changedSpells.push({ uuid: spellUuid, newState: false });
+          syncCount++;
+        }
+        if (!isFavoritedInJournal && isFavoritedInActor) {
+          log(3, `Favoriting ${spell.name} in journal to match actor state`);
+          await SpellUserDataJournal.setSpellFavorite(spellUuid, true);
+          changedSpells.push({ uuid: spellUuid, newState: true });
+          syncCount++;
+        }
+      }
+      if (changedSpells.length > 0) this._applyImmediateFavoriteChanges(changedSpells);
+      log(3, `Journal sync complete: ${syncCount} spells synchronized`);
+    } catch (error) {
+      log(1, 'Error syncing journal to actor state:', error);
+    }
+  }
+
+  /**
+   * Immediately apply favorite changes to UI without waiting for next render
+   * @param {Array} changedSpells - Array of {uuid, newState} objects
+   * @private
+   */
+  _applyImmediateFavoriteChanges(changedSpells) {
+    for (const { uuid, newState } of changedSpells) {
+      const button = this.element.querySelector(`.spell-favorite-toggle[data-uuid="${uuid}"]`);
+      if (!button) continue;
+      const icon = button.querySelector('i');
+      if (newState) {
+        button.classList.add('favorited');
+        if (icon) {
+          icon.classList.remove('far');
+          icon.classList.add('fas');
+        }
+        button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites'));
+        button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites'));
+      } else {
+        button.classList.remove('favorited');
+        if (icon) {
+          icon.classList.remove('fas');
+          icon.classList.add('far');
+        }
+        button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.AddToFavorites'));
+        button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.AddToFavorites'));
+      }
+    }
+    if (changedSpells.length > 0) log(3, `Applied immediate UI changes for ${changedSpells.length} favorite buttons`);
+  }
+
+  /**
    * Set up the content wrapper element for proper layout
    * @private
    */
@@ -550,11 +732,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const tabsNav = this.element.querySelector('.window-content > nav.tabs.tabs-right');
       const wrapper = document.createElement('div');
       wrapper.className = 'content-wrapper';
-      const elementsToWrap = [
-        this.element.querySelector('.sidebar'),
-        this.element.querySelector('.spell-book-container'),
-        this.element.querySelector('.window-content > footer')
-      ].filter((el) => el);
+      const elementsToWrap = [this.element.querySelector('.sidebar'), this.element.querySelector('.spell-book-container'), this.element.querySelector('.window-content > footer')].filter((el) => el);
       if (elementsToWrap.length && elementsToWrap[0].parentNode) {
         elementsToWrap[0].parentNode.insertBefore(wrapper, elementsToWrap[0]);
         elementsToWrap.forEach((el) => wrapper.appendChild(el));
@@ -573,11 +751,12 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     if (this._isLongRest) this.actor.unsetFlag(MODULE.ID, FLAGS.LONG_REST_COMPLETED);
     if (this._flagChangeHook) Hooks.off('updateActor', this._flagChangeHook);
     document.removeEventListener('click', this._hideLoadoutContextMenu.bind(this));
+    if (this.ui?.advancedSearchManager) this.ui.advancedSearchManager.cleanup();
     super._onClose();
   }
 
   /**
-   * Set up event listeners for spell preparation checkboxes
+   * Set up event listeners for spell preparation checkboxes and filter checkboxes
    * Only set up once to prevent multiple handlers
    */
   setupPreparationListeners() {
@@ -585,6 +764,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     this._preparationListener = async (event) => {
       const target = event.target;
       if (target.matches('dnd5e-checkbox[data-uuid]')) await this._handlePreparationChange(event);
+      else if (target.matches('dnd5e-checkbox[name^="filter-"]')) PlayerSpellBook.filterSpells.call(this);
     };
     document.addEventListener('change', this._preparationListener);
   }
@@ -773,31 +953,51 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * @private
    */
   _prepareFilters() {
-    let filterConfig = game.settings.get(MODULE.ID, SETTINGS.FILTER_CONFIGURATION);
-    if (Array.isArray(filterConfig) && filterConfig.length > 0) {
-      const existingFilters = new Map(filterConfig.map((f) => [f.id, f]));
-      for (const defaultFilter of MODULE.DEFAULT_FILTER_CONFIG) {
-        if (!existingFilters.has(defaultFilter.id)) filterConfig.push(foundry.utils.deepClone(defaultFilter));
-      }
-      const defaultFilterIds = new Set(MODULE.DEFAULT_FILTER_CONFIG.map((f) => f.id));
-      filterConfig = filterConfig.filter((filter) => {
-        if (!defaultFilterIds.has(filter.id)) return false;
-        return true;
-      });
-      game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, filterConfig);
-    } else {
-      filterConfig = foundry.utils.deepClone(MODULE.DEFAULT_FILTER_CONFIG);
+    let filterConfigData = game.settings.get(MODULE.ID, SETTINGS.FILTER_CONFIGURATION);
+    if (!filterConfigData || Array.isArray(filterConfigData)) {
+      log(2, 'Legacy filter configuration detected (pre-0.9.0). Rebuilding with defaults...');
+      filterConfigData = {
+        version: MODULE.DEFAULT_FILTER_CONFIG_VERSION,
+        filters: foundry.utils.deepClone(MODULE.DEFAULT_FILTER_CONFIG)
+      };
+      game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, filterConfigData);
     }
-    const sortedFilters = filterConfig.filter((f) => f.enabled).sort((a, b) => a.order - b.order);
+    if (!filterConfigData.version) {
+      log(2, 'No version field found in filter configuration. Rebuilding for 0.9.0 upgrade...');
+      filterConfigData = {
+        version: MODULE.DEFAULT_FILTER_CONFIG_VERSION,
+        filters: foundry.utils.deepClone(MODULE.DEFAULT_FILTER_CONFIG)
+      };
+      game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, filterConfigData);
+    }
+    let filterConfig = filterConfigData.filters || [];
+    const storedVersion = filterConfigData.version;
+    const currentVersion = MODULE.DEFAULT_FILTER_CONFIG_VERSION;
+    if (storedVersion !== currentVersion) {
+      log(2, `Filter configuration version mismatch. Stored: ${storedVersion}, Current: ${currentVersion}. Updating...`);
+      filterConfig = this._migrateFilterConfiguration(filterConfig, storedVersion, currentVersion);
+      const updatedConfigData = { version: currentVersion, filters: filterConfig };
+      game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, updatedConfigData);
+    } else if (filterConfig.length === 0) filterConfig = foundry.utils.deepClone(MODULE.DEFAULT_FILTER_CONFIG);
+    else filterConfig = this._ensureFilterIntegrity(filterConfig);
+    const sortedFilters = filterConfig.sort((a, b) => a.order - b.order);
     const filterState = this.filterHelper.getFilterState();
     const activeTab = this.tabGroups['spellbook-tabs'];
     const activeTabContent = this.element?.querySelector(`.tab[data-tab="${activeTab}"]`);
     const classIdentifier = activeTabContent?.dataset.classIdentifier || this._stateManager.activeClass;
     let spellData = [];
-    if (classIdentifier && this._stateManager.classSpellData[classIdentifier]) spellData = this._stateManager.classSpellData[classIdentifier].spellLevels || [];
+    if (classIdentifier && this._stateManager.classSpellData[classIdentifier]) {
+      spellData = this._stateManager.classSpellData[classIdentifier].spellLevels || [];
+    }
     const result = sortedFilters
       .map((filter) => {
-        const result = { id: filter.id, type: filter.type, name: `filter-${filter.id}`, label: game.i18n.localize(filter.label) };
+        const result = {
+          id: filter.id,
+          type: filter.type,
+          name: `filter-${filter.id}`,
+          label: game.i18n.localize(filter.label),
+          enabled: filter.enabled
+        };
         let element;
         switch (filter.type) {
           case 'search':
@@ -805,7 +1005,8 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
               name: `filter-${filter.id}`,
               value: filterState[filter.id] || '',
               placeholder: game.i18n.localize(filter.label),
-              ariaLabel: game.i18n.localize(filter.label)
+              ariaLabel: game.i18n.localize(filter.label),
+              cssClass: 'advanced-search-input'
             });
             break;
           case 'dropdown':
@@ -967,6 +1168,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
     if (filters.prepared && !spell.preparation?.prepared) return false;
     if (filters.ritual && !spell.filterData?.isRitual) return false;
+    if (filters.favorited && !spell.favorited) return false;
     return true;
   }
 
@@ -984,6 +1186,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
    * Initialize lazy loading for current tab
    */
   _initializeLazyLoading() {
+    const filterState = this.filterHelper.getFilterState();
+    const hasActiveSearch = filterState.name && filterState.name.trim();
+    if (hasActiveSearch) return;
     const activeTab = this.tabGroups['spellbook-tabs'];
     const activeTabContent = this.element.querySelector(`.tab[data-tab="${activeTab}"]`);
     const classIdentifier = activeTabContent?.dataset.classIdentifier;
@@ -998,7 +1203,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       const spellsContainer = activeTabContent.querySelector('.spells-container');
       if (spellsContainer) {
         const emptyState = `<div class="empty-state" role="status">
-          <p>${game.i18n.localize('SPELLBOOK.Errors.NoSpellsFound')}</p>
+          <p>${game.i18n.format('SPELLBOOK.Errors.NoSpellsFound', { actor: this.actor.name })}</p>
         </div>`;
         const classHeader = spellsContainer.querySelector('.class-header');
         const spellbookRules = spellsContainer.querySelector('.spellbook-rules');
@@ -1078,6 +1283,14 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#lazyRenderThrottle = false;
     this._applyCollapsedStateToExistingHeaders();
     this.ui.updateSpellCounts();
+    setTimeout(async () => {
+      const newButtons = this.element.querySelectorAll('.spell-favorite-toggle[data-uuid]:not([data-favorites-applied])');
+      if (newButtons.length > 0) {
+        await this._applyFavoriteStatesToButtons(newButtons);
+        newButtons.forEach((button) => button.setAttribute('data-favorites-applied', 'true'));
+      }
+    }, 0);
+
     const cantripLevel = spellsContainer.querySelector('.spell-level[data-level="0"]');
     if (cantripLevel) this.ui.updateCantripCounter(cantripLevel, true);
   }
@@ -1161,58 +1374,78 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   _createSpellItemHtml(spell) {
     const tagHtml = spell.tag ? `<span class="tag ${spell.tag.cssClass}" ${spell.tag.tooltip ? `data-tooltip="${spell.tag.tooltip}"` : ''}>${spell.tag.text}</span>` : '';
     const enrichedIcon = spell.enrichedIcon || '';
-    const name = spell.name || 'Unknown Spell';
+    const name = spell.name || game.i18n.localize('SPELLBOOK.UI.UnknownSpell');
     const formattedDetails = spell.formattedDetails || '';
     const cssClasses = spell.cssClasses || 'spell-item';
     const dataAttributes = spell.dataAttributes || '';
     const activeTab = this.tabGroups['spellbook-tabs'];
     const isWizardTab = activeTab && activeTab.startsWith('wizardbook-');
+    const spellUuid = spell.uuid || spell.compendiumUuid;
+    let comparisonLinkHtml = '';
+    if (spell.showCompareLink && !isWizardTab) {
+      const activeClass = spell.isInComparison ? ' active' : '';
+      const compareText = game.i18n.localize('SPELLBOOK.Comparison.Compare');
+      const ariaLabel = game.i18n.format('SPELLBOOK.Comparison.CompareSpell', { name: name });
+      comparisonLinkHtml = `<button class="compare-button compare-link${activeClass}" data-action="compareSpell" data-uuid="${spell.compendiumUuid}" aria-label="${ariaLabel}">${compareText}</button>`;
+    }
+    const favoriteStarHtml =
+      spellUuid ?
+        `
+    <button type="button" class="spell-favorite-toggle ${spell.favorited ? 'favorited' : ''}"
+            data-action="toggleFavorite"
+            data-uuid="${spellUuid}"
+            data-tooltip="${spell.favorited ? game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites') : game.i18n.localize('SPELLBOOK.UI.AddToFavorites')}"
+            aria-label="${spell.favorited ? game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites') : game.i18n.localize('SPELLBOOK.UI.AddToFavorites')}">
+      <i class="${spell.favorited ? 'fas' : 'far'} fa-star" aria-hidden="true"></i>
+    </button>
+  `
+      : '';
     let actionHtml = '';
     if (isWizardTab) {
       if (spell.isFromScroll) {
         actionHtml = `
-          <div class="wizard-spell-status">
-            <button class="copy-spell-btn scroll-spell-btn" data-action="learnFromScroll"
-              data-uuid="${spell.spellUuid || spell.compendiumUuid}" data-scroll-id="${spell.scrollId}" type="button"
-              aria-label="${game.i18n.format('SPELLBOOK.Scrolls.LearnFromScroll', { name })}">
-              <i class="fas fa-scroll"></i> ${game.i18n.localize('SPELLBOOK.Wizard.LearnSpell')}
-            </button>
-          </div>`;
+        <div class="wizard-spell-status">
+          <button class="copy-spell-btn scroll-spell-btn" data-action="learnFromScroll"
+            data-uuid="${spell.spellUuid || spell.compendiumUuid}" data-scroll-id="${spell.scrollId}" type="button"
+            aria-label="${game.i18n.format('SPELLBOOK.Scrolls.LearnFromScroll', { name })}">
+            <i class="fas fa-scroll"></i> ${game.i18n.localize('SPELLBOOK.Wizard.LearnSpell')}
+          </button>
+        </div>`;
       } else if (spell.inWizardSpellbook) {
         actionHtml = `
-          <div class="wizard-spell-status">
-            <span class="in-spellbook-tag" aria-label="Spell is in your spellbook">
-              ${game.i18n.localize('SPELLBOOK.Wizard.InSpellbook')}
-            </span>
-          </div>`;
+        <div class="wizard-spell-status">
+          <span class="in-spellbook-tag" aria-label="${game.i18n.localize('SPELLBOOK.Wizard.InSpellbook')}">
+            ${game.i18n.localize('SPELLBOOK.Wizard.InSpellbook')}
+          </span>
+        </div>`;
       } else if (spell.system?.level > 0) {
         actionHtml = `
-          <div class="wizard-spell-status">
-            <button class="copy-spell-btn" data-action="learnSpell" data-uuid="${spell.compendiumUuid}" type="button">
-              <i class="fas fa-book"></i> ${game.i18n.localize('SPELLBOOK.Wizard.LearnSpell')}
-            </button>
-          </div>`;
+        <div class="wizard-spell-status">
+          <button class="copy-spell-btn" data-action="learnSpell" data-uuid="${spell.compendiumUuid}" type="button">
+            <i class="fas fa-book"></i> ${game.i18n.localize('SPELLBOOK.Wizard.LearnSpell')}
+          </button>
+        </div>`;
       }
     } else {
       const preparationCheckboxHtml = spell.preparationCheckboxHtml || '';
       actionHtml = `
-        <div class="spell-preparation dnd5e2">
-          ${preparationCheckboxHtml}
-        </div>`;
+      <div class="spell-preparation dnd5e2">
+        ${preparationCheckboxHtml}
+      </div>`;
     }
-
+    const subtitleContent = comparisonLinkHtml + (comparisonLinkHtml && formattedDetails ? ' ' : '') + formattedDetails;
     return `
-      <li class="${cssClasses}" ${dataAttributes} role="listitem">
-        <div class="spell-name">
-          ${enrichedIcon}
-          <div class="name-stacked">
-            <span class="title">${name}${tagHtml}</span>
-            <span class="subtitle">${formattedDetails}</span>
-          </div>
+    <li class="${cssClasses}" ${dataAttributes} role="listitem">
+      <div class="spell-name">
+        ${enrichedIcon}
+        <div class="name-stacked">
+          <span class="title">${name}${favoriteStarHtml}${tagHtml}</span>
+          <span class="subtitle">${subtitleContent}</span>
         </div>
-        ${actionHtml}
-      </li>
-    `;
+      </div>
+      ${actionHtml}
+    </li>
+  `;
   }
 
   /**
@@ -1225,7 +1458,6 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       log(2, `No active tab content found for scroll listener setup`);
       return;
     }
-
     if (this._scrollListener && this._lastScrollElement) this._lastScrollElement.removeEventListener('scroll', this._scrollListener);
     let scrollContainer = activeTabContent.querySelector('.spells-container');
     if (scrollContainer) {
@@ -1425,9 +1657,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       checkbox.checked = !isChecked;
       if (canChange.message) {
         let message = game.i18n.localize(canChange.message);
-        if (canChange.message === 'SPELLBOOK.Preparation.ClassAtMaximum') {
-          message = game.i18n.format('SPELLBOOK.Preparation.ClassAtMaximum', { class: classData?.className || classIdentifier });
-        }
+        if (canChange.message === 'SPELLBOOK.Preparation.ClassAtMaximum') message = game.i18n.format('SPELLBOOK.Preparation.ClassAtMaximum', { class: classData?.className || classIdentifier });
         ui.notifications.warn(message);
       }
       return;
@@ -1490,6 +1720,48 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
+  /**
+   * Migrate filter configuration from old version to new version
+   * @param {Array} oldConfig - The old filter configuration
+   * @param {string} oldVersion - The old version
+   * @param {string} newVersion - The new version
+   * @returns {Array} The migrated configuration
+   * @private
+   */
+  _migrateFilterConfiguration(oldConfig, oldVersion, newVersion) {
+    const existingFilters = new Map(oldConfig.map((f) => [f.id, f]));
+    const migratedConfig = MODULE.DEFAULT_FILTER_CONFIG.map((defaultFilter) => {
+      const existingFilter = existingFilters.get(defaultFilter.id);
+      if (existingFilter) {
+        return {
+          ...defaultFilter,
+          enabled: existingFilter.enabled,
+          order: existingFilter.order !== undefined ? existingFilter.order : defaultFilter.order
+        };
+      } else {
+        return foundry.utils.deepClone(defaultFilter);
+      }
+    });
+    log(3, `Migrated filter configuration from version ${oldVersion} to ${newVersion}`);
+    return migratedConfig;
+  }
+
+  /**
+   * Ensure filter configuration integrity by adding missing filters and removing obsolete ones
+   * @param {Array} filterConfig - Current filter configuration
+   * @returns {Array} Updated filter configuration
+   * @private
+   */
+  _ensureFilterIntegrity(filterConfig) {
+    const existingFilters = new Map(filterConfig.map((f) => [f.id, f]));
+    const defaultFilterIds = new Set(MODULE.DEFAULT_FILTER_CONFIG.map((f) => f.id));
+    for (const defaultFilter of MODULE.DEFAULT_FILTER_CONFIG) {
+      if (!existingFilters.has(defaultFilter.id)) filterConfig.push(foundry.utils.deepClone(defaultFilter));
+    }
+    filterConfig = filterConfig.filter((filter) => defaultFilterIds.has(filter.id));
+    return filterConfig;
+  }
+
   /* -------------------------------------------- */
   /*  Static Handler Methods                      */
   /* -------------------------------------------- */
@@ -1532,9 +1804,9 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     if (isShiftReset) {
       const checkboxes = this.element.querySelectorAll('dnd5e-checkbox[data-uuid]:not([disabled])');
       checkboxes.forEach((checkbox) => (checkbox.checked = false));
-      const filters = this.element.querySelectorAll('.spell-filters input, .spell-filters select');
+      const filters = this.element.querySelectorAll('.spell-filters input, .spell-filters select, .spell-filters dnd5e-checkbox');
       filters.forEach((filter) => {
-        if (filter.type === 'checkbox') filter.checked = false;
+        if (filter.type === 'checkbox' || filter.tagName === 'DND5E-CHECKBOX') filter.checked = false;
         else if (filter.type === 'text' || filter.type === 'number') filter.value = '';
         else if (filter.tagName === 'SELECT') filter.selectedIndex = 0;
       });
@@ -1636,23 +1908,11 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const costInfo = await wizardManager.getCopyingCostWithFree(spell);
     const time = wizardManager.getCopyingTime(spell);
     const costText = costInfo.isFree ? game.i18n.localize('SPELLBOOK.Wizard.SpellCopyFree') : game.i18n.format('SPELLBOOK.Wizard.SpellCopyCost', { cost: costInfo.cost });
+    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
+    const content = await renderTemplate(TEMPLATES.DIALOGS.WIZARD_LEARN_SPELL, { spell, costText, time });
     const result = await DialogV2.wait({
       title: game.i18n.format('SPELLBOOK.Wizard.LearnSpellTitle', { name: spell.name }),
-      content: `
-    <form class="wizard-copy-form">
-      <p>${game.i18n.format('SPELLBOOK.Wizard.LearnSpellPrompt', { name: spell.name })}</p>
-      <div class="copy-details">
-        <div class="form-group">
-          <label>${game.i18n.localize('SPELLBOOK.Wizard.CostLabel')}:</label>
-          <span>${costText}</span>
-        </div>
-        <div class="form-group">
-          <label>${game.i18n.localize('SPELLBOOK.Wizard.TimeLabel')}:</label>
-          <span>${game.i18n.format('SPELLBOOK.Wizard.SpellCopyTime', { hours: time })}</span>
-        </div>
-      </div>
-    </form>
-  `,
+      content: content,
       buttons: [
         { icon: 'fas fa-book', label: game.i18n.localize('SPELLBOOK.Wizard.LearnSpellButton'), action: 'confirm', className: 'dialog-button' },
         { icon: 'fas fa-times', label: game.i18n.localize('SPELLBOOK.UI.Cancel'), action: 'cancel', className: 'dialog-button' }
@@ -1731,6 +1991,119 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!classIdentifier) return;
     const dialog = new SpellLoadoutDialog(this.actor, this, classIdentifier);
     dialog.render(true);
+  }
+
+  /**
+   * Handle toggling spell favorite status
+   */
+  static async handleToggleFavorite(event, target) {
+    event.preventDefault();
+    const spellUuid = target.dataset.uuid;
+    if (!spellUuid) return;
+    try {
+      let targetUserId = game.user.id;
+      let targetActorId = this.actor.id;
+      if (game.user.isActiveGM) {
+        const actorOwner = game.users.find((user) => user.character?.id === this.actor.id);
+        if (actorOwner) targetUserId = actorOwner.id;
+        else log(2, `No owner found for actor ${this.actor.name}, applying to GM`);
+      }
+      const userData = await SpellUserDataJournal.getUserDataForSpell(spellUuid, targetUserId, targetActorId);
+      const currentlyFavorited = userData?.favorited || false;
+      const newFavoriteStatus = !currentlyFavorited;
+      this._stateManager.updateFavoriteSessionState(spellUuid, newFavoriteStatus);
+      const success = await SpellUserDataJournal.setSpellFavorite(spellUuid, newFavoriteStatus, targetUserId, targetActorId);
+      if (!success) {
+        log(1, `Failed to persist favorite status for ${spellUuid}`);
+        this._stateManager.updateFavoriteSessionState(spellUuid, currentlyFavorited);
+        return;
+      }
+      if (newFavoriteStatus) await spellFavorites.addSpellToActorFavorites(spellUuid, this.actor);
+      else await spellFavorites.removeSpellFromActorFavorites(spellUuid, this.actor);
+      PlayerSpellBook._updateFavoriteButtonState(target, newFavoriteStatus);
+      log(3, `Successfully toggled favorite for spell ${spellUuid}: ${newFavoriteStatus}`);
+    } catch (error) {
+      log(1, 'Error in handleToggleFavorite:', error);
+      const userData = await SpellUserDataJournal.getUserDataForSpell(spellUuid, null, this.actor.id);
+      this._stateManager.updateFavoriteSessionState(spellUuid, userData?.favorited || false);
+    }
+  }
+
+  /**
+   * Update favorite button state immediately
+   * @param {HTMLElement} button - The favorite button element
+   * @param {boolean} isFavorited - Whether the spell is favorited
+   * @private
+   */
+  static _updateFavoriteButtonState(button, isFavorited) {
+    const icon = button.querySelector('i');
+    if (isFavorited) {
+      button.classList.add('favorited');
+      if (icon) {
+        icon.classList.remove('far');
+        icon.classList.add('fas');
+      }
+      button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites'));
+      button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.RemoveFromFavorites'));
+    } else {
+      button.classList.remove('favorited');
+      if (icon) {
+        icon.classList.remove('fas');
+        icon.classList.add('far');
+      }
+      button.setAttribute('data-tooltip', game.i18n.localize('SPELLBOOK.UI.AddToFavorites'));
+      button.setAttribute('aria-label', game.i18n.localize('SPELLBOOK.UI.AddToFavorites'));
+    }
+  }
+
+  /**
+   * Handle opening spell notes dialog
+   */
+  static async handleEditNotes(event, target) {
+    event.preventDefault();
+    const spellUuid = target.dataset.uuid;
+    if (!spellUuid) return;
+    const spellElement = target.closest('.spell-item');
+    const spellName = fromUuidSync(spellUuid).name;
+    new SpellNotesDialog({ spellUuid, spellName, actor: this.actor }).render(true);
+  }
+
+  /**
+   * Handle opening the spell analytics dashboard
+   * @async
+   * @static
+   * @param {MouseEvent} _event - The click event (unused)
+   * @param {HTMLElement} _target - The target element (unused)
+   * @returns {Promise<void>}
+   */
+  static async handleOpenAnalyticsDashboard(_event, _target) {
+    new SpellAnalyticsDashboard().render({ force: true });
+  }
+
+  /**
+   * Handle spell comparison selection and dialog management
+   * @async
+   * @static
+   * @param {MouseEvent} event - The click event
+   * @param {HTMLFormElement} _form - The form element (unused)
+   * @returns {Promise<void>}
+   */
+  static async handleCompareSpell(event, _form) {
+    const spellUuid = event.target.dataset.uuid;
+    const maxSpells = game.settings.get(MODULE.ID, SETTINGS.SPELL_COMPARISON_MAX);
+    if (this.comparisonSpells.has(spellUuid)) this.comparisonSpells.delete(spellUuid);
+    else if (this.comparisonSpells.size < maxSpells) this.comparisonSpells.add(spellUuid);
+    else return;
+    this.render(false);
+    if (this.comparisonSpells.size >= 2) {
+      if (!this.comparisonDialog) {
+        this.comparisonDialog = new SpellComparisonDialog(this);
+        this.comparisonDialog.render(true);
+      } else {
+        this.comparisonDialog.render(false);
+        this.comparisonDialog.bringToFront();
+      }
+    }
   }
 
   /**
@@ -1833,7 +2206,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Form handler for saving spellbook settings with class-specific preparation
+   * Form handler for saving spellbook settings with class-specific preparation AND favorites
    * @param {Event} _event - The form submission event
    * @param {HTMLElement} form - The form element
    * @param {Object} formData - The form data
@@ -1885,6 +2258,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
       };
       log(3, `Processed spell: ${name} (${uuid}) - prepared: ${isPrepared}, ritual: ${isRitual}, class: ${sourceClass}, mode: ${preparationMode}`);
     }
+    this._stateManager.clearFavoriteSessionState();
     await this._stateManager.addMissingRitualSpells(spellDataByClass);
     const allCantripChangesByClass = {};
     for (const [classIdentifier, classSpellData] of Object.entries(spellDataByClass)) {
@@ -1897,6 +2271,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     await this._stateManager.handlePostProcessing(actor);
     this._newlyCheckedCantrips.clear();
     this._clearTabStateCache();
+    await spellFavorites.processFavoritesFromForm(form, actor);
     if (actor.sheet.rendered) actor.sheet.render(true);
     if (this.ui && this.rendered) {
       this.ui.setupCantripUI();

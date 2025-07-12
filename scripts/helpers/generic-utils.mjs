@@ -50,7 +50,12 @@ export function findWizardClass(actor) {
   const spellcastingClasses = actor.items.filter((i) => i.type === 'class' && i.system.spellcasting?.progression && i.system.spellcasting.progression !== 'none');
   if (spellcastingClasses.length === 1) return spellcastingClasses[0];
   if (spellcastingClasses.length >= 2) {
-    // TODO: Check actor flags for DM-forced wizard class when that feature is re-added
+    const classRules = actor.getFlag(MODULE.ID, FLAGS.CLASS_RULES) || {};
+    const forcedWizardClass = spellcastingClasses.find((classItem) => {
+      const identifier = classItem.system.identifier?.toLowerCase() || classItem.name.toLowerCase();
+      return classRules[identifier]?.forceWizardMode === true;
+    });
+    if (forcedWizardClass) return forcedWizardClass;
     const wizardByIdentifier = spellcastingClasses.find((i) => i.system.identifier?.toLowerCase() === 'wizard');
     if (wizardByIdentifier) return wizardByIdentifier;
     const localizedWizardName = game.i18n.localize('SPELLBOOK.Classes.Wizard').toLowerCase();
@@ -92,4 +97,41 @@ export function isClassWizardEnabled(actor, classIdentifier) {
   const classRules = actor.getFlag(MODULE.ID, FLAGS.CLASS_RULES) || {};
   const hasForceWizard = classRules[classIdentifier]?.forceWizardMode === true;
   return isNaturalWizard || hasForceWizard;
+}
+
+/**
+ * Get HTML element from jQuery object or direct HTML based on version
+ */
+export function getHtmlElement(html) {
+  return MODULE.ISV13 ? html : html[0];
+}
+
+/**
+ * Get the appropriate label/name from a CONFIG object, handling V12/V13 compatibility
+ * @param {Object} configObject - The CONFIG object (e.g., CONFIG.DND5E.spellSchools)
+ * @param {string} key - The key to look up
+ * @returns {string} The label/name or empty string if not found
+ */
+export function getConfigLabel(configObject, key) {
+  if (!configObject || !configObject[key]) return '';
+  const item = configObject[key];
+  if (item.label) return item.label;
+  if (item.name) return item.name;
+  if (typeof item === 'string') return item;
+  return '';
+}
+
+/**
+ * Get the target user ID for spell data operations
+ * @returns {string} The user ID to use for spell data
+ * @private
+ */
+export function _getTargetUserId(actor) {
+  let targetUserId = game.user.id;
+  if (game.user.isActiveGM) {
+    const actorOwner = game.users.find((user) => user?.character?.id === actor?.id);
+    if (actorOwner) targetUserId = actorOwner.id;
+    else log(2, `No owner found for actor ${actor?.name}, using GM`);
+  }
+  return targetUserId;
 }

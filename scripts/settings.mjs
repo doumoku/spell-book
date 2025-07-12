@@ -1,5 +1,6 @@
 import { GMSpellListManager } from './apps/gm-spell-list-manager.mjs';
 import { MODULE, SETTINGS } from './constants.mjs';
+import { SpellDescriptionInjection } from './helpers/spell-description-injection.mjs';
 import { log } from './logger.mjs';
 
 /**
@@ -72,12 +73,18 @@ export function registerSettings() {
     scope: 'client',
     config: false,
     type: Object,
-    default: MODULE.DEFAULT_FILTER_CONFIG,
+    default: {
+      version: MODULE.DEFAULT_FILTER_CONFIG_VERSION,
+      filters: MODULE.DEFAULT_FILTER_CONFIG
+    },
     onChange: (value) => {
       try {
-        if (!Array.isArray(value)) {
+        if (!value || !Array.isArray(value.filters)) {
           log(2, 'Invalid filter configuration format, resetting to default');
-          game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, MODULE.DEFAULT_FILTER_CONFIG);
+          game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, {
+            version: MODULE.DEFAULT_FILTER_CONFIG_VERSION,
+            filters: MODULE.DEFAULT_FILTER_CONFIG
+          });
         }
       } catch (error) {
         log(1, 'Error validating filter configuration:', error);
@@ -212,6 +219,89 @@ export function registerSettings() {
     onChange: (value) => {
       MODULE.BATCHING.SIZE = value;
       log(3, `Lazy batch size changed to ${value}`);
+    }
+  });
+
+  game.settings.register(MODULE.ID, SETTINGS.SPELL_NOTES_LENGTH, {
+    name: 'SPELLBOOK.Settings.NotesMaxLength.Name',
+    hint: 'SPELLBOOK.Settings.NotesMaxLength.Hint',
+    scope: 'world',
+    config: true,
+    type: Number,
+    default: 240,
+    range: {
+      min: 10,
+      max: 1000,
+      step: 10
+    }
+  });
+
+  game.settings.register(MODULE.ID, SETTINGS.SPELL_NOTES_DESC_INJECTION, {
+    name: 'SPELLBOOK.Settings.InjectNotesIntoDescriptions.Name',
+    hint: 'SPELLBOOK.Settings.InjectNotesIntoDescriptions.Hint',
+    scope: 'client',
+    config: true,
+    type: String,
+    choices: {
+      off: 'SPELLBOOK.Settings.InjectNotesIntoDescriptions.Off',
+      before: 'SPELLBOOK.Settings.InjectNotesIntoDescriptions.Before',
+      after: 'SPELLBOOK.Settings.InjectNotesIntoDescriptions.After'
+    },
+    default: 'off',
+    onChange: async (value) => {
+      await SpellDescriptionInjection.handleSettingChange(value);
+    }
+  });
+
+  game.settings.register(MODULE.ID, SETTINGS.ENABLE_SPELL_USAGE_TRACKING, {
+    name: 'SPELLBOOK.Settings.EnableSpellUsageTracking.Name',
+    hint: 'SPELLBOOK.Settings.EnableSpellUsageTracking.Hint',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: (value) => {
+      ui.notifications.info(value ? game.i18n.localize('SPELLBOOK.Settings.SpellUsageTrackingEnabled') : game.i18n.localize('SPELLBOOK.Settings.SpellUsageTrackingDisabled'));
+    }
+  });
+
+  game.settings.register(MODULE.ID, SETTINGS.SPELL_COMPARISON_MAX, {
+    name: 'SPELLBOOK.Settings.SpellComparisonMax.Name',
+    hint: 'SPELLBOOK.Settings.SpellComparisonMax.Hint',
+    scope: 'world',
+    config: true,
+    type: Number,
+    default: 3,
+    range: { min: 2, max: 7, step: 1 }
+  });
+
+  game.settings.register(MODULE.ID, SETTINGS.ADVANCED_SEARCH_PREFIX, {
+    name: 'SPELLBOOK.Settings.AdvancedSearchPrefix.Name',
+    hint: 'SPELLBOOK.Settings.AdvancedSearchPrefix.Hint',
+    scope: 'client',
+    config: true,
+    type: String,
+    default: '^',
+    onChange: (value) => {
+      try {
+        if (value.length !== 1) {
+          log(2, 'Advanced search prefix must be exactly 1 character, resetting to default');
+          game.settings.set(MODULE.ID, SETTINGS.ADVANCED_SEARCH_PREFIX, '^');
+          ui.notifications.warn('Advanced search prefix must be exactly 1 character');
+          return;
+        }
+        if (/[a-zA-Z0-9]/.test(value)) {
+          log(2, 'Advanced search prefix cannot be a letter or number, resetting to default');
+          game.settings.set(MODULE.ID, SETTINGS.ADVANCED_SEARCH_PREFIX, '^');
+          ui.notifications.warn('Advanced search prefix cannot be a letter or number');
+          return;
+        }
+        log(3, `Advanced search prefix changed to "${value}"`);
+        ui.notifications.info(`Advanced search prefix updated to "${value}"`);
+      } catch (error) {
+        log(1, 'Error validating advanced search prefix:', error);
+        game.settings.set(MODULE.ID, SETTINGS.ADVANCED_SEARCH_PREFIX, '^');
+      }
     }
   });
 }
