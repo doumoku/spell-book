@@ -461,7 +461,7 @@ export class CantripManager {
       })
       .filter((classChange) => classChange.hasChanges);
     if (processedClassChanges.length === 0) return;
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
+
     const content = await renderTemplate(TEMPLATES.COMPONENTS.CANTRIP_NOTIFICATION, { actorName, classChanges: processedClassChanges });
     await ChatMessage.create({ content, whisper: game.users.filter((u) => u.isGM).map((u) => u.id) });
   }

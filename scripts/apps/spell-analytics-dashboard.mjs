@@ -407,7 +407,7 @@ export class SpellAnalyticsDashboard extends HandlebarsApplicationMixin(Applicat
           .join(', ');
         const exportDate = importData.exportedAt ? new Date(importData.exportedAt).toLocaleDateString() : game.i18n.localize('SPELLBOOK.Analytics.ImportSummaryUnknown');
         const exportedBy = importData.exportedBy || game.i18n.localize('SPELLBOOK.Analytics.ImportSummaryUnknown');
-        const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
+
         const summaryContent = await renderTemplate(TEMPLATES.DIALOGS.ANALYTICS_IMPORT_SUMMARY, { exportDate, exportedBy, userCount, userNames });
         const confirmed = await foundry.applications.api.DialogV2.wait({
           window: { title: game.i18n.localize('SPELLBOOK.Analytics.ImportConfirmTitle') },

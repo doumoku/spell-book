@@ -23,6 +23,7 @@ Hooks.once('init', async function () {
 });
 
 Hooks.once('ready', async function () {
+  MODULE.ISV13 = foundry.utils.isNewerVersion(game.version, '12.999');
   SpellDescriptionInjection.initialize();
   await unlockModuleCompendium();
   await MacroManager.initializeMacros();

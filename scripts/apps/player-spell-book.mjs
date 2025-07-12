@@ -1908,7 +1908,7 @@ export class PlayerSpellBook extends HandlebarsApplicationMixin(ApplicationV2) {
     const costInfo = await wizardManager.getCopyingCostWithFree(spell);
     const time = wizardManager.getCopyingTime(spell);
     const costText = costInfo.isFree ? game.i18n.localize('SPELLBOOK.Wizard.SpellCopyFree') : game.i18n.format('SPELLBOOK.Wizard.SpellCopyCost', { cost: costInfo.cost });
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
+
     const content = await renderTemplate(TEMPLATES.DIALOGS.WIZARD_LEARN_SPELL, { spell, costText, time });
     const result = await DialogV2.wait({
       title: game.i18n.format('SPELLBOOK.Wizard.LearnSpellTitle', { name: spell.name }),

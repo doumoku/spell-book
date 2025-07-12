@@ -157,7 +157,6 @@ function logMigrationResults(deprecatedResults, folderResults) {
 }
 
 async function buildChatContent(deprecatedResults, folderResults, userDataResults, totalProcessed) {
-  const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
   return await renderTemplate(TEMPLATES.COMPONENTS.MIGRATION_REPORT, {
     deprecatedResults,
     folderResults,
@@ -167,7 +166,6 @@ async function buildChatContent(deprecatedResults, folderResults, userDataResult
 }
 
 function buildUserDataMigrationContent(userDataResults) {
-  const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
   const visibleUsers = userDataResults.users.slice(0, 5);
   const hasMoreUsers = userDataResults.users.length > 5;
   const remainingUserCount = Math.max(0, userDataResults.users.length - 5);
@@ -176,13 +174,11 @@ function buildUserDataMigrationContent(userDataResults) {
 }
 
 function buildFolderMigrationContent(folderResults) {
-  const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
   const processedResults = { ...folderResults, foldersCreatedNames: folderResults.foldersCreated.length > 0 ? folderResults.foldersCreated.join(', ') : null };
   return renderTemplate(TEMPLATES.COMPONENTS.MIGRATION_FOLDER, { folderResults: processedResults });
 }
 
 function buildActorListContent(actors) {
-  const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
   const visibleActors = actors.slice(0, 10);
   const hasMoreActors = actors.length > 10;
   const remainingCount = Math.max(0, actors.length - 10);

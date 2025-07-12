@@ -149,7 +149,7 @@ export class ScrollScanner {
   static async _showLearnFromScrollDialog(spell, cost, time, isFree, isAlreadyInSpellbook) {
     const costText = isFree ? game.i18n.localize('SPELLBOOK.Wizard.SpellCopyFree') : game.i18n.format('SPELLBOOK.Wizard.SpellCopyCost', { cost });
     const shouldConsume = game.settings.get(MODULE.ID, SETTINGS.CONSUME_SCROLLS_WHEN_LEARNING);
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
+
     const content = await renderTemplate(TEMPLATES.DIALOGS.LEARN_FROM_SCROLL, {
       spell,
       costText,

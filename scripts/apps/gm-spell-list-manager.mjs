@@ -1033,7 +1033,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
    * @private
    */
   async _showCreateListDialog(identifierOptions) {
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
     let formData = null;
     const formElements = this._prepareCreateListFormData(identifierOptions);
     const content = await renderTemplate(TEMPLATES.DIALOGS.CREATE_SPELL_LIST, {
@@ -1129,7 +1128,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
     context.hasStandardLists = context.standardLists.length > 0;
 
     // V12/V13 compatibility for renderTemplate
-    const renderTemplate = MODULE.ISV13 ? foundry.applications.handlebars.renderTemplate : globalThis.renderTemplate;
+
     const content = await renderTemplate(TEMPLATES.DIALOGS.MERGE_SPELL_LISTS, context);
     const result = await DialogV2.wait({
       window: { title: game.i18n.localize('SPELLMANAGER.MergeLists.DialogTitle'), icon: 'fas fa-code-merge' },
@@ -1621,7 +1620,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
    * @param {HTMLElement} _form - The form element
    */
   static async handleShowDocumentation(_event, _form) {
-    const renderTemplate = MODULE.ISV13 ? foundry.applications.handlebars.renderTemplate : globalThis.renderTemplate;
     const content = await renderTemplate(TEMPLATES.DIALOGS.MANAGER_DOCUMENTATION, {});
     await DialogV2.wait({
       window: { title: game.i18n.localize('SPELLMANAGER.Documentation.Title') },
@@ -1772,7 +1770,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
   async _showRenameDialog(currentName) {
     let formData = null;
     let isValid = false;
-    const renderTemplate = MODULE.ISV13 ? foundry.applications.handlebars.renderTemplate : globalThis.renderTemplate;
+
     const content = await renderTemplate(TEMPLATES.DIALOGS.RENAME_SPELL_LIST, { currentName });
     const result = await DialogV2.wait({
       window: {

@@ -212,7 +212,6 @@ async function handleLongRestSwapPrompt(actor, longRestClasses) {
  * Show the long rest swap dialog with dynamic content
  */
 async function showLongRestSwapDialog(longRestClasses) {
-  const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
   const content = await renderTemplate(TEMPLATES.DIALOGS.LONG_REST_SWAP, { longRestClasses });
   return foundry.applications.api.DialogV2.wait({
     content: content,

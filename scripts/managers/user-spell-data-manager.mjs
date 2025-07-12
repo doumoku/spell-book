@@ -98,7 +98,6 @@ export class UserSpellDataManager {
    * @private
    */
   async _generateEmptyTablesHTML(userName, userId) {
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
     const notesTitle = game.i18n.localize('SPELLBOOK.UserData.SpellNotes');
     const spellCol = game.i18n.localize('SPELLBOOK.UserData.SpellColumn');
     const notesCol = game.i18n.localize('SPELLBOOK.UserData.NotesColumn');
@@ -191,7 +190,6 @@ export class UserSpellDataManager {
    * @private
    */
   async _generateIntroPageHTML() {
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
     return await renderTemplate(TEMPLATES.COMPONENTS.USER_DATA_INTRO);
   }
 }

@@ -117,7 +117,6 @@ export class SpellUserDataJournal {
    * @returns {string} Generated HTML tables content
    */
   static async _generateTablesHTML(spellData, userName, userId) {
-    const renderTemplate = MODULE.ISV13 ? foundry?.applications?.handlebars?.renderTemplate : globalThis.renderTemplate;
     const notesTitle = game.i18n.localize('SPELLBOOK.UserData.SpellNotes');
     const spellCol = game.i18n.localize('SPELLBOOK.UserData.SpellColumn');
     const notesCol = game.i18n.localize('SPELLBOOK.UserData.NotesColumn');
