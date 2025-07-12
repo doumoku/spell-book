@@ -1901,9 +1901,10 @@
 }
 
 /* ----------------------------------------- */
-/*  Character Sheet Button                   */
+/*  Character Sheet Button (Classic Tidy)   */
 /* ----------------------------------------- */
-.spell-book-button {
+.utility-toolbar .spell-book-button,
+.inline-icon-button.spell-book-button {
   width: 100%;
   height: 100%;
   color: var(--dnd5e-color-gold);
