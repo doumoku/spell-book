@@ -1055,7 +1055,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
           icon: 'fas fa-check',
           action: 'create',
           callback: (event, target, form) => {
-            // V12/V13 compatibility - form might be undefined in V13
             const formElement = form?.querySelector ? form : form.element;
             const nameInput = formElement.querySelector('[name="name"]');
             const identifierSelect = formElement.querySelector('[name="identifier"]');
@@ -1094,7 +1093,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       default: 'cancel',
       rejectClose: false,
       render: (event, target, form) => {
-        // Handle V12/V13 compatibility - target might be DOM element or application instance
         const dialogElement = target.querySelector ? target : target.element;
         this._setupCreateListDialogListeners(dialogElement);
       }
@@ -1126,9 +1124,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
     context.hasCustomLists = context.customLists.length > 0;
     context.hasMergedLists = context.mergedLists.length > 0;
     context.hasStandardLists = context.standardLists.length > 0;
-
-    // V12/V13 compatibility for renderTemplate
-
     const content = await renderTemplate(TEMPLATES.DIALOGS.MERGE_SPELL_LISTS, context);
     const result = await DialogV2.wait({
       window: { title: game.i18n.localize('SPELLMANAGER.MergeLists.DialogTitle'), icon: 'fas fa-code-merge' },
@@ -1139,7 +1134,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
           icon: 'fas fa-code-merge',
           action: 'merge',
           callback: (event, target, form) => {
-            // V12/V13 compatibility - form might be undefined in V13
             const formElement = form?.querySelector ? form : form.element;
             const sourceListSelect = formElement.querySelector('[name="sourceList"]');
             const copyFromListSelect = formElement.querySelector('[name="copyFromList"]');
@@ -1176,7 +1170,6 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       default: 'cancel',
       rejectClose: false,
       render: (event, target, form) => {
-        // V12/V13 compatibility for target parameter
         const dialogElement = target.querySelector ? target : target.element;
         this._setupMergeListsDialogListeners(dialogElement);
       }

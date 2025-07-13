@@ -98,9 +98,6 @@ async function preloadTemplates() {
     return result;
   }
   const templatePaths = flattenTemplateObject(TEMPLATES);
-
-  // Use the appropriate loadTemplates method based on version
-  // TODO: Remove when V12 support is dropped
   if (foundry.utils.isNewerVersion(game.version, '12.999')) return foundry?.applications?.handlebars?.loadTemplates(templatePaths);
   else return loadTemplates(templatePaths);
 }

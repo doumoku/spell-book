@@ -43,17 +43,6 @@ export class ScrollScanner {
           if (result) return result;
         }
       }
-    } else {
-      // Backwards compatibility: check description for UUID (v3.3.1 and earlier)
-      const description = scroll.system?.description?.value;
-      if (description) {
-        const uuidMatch = description.match(/@UUID\[([^\]]+)\]/);
-        if (uuidMatch) {
-          const spellUuid = uuidMatch[1];
-          const result = await this._processScrollSpell(scroll, spellUuid, maxSpellLevel);
-          if (result) return result;
-        }
-      }
     }
     return null;
   }

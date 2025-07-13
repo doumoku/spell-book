@@ -9,7 +9,7 @@ import { SpellUserDataJournal } from './spell-user-data.mjs';
 export class SpellDescriptionInjection {
   static NOTES_WRAPPER_CLASS = 'spell-book-personal-notes';
   static MODULE_UPDATE_FLAG = 'spellBookModuleUpdate';
-  static _updatingSpells = new Set(); // Track spells currently being updated
+  static _updatingSpells = new Set();
 
   /**
    * Initialize hooks for spell description injection

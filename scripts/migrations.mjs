@@ -1,4 +1,3 @@
-// scripts/migrations.mjs
 import { DEPRECATED_FLAGS, MODULE, TEMPLATES } from './constants.mjs';
 import * as managerHelpers from './helpers/compendium-management.mjs';
 import { log } from './logger.mjs';
