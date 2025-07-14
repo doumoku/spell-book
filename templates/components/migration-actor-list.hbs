@@ -1,0 +1,12 @@
+<h3>{{localize 'SPELLBOOK.Migrations.UpdatedActors' count=actors.length}}</h3>
+<ul>
+  {{#each visibleActors}}
+    <li>{{this.name}}
+      {{#if this.hadInvalidFlags}}({{localize 'SPELLBOOK.Migrations.InvalidFlagsDetail'}}){{/if}}
+      {{#if this.pack}} - {{localize 'SPELLBOOK.Migrations.Compendium' name=this.pack}}{{/if}}
+    </li>
+  {{/each}}
+  {{#if hasMoreActors}}
+    <li>{{localize 'SPELLBOOK.Migrations.AndMore' count=remainingCount}}</li>
+  {{/if}}
+</ul>

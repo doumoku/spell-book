@@ -1,12 +1,14 @@
 import { MODULE } from '../constants.mjs';
 import { log } from '../logger.mjs';
+import * as genericUtils from './generic-utils.mjs';
 
 /**
- * Format spell details for display
+ * Format spell details for display with notes icon at the beginning
  * @param {Object} spell - The spell object
- * @returns {string} - Formatted spell details string
+ * @param {Boolean} includeNotes - Optional flag to disable including notes
+ * @returns {string} - Formatted spell details string with notes icon
  */
-export function formatSpellDetails(spell) {
+export function formatSpellDetails(spell, includeNotes = true) {
   try {
     if (!spell) return '';
     const details = [];
@@ -18,7 +20,12 @@ export function formatSpellDetails(spell) {
     if (schoolStr) details.push(schoolStr);
     const materialsStr = formatMaterialComponents(spell);
     if (materialsStr) details.push(materialsStr);
-    return details.filter(Boolean).join(' • ');
+    const baseDetails = details.filter(Boolean).join(' • ');
+    if (!includeNotes) return baseDetails;
+    const notesIcon = createNotesIcon(spell);
+    if (notesIcon && baseDetails) return `${notesIcon} ${baseDetails}`;
+    else if (notesIcon) return notesIcon;
+    else return baseDetails;
   } catch (error) {
     log(1, 'Error formatting spell details:', error);
     return '';
@@ -68,7 +75,7 @@ export function processSpellItemForDisplay(spell) {
  * @param {Object} spell - The spell object
  * @returns {string} - Formatted components string
  */
-function formatSpellComponents(spell) {
+export function formatSpellComponents(spell) {
   const components = [];
   if (spell.labels?.components?.all) for (const c of spell.labels.components.all) components.push(c.abbr);
   else if (spell.system?.properties?.length) {
@@ -83,7 +90,7 @@ function formatSpellComponents(spell) {
  * @param {Object} spell - The spell object
  * @returns {string} - Formatted activation string
  */
-function formatSpellActivation(spell) {
+export function formatSpellActivation(spell) {
   let result = '';
   if (spell.labels?.activation) result = spell.labels.activation;
   else if (spell.system?.activation?.type) {
@@ -101,10 +108,10 @@ function formatSpellActivation(spell) {
  * @param {Object} spell - The spell object
  * @returns {string} - Formatted school string
  */
-function formatSpellSchool(spell) {
+export function formatSpellSchool(spell) {
   let result = '';
   if (spell.labels?.school) result = spell.labels.school;
-  else if (spell.system?.school) result = CONFIG.DND5E.spellSchools[spell.system.school]?.label || spell.system.school;
+  else if (spell.system?.school) result = genericUtils.getConfigLabel(CONFIG.DND5E.spellSchools, spell.system.school) || spell.system.school;
   return result;
 }
 
@@ -113,7 +120,7 @@ function formatSpellSchool(spell) {
  * @param {Object} spell - The spell object
  * @returns {string} - Formatted material components string
  */
-function formatMaterialComponents(spell) {
+export function formatMaterialComponents(spell) {
   const materials = spell.system?.materials;
   let result = '';
   if (materials && materials.consumed) {
@@ -125,13 +132,28 @@ function formatMaterialComponents(spell) {
 }
 
 /**
+ * Create notes icon for spell - always shows, empty or filled based on notes
+ * @param {Object} spell - The spell object
+ * @returns {string} - HTML for notes icon
+ */
+export function createNotesIcon(spell) {
+  const spellUuid = spell.uuid || spell.compendiumUuid;
+  if (!spellUuid) return '';
+  const hasNotes = !!(spell.hasNotes || (spell.userData?.notes && spell.userData.notes.trim()));
+  const iconClass = hasNotes ? 'fas fa-sticky-note' : 'far fa-sticky-note';
+  const tooltip = hasNotes ? game.i18n.localize('SPELLBOOK.UI.HasNotes') : game.i18n.localize('SPELLBOOK.UI.AddNotes');
+  return `<i class="${iconClass} spell-notes-icon" data-uuid="${spellUuid}" data-action="editNotes" data-tooltip="${tooltip}" aria-label="${tooltip}"></i>`;
+}
+
+/**
  * Get localized preparation mode text
  * @param {string} mode - The preparation mode
  * @returns {string} - Localized preparation mode text
  */
 export function getLocalizedPreparationMode(mode) {
   if (!mode) return '';
-  if (CONFIG.DND5E.spellPreparationModes[mode]?.label) return CONFIG.DND5E.spellPreparationModes[mode].label;
+  const label = genericUtils.getConfigLabel(CONFIG.DND5E.spellPreparationModes, mode);
+  if (label) return label;
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
@@ -150,7 +172,7 @@ export function extractSpellFilterData(spell) {
   const materialComponents = extractMaterialComponents(spell);
   const requiresSave = checkSpellRequiresSave(spell);
   const conditions = extractSpellConditions(spell);
-  return { castingTime, range, damageTypes, isRitual, concentration, materialComponents, requiresSave, conditions };
+  return { castingTime, range, damageTypes, isRitual, concentration, materialComponents, requiresSave, conditions, favorited: false };
 }
 
 /**
@@ -158,7 +180,7 @@ export function extractSpellFilterData(spell) {
  * @param {Object} spell - The spell document
  * @returns {Object} - Casting time data
  */
-function extractCastingTime(spell) {
+export function extractCastingTime(spell) {
   return {
     value: spell.system?.activation?.value || '',
     type: spell.system?.activation?.type || '',
@@ -171,7 +193,7 @@ function extractCastingTime(spell) {
  * @param {Object} spell - The spell document
  * @returns {Object} - Range data
  */
-function extractRange(spell) {
+export function extractRange(spell) {
   return {
     units: spell.system?.range?.units || '',
     label: spell.labels?.range || ''
@@ -183,18 +205,19 @@ function extractRange(spell) {
  * @param {Object} spell - The spell document
  * @returns {string[]} - Array of damage types
  */
-function extractDamageTypes(spell) {
+export function extractDamageTypes(spell) {
   const damageTypes = [];
-  if (spell.labels?.damages?.length) {
-    for (const damage of spell.labels.damages) if (damage.damageType && !damageTypes.includes(damage.damageType)) damageTypes.push(damage.damageType);
-  }
+  if (spell.labels?.damages?.length) for (const damage of spell.labels.damages) if (damage.damageType && !damageTypes.includes(damage.damageType)) damageTypes.push(damage.damageType);
   if (spell.system?.activities) {
     for (const [_key, activity] of Object.entries(spell.system.activities)) {
       if (activity.damage?.parts?.length) {
         for (const part of activity.damage.parts) {
           if (part.types && Array.isArray(part.types) && part.types.length) {
-            for (const type of part.types) if (!damageTypes.includes(type)) damageTypes.push(type);
-          } else if (part[1] && !damageTypes.includes(part[1])) damageTypes.push(part[1]);
+            for (const type of part.types) {
+              if (!damageTypes.includes(type)) damageTypes.push(type);
+              else if (part[1] && !damageTypes.includes(part[1])) damageTypes.push(part[1]);
+            }
+          }
         }
       }
     }
@@ -207,12 +230,15 @@ function extractDamageTypes(spell) {
  * @param {Object} spell - The spell document
  * @returns {boolean} - Whether the spell is a ritual
  */
-function checkIsRitual(spell) {
-  return Boolean(
-    spell.labels?.components?.tags?.includes(game.i18n.localize('DND5E.Item.Property.Ritual')) ||
-      (spell.system.properties && Array.isArray(spell.system.properties) && spell.system.properties.includes('ritual')) ||
-      spell.system.components?.ritual
-  );
+export function checkIsRitual(spell) {
+  if (spell.system?.properties && typeof spell.system.properties.has === 'function') return spell.system.properties.has('ritual');
+  if (spell.system?.properties && Array.isArray(spell.system.properties)) {
+    if (spell.system.properties.includes('ritual')) return true;
+    return spell.system.properties.some((prop) => (typeof prop === 'object' && prop.value === 'ritual') || (typeof prop === 'string' && prop === 'ritual'));
+  }
+  if (spell.system?.components?.ritual) return true;
+  if (spell.labels?.components?.tags?.includes(game.i18n.localize('DND5E.Item.Property.Ritual'))) return true;
+  return false;
 }
 
 /**
@@ -220,7 +246,7 @@ function checkIsRitual(spell) {
  * @param {Object} spell - The spell document
  * @returns {boolean} - Whether the spell requires concentration
  */
-function checkIsConcentration(spell) {
+export function checkIsConcentration(spell) {
   if (spell.system.duration?.concentration) return true;
   return spell.system.properties && Array.isArray(spell.system.properties) && spell.system.properties.includes('concentration');
 }
@@ -230,7 +256,7 @@ function checkIsConcentration(spell) {
  * @param {Object} spell - The spell document
  * @returns {Object} - Material component data
  */
-function extractMaterialComponents(spell) {
+export function extractMaterialComponents(spell) {
   const materials = spell.system?.materials || {};
   return { consumed: !!materials.consumed, cost: materials.cost || 0, value: materials.value || '', hasConsumedMaterials: !!materials.consumed };
 }
@@ -240,7 +266,7 @@ function extractMaterialComponents(spell) {
  * @param {Object} spell - The spell document
  * @returns {boolean} - Whether the spell requires a save
  */
-function checkSpellRequiresSave(spell) {
+export function checkSpellRequiresSave(spell) {
   let result = false;
   if (spell.system?.activities) {
     for (const [_key, activity] of Object.entries(spell.system.activities)) {
@@ -262,12 +288,16 @@ function checkSpellRequiresSave(spell) {
  * @param {Object} spell - The spell document
  * @returns {string[]} - Array of condition keys
  */
-function extractSpellConditions(spell) {
+export function extractSpellConditions(spell) {
   const conditions = [];
   const description = spell.system?.description?.value || '';
   if (description && CONFIG.DND5E.conditionTypes) {
     const lowerDesc = description.toLowerCase();
-    for (const [key, condition] of Object.entries(CONFIG.DND5E.conditionTypes)) if (condition?.label && lowerDesc.includes(condition.label.toLowerCase())) conditions.push(key);
+    for (const [key, condition] of Object.entries(CONFIG.DND5E.conditionTypes)) {
+      if (condition.pseudo) continue;
+      const conditionLabel = genericUtils.getConfigLabel(CONFIG.DND5E.conditionTypes, key);
+      if (conditionLabel && lowerDesc.includes(conditionLabel.toLowerCase())) conditions.push(key);
+    }
   }
   return conditions;
 }

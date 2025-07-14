@@ -149,12 +149,7 @@ export function calculateMaxSpellLevel(classItem, actor) {
   if (!spellcasting || spellcasting.progression === 'none') return 0;
 
   if (spellcasting?.type === 'leveled' || spellcasting?.progression !== 'pact') {
-    const progression = {
-      slot: 0,
-      // Add class level information that might be needed in 3.X
-      [classItem.identifier || classItem.name?.slugify() || 'class']: classItem.system?.levels || 0
-    };
-
+    const progression = { slot: 0, [classItem.identifier || classItem.name?.slugify() || 'class']: classItem.system?.levels || 0 };
     const maxPossibleSpellLevel = CONFIG.DND5E.SPELL_SLOT_TABLE[CONFIG.DND5E.SPELL_SLOT_TABLE.length - 1].length;
     const spellLevels = [];
     for (let i = 1; i <= maxPossibleSpellLevel; i++) spellLevels.push(i);
@@ -185,11 +180,7 @@ export function calculateMaxSpellLevel(classItem, actor) {
     }
   } else if (spellcasting?.type === 'pact' || spellcasting?.progression === 'pact') {
     const spells = { pact: {} };
-    const progression = {
-      pact: 0,
-      // Add class level for 3.X compatibility
-      [classItem.identifier || classItem.name?.slugify() || 'class']: classItem.system?.levels || 0
-    };
+    const progression = { pact: 0, [classItem.identifier || classItem.name?.slugify() || 'class']: classItem.system?.levels || 0 };
     try {
       actor.constructor.computeClassProgression(progression, classItem, { spellcasting });
       actor.constructor.prepareSpellcastingSlots(spells, 'pact', progression);

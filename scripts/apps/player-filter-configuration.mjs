@@ -3,6 +3,7 @@ import * as formElements from '../helpers/form-elements.mjs';
 import { log } from '../logger.mjs';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+const DragDropClass = foundry.utils.isNewerVersion(game.version, '12.999') ? foundry?.applications?.ux?.DragDrop?.implementation : DragDrop;
 
 /**
  * Application to configure which filters are displayed in the spell browser
@@ -61,8 +62,17 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
   initializeConfig() {
     try {
       log(3, 'Initializing filter configuration');
-      let config = game.settings.get(MODULE.ID, SETTINGS.FILTER_CONFIGURATION);
-      if (!config || !Array.isArray(config) || config.length === 0) {
+      let configData = game.settings.get(MODULE.ID, SETTINGS.FILTER_CONFIGURATION);
+      if (Array.isArray(configData) || (configData && !configData.version)) {
+        log(2, 'Legacy or unversioned filter configuration detected. Rebuilding...');
+        configData = {
+          version: MODULE.DEFAULT_FILTER_CONFIG_VERSION,
+          filters: foundry.utils.deepClone(MODULE.DEFAULT_FILTER_CONFIG)
+        };
+        game.settings.set(MODULE.ID, SETTINGS.FILTER_CONFIGURATION, configData);
+      }
+      let config = configData?.filters || [];
+      if (!config || config.length === 0) {
         log(2, 'No valid configuration found, using defaults');
         config = foundry.utils.deepClone(MODULE.DEFAULT_FILTER_CONFIG);
       } else {
@@ -80,7 +90,6 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
           };
         });
       }
-
       this.config = foundry.utils.deepClone(config);
       log(3, 'Configuration initialized successfully');
     } catch (error) {
@@ -199,7 +208,7 @@ export class PlayerFilterConfiguration extends HandlebarsApplicationMixin(Applic
         drop: this.onDrop.bind(this)
       };
 
-      const dragDropHandler = new DragDrop(dragDropOptions);
+      const dragDropHandler = new DragDropClass(dragDropOptions);
       dragDropHandler.bind(this.element);
     });
   }

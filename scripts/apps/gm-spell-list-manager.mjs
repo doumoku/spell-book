@@ -2,9 +2,11 @@ import { FLAGS, MODULE, SETTINGS, TEMPLATES } from '../constants.mjs';
 import * as actorSpellUtils from '../helpers/actor-spells.mjs';
 import * as managerHelpers from '../helpers/compendium-management.mjs';
 import * as formElements from '../helpers/form-elements.mjs';
+import * as genericUtils from '../helpers/generic-utils.mjs';
 import * as formattingUtils from '../helpers/spell-formatting.mjs';
 import { SpellbookFilterHelper } from '../helpers/ui/spellbook-filters.mjs';
 import { log } from '../logger.mjs';
+import { SpellAnalyticsDashboard } from './spell-analytics-dashboard.mjs';
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -36,12 +38,14 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       openActor: GMSpellListManager.handleOpenActor,
       openClass: GMSpellListManager.handleOpenClass,
       createNewList: GMSpellListManager.handleCreateNewList,
+      renameSpellList: GMSpellListManager.handleRenameSpellList,
       mergeLists: GMSpellListManager.handleMergeLists,
       toggleSelectionMode: GMSpellListManager.handleToggleSelectionMode,
       selectAll: GMSpellListManager.handleSelectAll,
       bulkSave: GMSpellListManager.handleBulkSave,
       cancelSelection: GMSpellListManager.handleCancelSelection,
-      toggleListVisibility: GMSpellListManager.handleToggleListVisibility
+      toggleListVisibility: GMSpellListManager.handleToggleListVisibility,
+      openAnalyticsDashboard: GMSpellListManager.handleOpenAnalyticsDashboard
     },
     classes: ['gm-spell-list-manager'],
     window: {
@@ -151,7 +155,12 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
         return processedLevel;
       });
     }
-    if (this.selectedSpellList) context.selectedSpellList = formattingUtils.processSpellListForDisplay(this.selectedSpellList);
+    if (this.selectedSpellList) {
+      context.selectedSpellList = formattingUtils.processSpellListForDisplay(this.selectedSpellList);
+      const flags = this.selectedSpellList.document.flags?.[MODULE.ID] || {};
+      const isCustomList = !!flags.isDuplicate || !!flags.isCustom || !!flags.isNewList;
+      context.selectedSpellList.isRenameable = isCustomList || this.selectedSpellList.isMerged;
+    }
     return context;
   }
 
@@ -223,7 +232,8 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
    * @private
    */
   async _addEditingContext(context) {
-    context.isCustomList = !!this.selectedSpellList.document.flags?.[MODULE.ID]?.isDuplicate;
+    const flags = this.selectedSpellList.document.flags?.[MODULE.ID] || {};
+    context.isCustomList = !!flags.isDuplicate || !!flags.isCustom || !!flags.isNewList;
     if (context.isCustomList) {
       const originalUuid = this.selectedSpellList.document.flags?.[MODULE.ID]?.originalUuid;
       if (originalUuid) {
@@ -285,7 +295,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       for (const level of spellLevels) {
         for (const spell of level.spells) {
           spell.enrichedIcon = formattingUtils.createSpellIconLink(spell);
-          spell.formattedDetails = formattingUtils.formatSpellDetails(spell);
+          spell.formattedDetails = formattingUtils.formatSpellDetails(spell, false);
         }
       }
       this.selectedSpellList.spells = spellDocs;
@@ -771,7 +781,8 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
     levelSelect.id = 'spell-level';
     const schoolOptions = [{ value: '', label: game.i18n.localize('SPELLMANAGER.Filters.AllSchools'), selected: !this.filterState.school }];
     Object.entries(CONFIG.DND5E.spellSchools).forEach(([key, school]) => {
-      schoolOptions.push({ value: key, label: school.label, selected: this.filterState.school === key });
+      const label = genericUtils.getConfigLabel(CONFIG.DND5E.spellSchools, key);
+      schoolOptions.push({ value: key, label, selected: this.filterState.school === key });
     });
     const schoolSelect = formElements.createSelect({
       name: 'spell-school',
@@ -830,14 +841,14 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
     concentrationSelect.id = 'spell-concentration';
     const materialComponentsOptions = [
       { value: '', label: game.i18n.localize('SPELLBOOK.Filters.All'), selected: !this.filterState.materialComponents },
-      { value: 'consumed', label: game.i18n.localize('SPELLBOOK.Filters.MaterialComponents.Consumed'), selected: this.filterState.materialComponents === 'consumed' },
-      { value: 'notConsumed', label: game.i18n.localize('SPELLBOOK.Filters.MaterialComponents.NotConsumed'), selected: this.filterState.materialComponents === 'notConsumed' }
+      { value: 'consumed', label: game.i18n.localize('SPELLBOOK.Filters.Materials.Consumed'), selected: this.filterState.materialComponents === 'consumed' },
+      { value: 'notConsumed', label: game.i18n.localize('SPELLBOOK.Filters.Materials.NotConsumed'), selected: this.filterState.materialComponents === 'notConsumed' }
     ];
     const materialComponentsSelect = formElements.createSelect({
       name: 'spell-materialComponents',
       options: materialComponentsOptions,
       disabled: !this.isEditing,
-      ariaLabel: game.i18n.localize('SPELLBOOK.Filters.MaterialComponents')
+      ariaLabel: game.i18n.localize('SPELLBOOK.Filters.Materials.Title')
     });
     materialComponentsSelect.id = 'spell-materialComponents';
     const ritualCheckbox = formElements.createCheckbox({
@@ -993,7 +1004,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
     content = game.i18n.localize('SPELLMANAGER.Confirm.Content'),
     confirmLabel = game.i18n.localize('SPELLMANAGER.Confirm.Confirm'),
     confirmIcon = 'fas fa-check',
-    cancelLabel = game.i18n.localize('SPELLMANAGER.Confirm.Cancel'),
+    cancelLabel = game.i18n.localize('SPELLBOOK.UI.Cancel'),
     cancelIcon = 'fas fa-times',
     confirmCssClass = ''
   }) {
@@ -1029,7 +1040,14 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       formElements
     });
     const result = await DialogV2.wait({
-      window: { title: game.i18n.localize('SPELLMANAGER.Buttons.CreateNew'), icon: 'fas fa-star' },
+      window: {
+        title: game.i18n.localize('SPELLMANAGER.Buttons.CreateNew'),
+        icon: 'fas fa-star',
+        resizable: false,
+        minimizable: false,
+        positioned: true
+      },
+      position: { width: 650, height: 'auto' },
       content: content,
       buttons: [
         {
@@ -1037,9 +1055,10 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
           icon: 'fas fa-check',
           action: 'create',
           callback: (event, target, form) => {
-            const nameInput = form.querySelector('[name="name"]');
-            const identifierSelect = form.querySelector('[name="identifier"]');
-            const customIdentifierInput = form.querySelector('[name="customIdentifier"]');
+            const formElement = form?.querySelector ? form : form.element;
+            const nameInput = formElement.querySelector('[name="name"]');
+            const identifierSelect = formElement.querySelector('[name="identifier"]');
+            const customIdentifierInput = formElement.querySelector('[name="customIdentifier"]');
             if (!identifierSelect) return false;
             let name = nameInput.value.trim();
             let identifier = '';
@@ -1048,7 +1067,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
               identifier = customIdentifierInput?.value || '';
               const identifierPattern = /^[a-z0-9_-]+$/;
               if (!identifierPattern.test(identifier)) {
-                const errorElement = form.querySelector('.validation-error');
+                const errorElement = formElement.querySelector('.validation-error');
                 if (errorElement) errorElement.style.display = 'block';
                 customIdentifierInput.focus();
                 return false;
@@ -1066,7 +1085,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
           }
         },
         {
-          label: game.i18n.localize('SPELLMANAGER.Confirm.Cancel'),
+          label: game.i18n.localize('SPELLBOOK.UI.Cancel'),
           icon: 'fas fa-times',
           action: 'cancel'
         }
@@ -1074,7 +1093,8 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       default: 'cancel',
       rejectClose: false,
       render: (event, target, form) => {
-        this._setupCreateListDialogListeners(target);
+        const dialogElement = target.querySelector ? target : target.element;
+        this._setupCreateListDialogListeners(dialogElement);
       }
     });
 
@@ -1114,13 +1134,14 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
           icon: 'fas fa-code-merge',
           action: 'merge',
           callback: (event, target, form) => {
-            const sourceListSelect = form.querySelector('[name="sourceList"]');
-            const copyFromListSelect = form.querySelector('[name="copyFromList"]');
-            const mergedListNameInput = form.querySelector('[name="mergedListName"]');
-            const hideSourceListsCheckbox = form.querySelector('[name="hideSourceLists"]');
+            const formElement = form?.querySelector ? form : form.element;
+            const sourceListSelect = formElement.querySelector('[name="sourceList"]');
+            const copyFromListSelect = formElement.querySelector('[name="copyFromList"]');
+            const mergedListNameInput = formElement.querySelector('[name="mergedListName"]');
+            const hideSourceListsCheckbox = formElement.querySelector('[name="hideSourceLists"]');
             if (!sourceListSelect.value || !copyFromListSelect.value) return false;
             if (sourceListSelect.value === copyFromListSelect.value) {
-              const errorElement = form.querySelector('.validation-error');
+              const errorElement = formElement.querySelector('.validation-error');
               if (errorElement) errorElement.style.display = 'block';
               return false;
             }
@@ -1141,7 +1162,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
           }
         },
         {
-          label: game.i18n.localize('SPELLMANAGER.Confirm.Cancel'),
+          label: game.i18n.localize('SPELLBOOK.UI.Cancel'),
           icon: 'fas fa-times',
           action: 'cancel'
         }
@@ -1149,7 +1170,8 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       default: 'cancel',
       rejectClose: false,
       render: (event, target, form) => {
-        this._setupMergeListsDialogListeners(target);
+        const dialogElement = target.querySelector ? target : target.element;
+        this._setupMergeListsDialogListeners(dialogElement);
       }
     });
     return { result, formData };
@@ -1710,6 +1732,159 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
   }
 
   /**
+   * Handle renaming a spell list
+   * @static
+   * @param {Event} event - The triggering event
+   * @param {HTMLElement} _form - The form element
+   * @returns {Promise<void>}
+   */
+  static async handleRenameSpellList(event, _form) {
+    if (!this.selectedSpellList) return;
+    const currentName = this.selectedSpellList.name;
+    const listUuid = this.selectedSpellList.uuid;
+    const flags = this.selectedSpellList.document.flags?.[MODULE.ID] || {};
+    const isRenameable = !!flags.isDuplicate || !!flags.isCustom || !!flags.isNewList || this.selectedSpellList.isMerged;
+    if (!isRenameable) return;
+    try {
+      const { result, formData } = await this._showRenameDialog(currentName);
+      if (result === 'rename' && formData?.newName && formData.newName !== currentName) await this._performRename(listUuid, formData.newName);
+    } catch (error) {
+      log(1, 'Error in rename dialog:', error);
+      ui.notifications.error(game.i18n.localize('SPELLMANAGER.Rename.ErrorMessage'));
+    }
+  }
+
+  /**
+   * Show the rename dialog and return result
+   * @param {string} currentName - Current name of the spell list
+   * @returns {Promise<Object>} Dialog result and form data
+   * @private
+   */
+  async _showRenameDialog(currentName) {
+    let formData = null;
+    let isValid = false;
+
+    const content = await renderTemplate(TEMPLATES.DIALOGS.RENAME_SPELL_LIST, { currentName });
+    const result = await DialogV2.wait({
+      window: {
+        title: game.i18n.format('SPELLMANAGER.Rename.Title', { currentName: currentName }),
+        icon: 'fas fa-pen'
+      },
+      content: content,
+      buttons: [
+        {
+          label: game.i18n.localize('SPELLMANAGER.Buttons.Rename'),
+          icon: 'fas fa-check',
+          action: 'rename',
+          callback: (event, target, form) => {
+            // V12/V13 compatibility - form might be undefined in V13
+            const formElement = form?.querySelector ? form : form.element;
+            const newNameInput = formElement.querySelector('[name="newName"]');
+            const newName = newNameInput?.value.trim();
+            if (!isValid || !newName || newName === currentName) return false;
+            formData = { newName };
+            return 'rename';
+          }
+        },
+        {
+          label: game.i18n.localize('SPELLBOOK.UI.Cancel'),
+          icon: 'fas fa-times',
+          action: 'cancel'
+        }
+      ],
+      default: 'cancel',
+      rejectClose: false,
+      render: (event, target, form) => {
+        const dialogElement = target.querySelector ? target : target.element;
+        this._setupRenameDialogListeners(dialogElement, currentName, (valid) => {
+          isValid = valid;
+        });
+      }
+    });
+    return { result, formData };
+  }
+
+  /**
+   * Set up listeners for the rename dialog
+   * @param {HTMLElement} target - The dialog DOM element
+   * @param {string} currentName - Current name for comparison
+   * @param {Function} validationCallback - Callback to report validation status
+   * @private
+   */
+  _setupRenameDialogListeners(target, currentName, validationCallback) {
+    const newNameInput = target.querySelector('#new-name');
+    const renameButton = target.querySelector('button[data-action="rename"]');
+    const errorElement = target.querySelector('.validation-error');
+    const errorMessage = target.querySelector('.error-message');
+    if (newNameInput && renameButton) {
+      newNameInput.addEventListener('focus', () => {
+        newNameInput.select();
+      });
+      const validateName = () => {
+        const value = newNameInput.value.trim();
+        const isNotEmpty = value.length > 0 && value.length <= 100;
+        const isNotSame = value !== currentName;
+        const isNotDuplicate = !this._checkDuplicateName(value);
+        const isValid = isNotEmpty && isNotSame && isNotDuplicate;
+        renameButton.disabled = !isValid;
+        newNameInput.classList.toggle('error', !isValid && value.length > 0);
+        if (errorElement && errorMessage) {
+          if (value.length > 0 && !isNotDuplicate) {
+            errorMessage.textContent = game.i18n.localize('SPELLMANAGER.Rename.DuplicateNameError');
+            errorElement.style.display = 'block';
+          } else if (value.length > 0 && !isNotEmpty) {
+            errorMessage.textContent = game.i18n.localize('SPELLMANAGER.Rename.ValidationError');
+            errorElement.style.display = 'block';
+          } else {
+            errorElement.style.display = 'none';
+          }
+        }
+        if (validationCallback) validationCallback(isValid);
+      };
+      newNameInput.addEventListener('input', validateName);
+      validateName();
+      setTimeout(() => newNameInput.focus(), 100);
+    }
+  }
+
+  /**
+   * Check if a spell list name already exists
+   * @param {string} name - Name to check
+   * @returns {boolean} True if name exists
+   * @private
+   */
+  _checkDuplicateName(name) {
+    const duplicate = this.availableSpellLists.some((list) => {
+      const nameMatch = list.name.toLowerCase() === name.toLowerCase();
+      const isNotCurrentList = list.uuid !== this.selectedSpellList?.uuid;
+      return nameMatch && isNotCurrentList;
+    });
+    return duplicate;
+  }
+
+  /**
+   * Perform the actual rename operation
+   * @param {string} listUuid - UUID of the list to rename
+   * @param {string} newName - New name for the list
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _performRename(listUuid, newName) {
+    try {
+      const document = this.selectedSpellList.document;
+      if (document.parent && document.parent.pages.size === 1) await document.parent.update({ name: newName });
+      await document.update({ name: newName });
+      this.selectedSpellList.name = newName;
+      await this.loadData();
+      await this.selectSpellList(listUuid);
+      ui.notifications.info(game.i18n.format('SPELLMANAGER.Rename.SuccessMessage', { name: newName }));
+    } catch (error) {
+      log(1, 'Error renaming spell list:', error);
+      ui.notifications.error(game.i18n.localize('SPELLMANAGER.Rename.ErrorMessage'));
+    }
+  }
+
+  /**
    * Handle merging spell lists
    * @static
    * @param {Event} event - The triggering event
@@ -1916,6 +2091,15 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
     }
   }
 
+  static async handleOpenAnalyticsDashboard(event, target) {
+    if (globalThis.SPELLBOOK) {
+      SPELLBOOK.openAnalyticsDashboard({ viewMode: 'gm' });
+    } else {
+      const dashboard = new SpellAnalyticsDashboard({ viewMode: 'gm' });
+      dashboard.render(true);
+    }
+  }
+
   // ========================================
   // Render and Lifecycle Methods
   // ========================================
@@ -2083,9 +2267,7 @@ export class GMSpellListManager extends HandlebarsApplicationMixin(ApplicationV2
       checked: isChecked,
       cssClass: 'spell-select-cb',
       ariaLabel:
-        type === 'add' ?
-          game.i18n.format('SPELLMANAGER.Selection.SelectSpellToAdd', { name: spell.name })
-        : game.i18n.format('SPELLMANAGER.Selection.SelectSpellToRemove', { name: spell.name })
+        type === 'add' ? game.i18n.format('SPELLMANAGER.Selection.SelectSpellToAdd', { name: spell.name }) : game.i18n.format('SPELLMANAGER.Selection.SelectSpellToRemove', { name: spell.name })
     });
     checkbox.dataset.type = type;
     checkbox.dataset.uuid = spell.uuid || spell.compendiumUuid;

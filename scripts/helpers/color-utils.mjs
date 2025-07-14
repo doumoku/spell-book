@@ -3,7 +3,8 @@
 import { log } from '../logger.mjs';
 const T = { light: '#f4f4f4', dark: '#1b1d24' };
 function d() {
-  return game.settings.get('core', 'colorScheme');
+  if (!foundry.utils.isNewerVersion(game.version, '12.999')) return game.settings.get('core', 'colorScheme');
+  else return game.settings.get('core', 'uiConfig').colorScheme.applications;
 }
 function h(x) {
   const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(x);
